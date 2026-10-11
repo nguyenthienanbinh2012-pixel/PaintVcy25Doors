@@ -1,4 +1,5 @@
 local Repository = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local success, Obsidian = pcall(function()
     return loadstring(game:HttpGet(Repository .. "Library.lua"))()
 end)
 
