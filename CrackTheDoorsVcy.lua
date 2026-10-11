@@ -440,7 +440,7 @@ velocityToggle:OnChanged(function(Value)
             local hrp = currentTargetChar:FindFirstChild("HumanoidRootPart")
             local hum = currentTargetChar:FindFirstChildOfClass("Humanoid")
             if not hrp or not hum then return end
-            
+
             for _, p in ipairs(currentTargetChar:GetDescendants()) do
                 if p:IsA("BasePart") then
                     if velocitySavedCanCollide[p] == nil then
@@ -455,7 +455,7 @@ velocityToggle:OnChanged(function(Value)
                     p.CanTouch = false
                 end
             end
-            
+
             for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
                 local spPart = currentTargetChar:FindFirstChild(n)
                 if spPart and spPart:IsA("BasePart") then
@@ -471,7 +471,7 @@ velocityToggle:OnChanged(function(Value)
                     spPart.CanTouch = false
                 end
             end
-            
+
             hum.WalkSpeed = 0
             local look = camera.CFrame.LookVector
             local dir = Vector3.new(look.X, 0, look.Z)
@@ -499,12 +499,12 @@ velocityToggle:OnChanged(function(Value)
             local hrp = currentTargetChar:FindFirstChild("HumanoidRootPart")
             local hum = currentTargetChar:FindFirstChildOfClass("Humanoid")
             if not hrp or not hum then return end
-            
+
             local raycastParams = RaycastParams.new()
             raycastParams.FilterDescendantsInstances = {currentTargetChar}
             raycastParams.FilterType = Enum.RaycastFilterType.Exclude
             local hit = Workspace:Raycast(hrp.Position, hrp.CFrame.LookVector * 2, raycastParams)
-            
+
             if hit then
                 for _, p in ipairs(currentTargetChar:GetDescendants()) do
                     if p:IsA("BasePart") then
@@ -577,10 +577,8 @@ noClipToggle:OnChanged(function(Value)
             end
             for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
                 local spPart = char:FindFirstChild(n)
-                if spPart and spPart            for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
-                local spPart = char:FindFirstChild(n)
                 if spPart and spPart:IsA("BasePart") then
-                    if noClipSavedCanCollide[spPart] == nil then
+                                                if noClipSavedCanCollide[spPart] == nil then
                         noClipSavedCanCollide[spPart] = {
                             CanCollide = spPart.CanCollide,
                             CanQuery = spPart.CanQuery,
@@ -731,13 +729,13 @@ local bookEspConnections = {}
 local function createBookEsp(bookObj)
     if not bookObj or not bookObj.Parent then return end
     if bookObj:FindFirstChild("BookEspBillboard") then return end
-    
+
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BookEspBillboard"
     billboard.Size = UDim2.new(0, 80, 0, 30)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.AlwaysOnTop = true
-    
+
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
@@ -747,7 +745,7 @@ local function createBookEsp(bookObj)
     textLabel.TextSize = 14
     textLabel.Font = Enum.Font.SourceSansBold
     textLabel.Parent = billboard
-    
+
     if bookObj:IsA("BasePart") then
         billboard.Parent = bookObj
     elseif bookObj:IsA("Model") and bookObj.PrimaryPart then
@@ -870,7 +868,7 @@ preMadePathToggle:OnChanged(function(Value)
                 Time = 5
             })
         end)
-        
+
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -1156,12 +1154,12 @@ weirdToggle:OnChanged(function(Value)
                 local c = LocalPlayer.Character
                 if not c then return end
                 local h = c:FindFirstChildOfClass("Humanoid")
-                         if h then
+                if h then
                     pcall(function()
                         for _, track in ipairs(h:GetPlayingAnimationTracks()) do
                             track:AdjustSpeed(0)
                             track:Stop(0)
-                        end
+                                    end
                     end)
                 end
                 if S.enabled then
@@ -1498,9 +1496,9 @@ autoInteractToggle:OnChanged(function(Value)
                             local objectText = desc.ObjectText:lower()
                             local parentName = parent.Name:lower()
                             local nameLower = actionText .. " " .. objectText .. " " .. parentName
-                            
+
                             local isCloset = nameLower:find("closet") or nameLower:find("wardrobe") or nameLower:find("hide") or parentName:find("closet") or parentName:find("wardrobe")
-                            
+
                             if not isCloset then
                                 if nameLower:find("key") or nameLower:find("obtain") or nameLower:find("card") or nameLower:find("lock") or nameLower:find("lever") or nameLower:find("breaker") or nameLower:find("book") or nameLower:find("gold") or nameLower:find("battery") or nameLower:find("lighter") or nameLower:find("vitamins") or nameLower:find("item") or nameLower:find("interact") then
                                     local now = tick()
@@ -1694,73 +1692,75 @@ SettingsLeft:AddButton("Bypass Doors50 [Floor1]", function()
     local currentRoom = 1
     pcall(function()
         local roomsFolder = Workspace:FindFirstChild("Rooms")
-if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
-currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
-end
+        if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
+            currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
+        end
+    end)
+    if currentRoom ~= 50 then
+        pcall(function()            Obsidian:Notify({
+                Title = "DOORS 50 BYPASS",
+                Description = "Hiện Tại chưa thể hoạt động trong room này!",
+                Time = 6
+            })
+        end)
+        return
+    end
+    local passFound = "12345"
+    pcall(function()
+        Obsidian:Notify({
+            Title = "DOORS 50 BYPASS",
+            Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
+            Time = 6
+        })
+    end)
 end)
-if currentRoom ~= 50 then
-pcall(function()
-Obsidian:Notify({
-Title = "DOORS 50 BYPASS",
-Description = "Hiện Tại chưa thể hoạt động trong room này!",
-Time = 6
-})
-end)
-return
-end
-local passFound = "12345"
-pcall(function()
-Obsidian:Notify({
-Title = "DOORS 50 BYPASS",
-Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
-Time = 6
-})
-end)
-end)
+
 SettingsLeft:AddButton("Unload Engine", function()
-Obsidian:Unload()
+    Obsidian:Unload()
 end)
+
 SettingsLeft:AddButton("Reload Character", function()
-local char = LocalPlayer.Character
-if char then
-local hum = char:FindFirstChildOfClass("Humanoid")
-if hum then
-hum:ChangeState(Enum.HumanoidStateType.Dead)
-end
-end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Dead)
+        end
+    end
 end)
+
 Obsidian:OnUnload(function()
-safeUnlockCharacter()
-togglePositionSpoof(false)
-if velocityConn then velocityConn:Disconnect() end
-if speedConn then speedConn:Disconnect() end
-if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
-if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
-if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
-if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
-if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
-if bypassLagConn then bypassLagConn:Disconnect() end
-if jumpScareCamConn then jumpScareCamConn:Disconnect() end
-if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
-if noEntityConn then noEntityConn:Disconnect() end
-if footMusicConn then footMusicConn:Disconnect() end
-if noShakeConn then noShakeConn:Disconnect() end
-if weirdConn then weirdConn:Disconnect() end
-if weirdAnimConn then weirdAnimConn:Disconnect() end
-if fullBrightConn then fullBrightConn:Disconnect() end
-if autoInteractConn then autoInteractConn:Disconnect() end
-if skipProximityConn then skipProximityConn:Disconnect() end
-if autoDoorsConn then autoDoorsConn:Disconnect() end
-if seeThroughConn then seeThroughConn:Disconnect() end
-if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
-if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
-if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
-if remoteThreadVel then task.cancel(remoteThreadVel) end
-table.clear(notifiedSet)
-table.clear(velocitySavedCanCollide)
-table.clear(noClipSavedCanCollide)
-table.clear(weirdSaved)
-table.clear(lastPromptTime)
-table.clear(lastDoorTrigger)
-table.clear(preMadePathParts)
+    safeUnlockCharacter()
+    togglePositionSpoof(false)
+    if velocityConn then velocityConn:Disconnect() end
+    if speedConn then speedConn:Disconnect() end
+    if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
+    if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
+    if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
+    if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
+    if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
+    if bypassLagConn then bypassLagConn:Disconnect() end
+    if jumpScareCamConn then jumpScareCamConn:Disconnect() end
+    if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
+    if noEntityConn then noEntityConn:Disconnect() end
+    if footMusicConn then footMusicConn:Disconnect() end
+    if noShakeConn then noShakeConn:Disconnect() end
+    if weirdConn then weirdConn:Disconnect() end
+    if weirdAnimConn then weirdAnimConn:Disconnect() end
+    if fullBrightConn then fullBrightConn:Disconnect() end
+    if autoInteractConn then autoInteractConn:Disconnect() end
+    if skipProximityConn then skipProximityConn:Disconnect() end
+    if autoDoorsConn then autoDoorsConn:Disconnect() end
+    if seeThroughConn then seeThroughConn:Disconnect() end
+    if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
+    if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
+    if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
+    if remoteThreadVel then task.cancel(remoteThreadVel) end
+    table.clear(notifiedSet)
+    table.clear(velocitySavedCanCollide)
+    table.clear(noClipSavedCanCollide)
+    table.clear(weirdSaved)
+    table.clear(lastPromptTime)
+    table.clear(lastDoorTrigger)
+    table.clear(preMadePathParts)
 end)
