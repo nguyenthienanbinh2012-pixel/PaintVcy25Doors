@@ -6,7 +6,14 @@ end)
 if not success or type(Obsidian) ~= "table" then
     warn("Lỗi tải thư viện Obsidian UI! Đang thử lại...")
     task.wait(1)
-    Obsidian = loadstring(game:HttpGet(Repository .. "Library.lua"))()
+    local retrySuccess, retryLib = pcall(function()
+        return loadstring(game:HttpGet(Repository .. "Library.lua"))()
+    end)
+    if retrySuccess and type(retryLib) == "table" then
+        Obsidian = retryLib
+    else
+        error("Không thể tải thư viện UI Obsidian. Vui lòng kiểm tra lại kết nối mạng hoặc môi trường Executor!")
+    end
 end
 
 local UserInputService = game:GetService("UserInputService")
@@ -18,48 +25,11 @@ local Lighting = game:GetService("Lighting")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalPlayer = Players.LocalPlayer
 
--- Module nhận diện Lobby / Floor theo chuẩn nghiên cứu 3 phương pháp
-local AreaDetector = {}
-function AreaDetector.Detect()
-    local placeId = game.PlaceId
-    local gameId = game.GameId
-    
-    local hasLobbyWorkspace = Workspace:FindFirstChild("Lobby") ~= nil
-    local hasRoomsWorkspace = Workspace:FindFirstChild("Rooms") ~= nil or Workspace:FindFirstChild("CurrentRooms") ~= nil
-    
-    local finalState = "UNKNOWN"
-    local floorNum = 0
-    
-    if hasLobbyWorkspace and not hasRoomsWorkspace then
-        finalState = "LOBBY"
-        floorNum = 0
-    elseif hasRoomsWorkspace then
-        local currentRoomAttr = LocalPlayer:GetAttribute("CurrentRoom")
-        if currentRoomAttr then
-            floorNum = tonumber(currentRoomAttr) or 1
-        end
-        finalState = "FLOOR1"
-    else
-        finalState = "LOADING"
-    end
-    
-    return {
-        PlaceId = placeId,
-        GameId = gameId,
-        WorkspaceEvidence = hasLobbyWorkspace and "Lobby Found" or (hasRoomsWorkspace and "Rooms Found" or "None"),
-        RoomEvidence = tostring(floorNum),
-        FinalState = finalState,
-        FloorNumber = floorNum
-    }
-end
-
-local detectedArea = AreaDetector.Detect()
-
 local Window = Obsidian:CreateWindow({
     Title = "PaintVcy.1",
     SubTitle = "PaintVcy1.0",
     TabWidth = 135,
-    Size = UDim2.new(0, 640, 0, 380),
+    Size = UDim2.new(0, 620, 0, 380),
     Center = true,
     AutoShow = true,
     MenuFadeTime = 0.15
@@ -69,18 +39,18 @@ local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
     Visual = Window:AddTab("Visual", "eye"),
-    Misc = Window:AddTab("Misc", "sliders"),
+    Misc = Window:AddTab("Misc", "Ghost"),
     Settings = Window:AddTab("Settings", "cog")
 }
 
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
-local floorInfoLabel = InfoGroup:AddLabel("Current Floor: " .. detectedArea.FinalState)
+local floorInfoLabel = InfoGroup:AddLabel("Status: Running Everywhere")
 
 RunService.Heartbeat:Connect(function()
-    local status = AreaDetector.Detect()
-    if playerInfoLabel then playerInfoLabel:SetText("Player: " .. LocalPlayer.Name) end
-    if floorInfoLabel then floorInfoLabel:SetText("Current Floor: " .. status.FinalState) end
+    pcall(function()
+        if playerInfoLabel then playerInfoLabel:SetText("Player: " .. LocalPlayer.Name) end
+    end)
 end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
@@ -607,6 +577,8 @@ noClipToggle:OnChanged(function(Value)
             end
             for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
                 local spPart = char:FindFirstChild(n)
+                if spPart and spPart            for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+                local spPart = char:FindFirstChild(n)
                 if spPart and spPart:IsA("BasePart") then
                     if noClipSavedCanCollide[spPart] == nil then
                         noClipSavedCanCollide[spPart] = {
@@ -891,24 +863,13 @@ local preMadePathToggle = VisualLeft:AddToggle("PreMadePathToggle", {
 
 preMadePathToggle:OnChanged(function(Value)
     if Value then
-        local currentStatus = AreaDetector.Detect()
-        if currentStatus.FloorNumber == 1 then
-            pcall(function()
-                Obsidian:Notify({
-                    Title = "PRE-MADE PATH",
-                    Description = "Floor 1 sẽ không hoạt động trong nhiều trường hợp!",
-                    Time = 6
-                })
-            end)
-        elseif currentStatus.FloorNumber >= 2 or currentStatus.FinalState == "FLOOR1" then
-            pcall(function()
-                Obsidian:Notify({
-                    Title = "PRE-MADE PATH",
-                    Description = "Đã Tạo",
-                    Time = 5
-                })
-            end)
-        end
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PRE-MADE PATH",
+                Description = "Đã Tạo",
+                Time = 5
+            })
+        end)
         
         local char = LocalPlayer.Character
         if char then
@@ -1164,8 +1125,9 @@ weirdToggle:OnChanged(function(Value)
                 pcall(function()
                     for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
                         track:AdjustSpeed(0)
-                        track:Stop(0)                    end)
-                end
+                        track:Stop(0)
+                    end
+                end)
             end
             for _, p in ipairs(char:GetDescendants()) do
                 if p:IsA("BasePart") then
@@ -1194,7 +1156,7 @@ weirdToggle:OnChanged(function(Value)
                 local c = LocalPlayer.Character
                 if not c then return end
                 local h = c:FindFirstChildOfClass("Humanoid")
-                if h then
+                         if h then
                     pcall(function()
                         for _, track in ipairs(h:GetPlayingAnimationTracks()) do
                             track:AdjustSpeed(0)
@@ -1683,7 +1645,7 @@ MiscRight:AddDropdown("InfiniteItemDropdown", {
     Text = "Select Infinite Item",
     Values = {"Lockpicking", "Skeleton Key", "Crucifix"},
     Default = 1,
-     Tooltip = "Chon vat pham de vo han"
+    Tooltip = "Chon vat pham de vo han"
 }):OnChanged(function(v)
     infiniteItemVal = v
 end)
@@ -1732,87 +1694,73 @@ SettingsLeft:AddButton("Bypass Doors50 [Floor1]", function()
     local currentRoom = 1
     pcall(function()
         local roomsFolder = Workspace:FindFirstChild("Rooms")
-        if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
-            currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
-        end
-    end)
-
-    if currentRoom ~= 50 then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "DOORS 50 BYPASS",
-                Description = "Hiện Tại chưa thể hoạt động trong room này!",
-                Time = 6
-            })
-        end)
-        return
-    end
-
-    local passFound = "12345"
-    pcall(function()
-        Obsidian:Notify({
-            Title = "DOORS 50 BYPASS",
-            Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
-            Time = 6
-        })
-    end)
+if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
+currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
+end
 end)
-
+if currentRoom ~= 50 then
+pcall(function()
+Obsidian:Notify({
+Title = "DOORS 50 BYPASS",
+Description = "Hiện Tại chưa thể hoạt động trong room này!",
+Time = 6
+})
+end)
+return
+end
+local passFound = "12345"
+pcall(function()
+Obsidian:Notify({
+Title = "DOORS 50 BYPASS",
+Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
+Time = 6
+})
+end)
+end)
 SettingsLeft:AddButton("Unload Engine", function()
-    Obsidian:Unload()
+Obsidian:Unload()
 end)
-
 SettingsLeft:AddButton("Reload Character", function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Dead)
-        end
-    end
+local char = LocalPlayer.Character
+if char then
+local hum = char:FindFirstChildOfClass("Humanoid")
+if hum then
+hum:ChangeState(Enum.HumanoidStateType.Dead)
+end
+end
 end)
-
-RunService.Heartbeat:Connect(function()
-    local areaStatus = AreaDetector.Detect()
-    if areaStatus.FinalState == "LOBBY" then
-        Window.Enabled = false
-    else
-        Window.Enabled = true
-    end
-end)
-
 Obsidian:OnUnload(function()
-    safeUnlockCharacter()
-    togglePositionSpoof(false)
-    if velocityConn then velocityConn:Disconnect() end
-    if speedConn then speedConn:Disconnect() end
-    if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
-    if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
-    if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
-    if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
-    if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
-    if bypassLagConn then bypassLagConn:Disconnect() end
-    if jumpScareCamConn then jumpScareCamConn:Disconnect() end
-    if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
-    if noEntityConn then noEntityConn:Disconnect() end
-    if footMusicConn then footMusicConn:Disconnect() end
-    if noShakeConn then noShakeConn:Disconnect() end
-    if weirdConn then weirdConn:Disconnect() end
-    if weirdAnimConn then weirdAnimConn:Disconnect() end
-    if fullBrightConn then fullBrightConn:Disconnect() end
-    if autoInteractConn then autoInteractConn:Disconnect() end
-    if skipProximityConn then skipProximityConn:Disconnect() end
-    if autoDoorsConn then autoDoorsConn:Disconnect() end
-    if seeThroughConn then seeThroughConn:Disconnect() end
-    if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
-    if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
-    if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
-    if remoteThreadVel then task.cancel(remoteThreadVel) end
-    table.clear(notifiedSet)
-    table.clear(velocitySavedCanCollide)
-    table.clear(noClipSavedCanCollide)
-    table.clear(weirdSaved)
-    table.clear(lastPromptTime)
-    table.clear(lastDoorTrigger)
-    table.clear(preMadePathParts)
+safeUnlockCharacter()
+togglePositionSpoof(false)
+if velocityConn then velocityConn:Disconnect() end
+if speedConn then speedConn:Disconnect() end
+if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
+if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
+if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
+if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
+if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
+if bypassLagConn then bypassLagConn:Disconnect() end
+if jumpScareCamConn then jumpScareCamConn:Disconnect() end
+if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
+if noEntityConn then noEntityConn:Disconnect() end
+if footMusicConn then footMusicConn:Disconnect() end
+if noShakeConn then noShakeConn:Disconnect() end
+if weirdConn then weirdConn:Disconnect() end
+if weirdAnimConn then weirdAnimConn:Disconnect() end
+if fullBrightConn then fullBrightConn:Disconnect() end
+if autoInteractConn then autoInteractConn:Disconnect() end
+if skipProximityConn then skipProximityConn:Disconnect() end
+if autoDoorsConn then autoDoorsConn:Disconnect() end
+if seeThroughConn then seeThroughConn:Disconnect() end
+if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
+if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
+if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
+if remoteThreadVel then task.cancel(remoteThreadVel) end
+table.clear(notifiedSet)
+table.clear(velocitySavedCanCollide)
+table.clear(noClipSavedCanCollide)
+table.clear(weirdSaved)
+table.clear(lastPromptTime)
+table.clear(lastDoorTrigger)
+table.clear(preMadePathParts)
 end)
