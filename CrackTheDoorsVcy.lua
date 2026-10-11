@@ -1,4 +1,4 @@
-local Repository = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local Repository = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/(https://raw.githubusercontent.com/deividcomsono/Obsidian/main/)"
 local success, Obsidian = pcall(function()
     return loadstring(game:HttpGet(Repository .. "Library.lua"))()
 end)
@@ -29,7 +29,7 @@ local Window = Obsidian:CreateWindow({
     Title = "Doors Engine Vcy",
     SubTitle = "Obsidian v19 Optimized",
     TabWidth = 135,
-    Size = UDim2.new(0, 620, 0, 380),
+    Size = UDim2.new(0, 650, 0, 380),
     Center = true,
     AutoShow = true,
     MenuFadeTime = 0.15
@@ -39,7 +39,7 @@ local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
     Visual = Window:AddTab("Visual", "eye"),
-    Misc = Window:AddTab("Misc", "sliders"),
+    Misc = Window:AddTab("Misc", "exploit"),
     Settings = Window:AddTab("Settings", "cog")
 }
 
@@ -576,1308 +576,1207 @@ noClipToggle:OnChanged(function(Value)
                 end
             end
             for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
-                local spPart = char:FindFirstChild(n)
-                                        if spPart and spPart:IsA("BasePart") then
-                    if noClipSavedCanCollide[spPart] == nil then
-                        noClipSavedCanCollide[spPart] = {
-                            CanCollide = spPart.CanCollide,
-                            CanQuery = spPart.CanQuery,
-                            CanTouch = spPart.CanTouch
-                        }
-                    end
-                    spPart.CanCollide = false
-                    spPart.CanQuery = false
-                    spPart.CanTouch = false
-                end
-            end
-        end
-    else
-        for part, data in pairs(noClipSavedCanCollide) do
-            if part and part.Parent then
-                part.CanCollide = data.CanCollide
-                part.CanQuery = data.CanQuery
-                part.CanTouch = data.CanTouch
-            end
-        end
-        noClipSavedCanCollide = {}
-        safeUnlockCharacter()
-    end
+local spPart = char:FindFirstChild(n)
+if spPart and spPart:IsA("BasePart") then
+if noClipSavedCanCollide[spPart] == nil then
+noClipSavedCanCollide[spPart] = {
+CanCollide = spPart.CanCollide,
+CanQuery = spPart.CanQuery,
+CanTouch = spPart.CanTouch
+}
+end
+spPart.CanCollide = false
+spPart.CanQuery = false
+spPart.CanTouch = false
+end
+end
+end
+else
+for part, data in pairs(noClipSavedCanCollide) do
+if part and part.Parent then
+part.CanCollide = data.CanCollide
+part.CanQuery = data.CanQuery
+part.CanTouch = data.CanTouch
+end
+end
+noClipSavedCanCollide = {}
+safeUnlockCharacter()
+end
 end)
-
 local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
-    Text = "Position Spoof",
-    Default = false,
-    Tooltip = "Ha HRP.Y xuong ne raycast cua Rush Ambush A-60"
+Text = "Position Spoof",
+Default = false,
+Tooltip = "Ha HRP.Y xuong ne raycast cua Rush Ambush A-60"
 })
-
 positionSpoofToggle:OnChanged(function(Value)
-    togglePositionSpoof(Value)
+togglePositionSpoof(Value)
 end)
-
 local speedMethod = "Boost"
 local speedMethodDropdown = FuncRight:AddDropdown("SpeedMethodDropdown", {
-    Text = "Speed Method",
-    Values = {"Boost", "Instant"},
-    Default = 1,
-    Tooltip = "Boost: tang toc tu tu | Instant: chay nhanh ngay"
+Text = "Speed Method",
+Values = {"Boost", "Instant"},
+Default = 1,
+Tooltip = "Boost: tang toc tu tu | Instant: chay nhanh ngay"
 })
-
 speedMethodDropdown:OnChanged(function(Value)
-    speedMethod = Value
+speedMethod = Value
 end)
-
 local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
-    Text = "Speed",
-    Default = false,
-    Tooltip = "Doi WalkSpeed tuy chinh tang toc tu tu hoac tuc thi"
+Text = "Speed",
+Default = false,
+Tooltip = "Doi WalkSpeed tuy chinh tang toc tu tu hoac tuc thi"
 })
-
 speedToggle:OnChanged(function(Value)
-    isSpeedActive = Value
-    if Value then
-        speedConn = RunService.PreRender:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                if speedMethod == "Instant" then
-                    hum.WalkSpeed = targetWalkSpeed
-                else
-                    if hum.WalkSpeed < targetWalkSpeed then
-                        hum.WalkSpeed = math.min(hum.WalkSpeed + 1.5, targetWalkSpeed)
-                    elseif hum.WalkSpeed > targetWalkSpeed then
-                        hum.WalkSpeed = targetWalkSpeed
-                    end
-                end
-            end
-        end)
-        remoteThreadSpeed = task.spawn(function()
-            while isSpeedActive do
-                if not S.enabled then
-                    local cr = getCrouchRemote()
-                    if cr then
-                        pcall(function() cr:FireServer(false, true) end)
-                    end
-                end
-                task.wait(0.4)
-            end
-        end)
-    else
-        if speedConn then speedConn:Disconnect() speedConn = nil end
-        if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
-        safeUnlockCharacter()
-    end
+isSpeedActive = Value
+if Value then
+speedConn = RunService.PreRender:Connect(function()
+local char = LocalPlayer.Character
+if not char then return end
+local hum = char:FindFirstChildOfClass("Humanoid")
+if hum then
+if speedMethod == "Instant" then
+hum.WalkSpeed = targetWalkSpeed
+else
+if hum.WalkSpeed < targetWalkSpeed then
+hum.WalkSpeed = math.min(hum.WalkSpeed + 1.5, targetWalkSpeed)
+elseif hum.WalkSpeed > targetWalkSpeed then
+hum.WalkSpeed = targetWalkSpeed
+end
+end
+end
 end)
-
+remoteThreadSpeed = task.spawn(function()
+while isSpeedActive do
+if not S.enabled then
+local cr = getCrouchRemote()
+if cr then
+pcall(function() cr:FireServer(false, true) end)
+end
+end
+task.wait(0.4)
+end
+end)
+else
+if speedConn then speedConn:Disconnect() speedConn = nil end
+if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
+safeUnlockCharacter()
+end
+end)
 FuncRight:AddSlider("SpeedBypassSlider", {
-    Text = "Speed Val",
-    Default = 16,
-    Min = 0,
-    Max = 80,
-    Rounding = 1,
-    Compact = true
+Text = "Speed Val",
+Default = 16,
+Min = 0,
+Max = 80,
+Rounding = 1,
+Compact = true
 }):OnChanged(function(Value)
-    targetWalkSpeed = Value
+targetWalkSpeed = Value
 end)
-
 local paintEspToggle = VisualLeft:AddToggle("PaintEspToggle", {
-    Text = "Paint ESP",
-    Default = false,
-    Tooltip = "Load PaintDoorsVisual"
+Text = "Paint ESP",
+Default = false,
+Tooltip = "Load PaintDoorsVisual"
 })
-
 local paintEspLoaded = false
-
 paintEspToggle:OnChanged(function(Value)
-    if Value then
-        if not paintEspLoaded then
-            pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/PaintDoorsVisual/refs/heads/main/VisualEspDoors.lua"))()
-            end)
-            paintEspLoaded = true
-        end
-    else
-        pcall(function()
-            local cg = game:GetService("CoreGui")
-            for _, gui in ipairs(cg:GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    local n = gui.Name:lower()
-                    if n:find("paint") or n:find("visual") or n:find("esp") then
-                        gui:Destroy()
-                    end
-                end
-            end
-            local pg = LocalPlayer:FindFirstChild("PlayerGui")
-            if pg then
-                for _, gui in ipairs(pg:GetChildren()) do
-                    if gui:IsA("ScreenGui") then
-                        local n = gui.Name:lower()
-                        if n:find("paint") or n:find("visual") or n:find("esp") then
-                            gui:Destroy()
-                        end
-                    end
-                end
-            end
-        end)
-        paintEspLoaded = false
-    end
+if Value then
+if not paintEspLoaded then
+pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/PaintDoorsVisual/refs/heads/main/VisualEspDoors.lua"))()
 end)
-
+paintEspLoaded = true
+end
+else
+pcall(function()
+local cg = game:GetService("CoreGui")
+for _, gui in ipairs(cg:GetChildren()) do
+if gui:IsA("ScreenGui") then
+local n = gui.Name:lower()
+if n:find("paint") or n:find("visual") or n:find("esp") then
+gui:Destroy()
+end
+end
+end
+local pg = LocalPlayer:FindFirstChild("PlayerGui")
+if pg then
+for _, gui in ipairs(pg:GetChildren()) do
+if gui:IsA("ScreenGui") then
+local n = gui.Name:lower()
+if n:find("paint") or n:find("visual") or n:find("esp") then
+gui:Destroy()
+end
+end
+end
+end
+end)
+paintEspLoaded = false
+end
+end)
 local bookEspActive = false
 local bookEspConnections = {}
-
 local function createBookEsp(bookObj)
-    if not bookObj or not bookObj.Parent then return end
-    if bookObj:FindFirstChild("BookEspBillboard") then return end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "BookEspBillboard"
-    billboard.Size = UDim2.new(0, 80, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Book"
-    textLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-    textLabel.TextStrokeTransparency = 0.2
-    textLabel.TextSize = 14
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.Parent = billboard
-    
-    if bookObj:IsA("BasePart") then
-        billboard.Parent = bookObj
-    elseif bookObj:IsA("Model") and bookObj.PrimaryPart then
-        billboard.Parent = bookObj.PrimaryPart
-    elseif bookObj:IsA("Model") then
-        local targetPart = bookObj:FindFirstChildWhichIsA("BasePart")
-        if targetPart then billboard.Parent = targetPart end
-    end
+if not bookObj or not bookObj.Parent then return end
+if bookObj:FindFirstChild("BookEspBillboard") then return end
+local billboard = Instance.new("BillboardGui")
+billboard.Name = "BookEspBillboard"
+billboard.Size = UDim2.new(0, 80, 0, 30)
+billboard.StudsOffset = Vector3.new(0, 2, 0)
+billboard.AlwaysOnTop = true
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(1, 0, 1, 0)
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "Book"
+textLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+textLabel.TextStrokeTransparency = 0.2
+textLabel.TextSize = 14
+textLabel.Font = Enum.Font.SourceSansBold
+textLabel.Parent = billboard
+if bookObj:IsA("BasePart") then
+billboard.Parent = bookObj
+elseif bookObj:IsA("Model") and bookObj.PrimaryPart then
+billboard.Parent = bookObj.PrimaryPart
+elseif bookObj:IsA("Model") then
+local targetPart = bookObj:FindFirstChildWhichIsA("BasePart")
+if targetPart then billboard.Parent = targetPart end
 end
-
+end
 local function removeBookEsp()
-    for _, desc in ipairs(Workspace:GetDescendants()) do
-        if desc.Name == "BookEspBillboard" then
-            desc:Destroy()
-        end
-    end
+for _, desc in ipairs(Workspace:GetDescendants()) do
+if desc.Name == "BookEspBillboard" then
+desc:Destroy()
 end
-
+end
+end
 local bookEspToggle = VisualLeft:AddToggle("BookEspToggle", {
-    Text = "Book ESP (Room 50)",
-    Default = false,
-    Tooltip = "Ve mau va ten Book[1..] len cac sach trong phong 50"
+Text = "Book ESP (Room 50)",
+Default = false,
+Tooltip = "Ve mau va ten Book[1..] len cac sach trong phong 50"
 })
-
 bookEspToggle:OnChanged(function(Value)
-    bookEspActive = Value
-    if Value then
-        for _, desc in ipairs(Workspace:GetDescendants()) do
-            local nameLower = desc.Name:lower()
-            if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
-                local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
-                pcall(function() createBookEsp(target) end)
-            end
-        end
-        table.insert(bookEspConnections, Workspace.DescendantAdded:Connect(function(desc)
-            if not bookEspActive then return end
-            local nameLower = desc.Name:lower()
-            if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
-                local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
-                pcall(function() createBookEsp(target) end)
-            end
-        end))
-    else
-        for _, conn in ipairs(bookEspConnections) do
-            if conn then conn:Disconnect() end
-        end
-        bookEspConnections = {}
-        removeBookEsp()
-    end
+bookEspActive = Value
+if Value then
+for _, desc in ipairs(Workspace:GetDescendants()) do
+local nameLower = desc.Name:lower()
+if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
+local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
+pcall(function() createBookEsp(target) end)
+end
+end
+table.insert(bookEspConnections, Workspace.DescendantAdded:Connect(function(desc)
+if not bookEspActive then return end
+local nameLower = desc.Name:lower()
+if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
+local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
+pcall(function() createBookEsp(target) end)
+end
+end))
+else
+for _, conn in ipairs(bookEspConnections) do
+if conn then conn:Disconnect() end
+end
+bookEspConnections = {}
+removeBookEsp()
+end
 end)
-
 local seeThroughActive = false
 local seeThroughVal = 0.5
 local seeThroughConn = nil
-
 local seeThroughToggle = VisualLeft:AddToggle("SeeThroughHidingToggle", {
-    Text = "See-through while hiding",
-    Default = false,
-    Tooltip = "Chi lam mo tu khi nhan vat thuc su dang tron ben trong"
+Text = "See-through while hiding",
+Default = false,
+Tooltip = "Chi lam mo tu khi nhan vat thuc su dang tron ben trong"
 })
-
 local seeThroughSlider = VisualLeft:AddSlider("SeeThroughSlider", {
-    Text = "Opacity Val",
-    Default = 0.5,
-    Min = 0.1,
-    Max = 1.0,
-    Rounding = 1,
-    Compact = true
+Text = "Opacity Val",
+Default = 0.5,
+Min = 0.1,
+Max = 1.0,
+Rounding = 1,
+Compact = true
 })
-
 seeThroughSlider:OnChanged(function(v)
-    seeThroughVal = v
+seeThroughVal = v
 end)
-
 seeThroughToggle:OnChanged(function(Value)
-    seeThroughActive = Value
-    if Value then
-        seeThroughConn = RunService.Heartbeat:Connect(function()
-            if not seeThroughActive then return end
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-            local hrp = char.HumanoidRootPart
-            
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide")) then
-                    local isInside = false
-                    local pivotPos = nil
-                    pcall(function() pivotPos = obj:GetPivot().Position end)
-                    if not pivotPos then
-                        local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                        if primary then pivotPos = primary.Position end
-                    end
-                    
-                    if pivotPos and (hrp.Position - pivotPos).Magnitude < 4.5 then
-                        isInside = true
-                    end
-                    
-                    for _, p in ipairs(obj:GetDescendants()) do
-                        if p:IsA("BasePart") then
-                            p.Transparency = isInside and seeThroughVal or 0
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if seeThroughConn then
-            seeThroughConn:Disconnect()
-            seeThroughConn = nil
-        end
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide")) then
-                for _, p in ipairs(obj:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        p.Transparency = 0
-                    end
-                end
-            end
-        end
-    end
+seeThroughActive = Value
+if Value then
+seeThroughConn = RunService.Heartbeat:Connect(function()
+if not seeThroughActive then return end
+local char = LocalPlayer.Character
+if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+local hrp = char.HumanoidRootPart
+for _, obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide")) then
+local isInside = false
+local pivotPos = nil
+pcall(function() pivotPos = obj:GetPivot().Position end)
+if not pivotPos then
+local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+if primary then pivotPos = primary.Position end
+end
+if pivotPos and (hrp.Position - pivotPos).Magnitude < 4.5 then
+isInside = true
+end
+for _, p in ipairs(obj:GetDescendants()) do
+if p:IsA("BasePart") then
+p.Transparency = isInside and seeThroughVal or 0
+end
+end
+end
+end
 end)
-
+else
+if seeThroughConn then
+seeThroughConn:Disconnect()
+seeThroughConn = nil
+end
+for _, obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide")) then
+for _, p in ipairs(obj:GetDescendants()) do
+if p:IsA("BasePart") then
+p.Transparency = 0
+end
+end
+end
+end
+end
+end)
 local preMadePathParts = {}
 local preMadePathToggle = VisualLeft:AddToggle("PreMadePathToggle", {
-    Text = "Create a Pre-made Path",
-    Default = false,
-    Tooltip = "Tao part dai va to che phu cac cho lun hoac khong phang tu chan toi day"
+Text = "Create a Pre-made Path",
+Default = false,
+Tooltip = "Tao part dai va to che phu cac cho lun hoac khong phang tu chan toi day"
 })
-
 preMadePathToggle:OnChanged(function(Value)
-    if Value then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "PRE-MADE PATH",
-                Description = "Đã tạo thảm chống lún siêu to!",
-                Time = 4
-            })
-        end)
-        
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for i = 1, 8 do
-                    local p = Instance.new("Part")
-                    p.Size = Vector3.new(12, 1, 12)
-                    p.Position = hrp.Position + Vector3.new(0, -4.2, i * 8)
-                    p.Anchored = true
-                    p.CanCollide = true
-                    p.Material = Enum.Material.ForceField
-                    p.Color = Color3.fromRGB(255, 105, 180)
-                    p.Transparency = 0.35
-                    p.Parent = Workspace
-                    table.insert(preMadePathParts, p)
-                end
-            end
-        end
-    else
-        for _, p in ipairs(preMadePathParts) do
-            if p and p.Parent then p:Destroy() end
-        end
-        preMadePathParts = {}
-    end
+if Value then
+pcall(function()
+Obsidian:Notify({
+Title = "PRE-MADE PATH",
+Description = "Đã tạo thảm chống lún siêu to!",
+Time = 4
+})
 end)
-
+local char = LocalPlayer.Character
+if char then
+local hrp = char:FindFirstChild("HumanoidRootPart")
+if hrp then
+for i = 1, 8 do
+local p = Instance.new("Part")
+p.Size = Vector3.new(12, 1, 12)
+p.Position = hrp.Position + Vector3.new(0, -4.2, i * 8)
+p.Anchored = true
+p.CanCollide = true
+p.Material = Enum.Material.ForceField
+p.Color = Color3.fromRGB(255, 105, 180)
+p.Transparency = 0.35
+p.Parent = Workspace
+table.insert(preMadePathParts, p)
+end
+end
+end
+else
+for _, p in ipairs(preMadePathParts) do
+if p and p.Parent then p:Destroy() end
+end
+preMadePathParts = {}
+end
+end)
 local fullBrightConn = nil
 local fullBrightActive = false
 local fullBrightLevel = 2
-
 local fullBrightToggle = VisualRight:AddToggle("FullBrightToggle", {
-    Text = "Full Bright",
-    Default = false,
-    Tooltip = "Lam sang moi truong"
+Text = "Full Bright",
+Default = false,
+Tooltip = "Lam sang moi truong"
 })
-
 local fullBrightSlider = VisualRight:AddSlider("FullBrightSlider", {
-    Text = "Brightness",
-    Default = 2,
-    Min = 0.5,
-    Max = 10,
-    Rounding = 1,
-    Compact = true
+Text = "Brightness",
+Default = 2,
+Min = 0.5,
+Max = 10,
+Rounding = 1,
+Compact = true
 })
-
 fullBrightSlider:OnChanged(function(Value)
-    fullBrightLevel = Value
+fullBrightLevel = Value
 end)
-
 fullBrightToggle:OnChanged(function(Value)
-    fullBrightActive = Value
-    if Value then
-        if not fullBrightConn then
-            fullBrightConn = RunService.RenderStepped:Connect(function()
-                if not fullBrightActive then return end
-                pcall(function()
-                    Lighting.Brightness = fullBrightLevel
-                    Lighting.ClockTime = 14
-                    Lighting.FogEnd = 1000000
-                    Lighting.FogStart = 0
-                    Lighting.GlobalShadows = false
-                    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-                    Lighting.EnvironmentDiffuseScale = 1
-                    Lighting.EnvironmentSpecularScale = 1
-                    Lighting.Ambient = Color3.fromRGB(200, 200, 200)
-                end)
-            end)
-        end
-    else
-        if fullBrightConn then
-            fullBrightConn:Disconnect()
-            fullBrightConn = nil
-        end
-        Lighting.Brightness = 1
-        Lighting.GlobalShadows = true
-    end
+fullBrightActive = Value
+if Value then
+if not fullBrightConn then
+fullBrightConn = RunService.RenderStepped:Connect(function()
+if not fullBrightActive then return end
+pcall(function()
+Lighting.Brightness = fullBrightLevel
+Lighting.ClockTime = 14
+Lighting.FogEnd = 1000000
+Lighting.FogStart = 0
+Lighting.GlobalShadows = false
+Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+Lighting.EnvironmentDiffuseScale = 1
+Lighting.EnvironmentSpecularScale = 1
+Lighting.Ambient = Color3.fromRGB(200, 200, 200)
 end)
-
+end)
+end
+else
+if fullBrightConn then
+fullBrightConn:Disconnect()
+fullBrightConn = nil
+end
+Lighting.Brightness = 1
+Lighting.GlobalShadows = true
+end
+end)
 local bypassLagConn = nil
 local bypassLagActive = false
 local originalLighting = nil
 local originalPartProps = {}
-
 local bypassLagToggle = VisualRight:AddToggle("BypassLagToggle", {
-    Text = "Bypass Lag [Optimized]",
-    Default = false,
-    Tooltip = "Toi uu hoa do hoa toan dien, xoa texture, particle va giam tai khung hinh"
+Text = "Bypass Lag [Optimized]",
+Default = false,
+Tooltip = "Toi uu hoa do hoa toan dien, xoa texture, particle va giam tai khung hinh"
 })
-
 bypassLagToggle:OnChanged(function(Value)
-    bypassLagActive = Value
-    if Value then
-        originalLighting = {
-            Brightness = Lighting.Brightness,
-            ClockTime = Lighting.ClockTime,
-            FogEnd = Lighting.FogEnd,
-            GlobalShadows = Lighting.GlobalShadows,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-        }
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 400
-
-        for _, obj in ipairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
-                obj.Enabled = false
-            end
-        end
-
-        local function cleanHeavyObjects(parent)
-            for _, child in ipairs(parent:GetChildren()) do
-                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
-                    if originalPartProps[child] == nil then
-                        originalPartProps[child] = {Material = child.Material, CastShadow = child.CastShadow}
-                    end
-                    child.Material = Enum.Material.SmoothPlastic
-                    child.CastShadow = false
-                elseif child:IsA("Decal") or child:IsA("Texture") then
-                    child.Transparency = 1
-                elseif child:IsA("ParticleEmitter") or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Fire") or child:IsA("Smoke") or child:IsA("Sparkles") then
-                    child.Enabled = false
-                end
-                if #child:GetChildren() > 0 then
-                    cleanHeavyObjects(child)
-                end
-            end
-        end
-        task.spawn(function()
-            cleanHeavyObjects(Workspace)
-        end)
-
-        if not bypassLagConn then
-            bypassLagConn = Workspace.DescendantAdded:Connect(function(desc)
-                if not bypassLagActive then return end
-                task.defer(function()
-                    pcall(function()
-                        if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
-                            desc.Material = Enum.Material.SmoothPlastic
-                            desc.CastShadow = false
-                        elseif desc:IsA("Decal") or desc:IsA("Texture") then
-                            desc.Transparency = 1
-                        elseif desc:IsA("ParticleEmitter") or desc:IsA("Trail") or desc:IsA("Beam") then
-                            desc.Enabled = false
-                        end
-                    end)
-                end)
-            end)
-        end
-    else
-        if originalLighting then
-            Lighting.Brightness = originalLighting.Brightness
-            Lighting.ClockTime = originalLighting.ClockTime
-            Lighting.FogEnd = originalLighting.FogEnd
-            Lighting.GlobalShadows = originalLighting.GlobalShadows
-            Lighting.Ambient = originalLighting.Ambient
-            Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
-            originalLighting = nil
-        end
-
-        for _, obj in ipairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
-                obj.Enabled = true
-            end
-        end
-
-        for part, data in pairs(originalPartProps) do
-            if part and part.Parent then
-                part.Material = data.Material
-                part.CastShadow = data.CastShadow
-            end
-        end
-        originalPartProps = {}
-
-        if bypassLagConn then
-            bypassLagConn:Disconnect()
-            bypassLagConn = nil
-        end
-    end
+bypassLagActive = Value
+if Value then
+originalLighting = {
+Brightness = Lighting.Brightness,
+ClockTime = Lighting.ClockTime,
+FogEnd = Lighting.FogEnd,
+GlobalShadows = Lighting.GlobalShadows,
+Ambient = Lighting.Ambient,
+OutdoorAmbient = Lighting.OutdoorAmbient,
+}
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 400
+for _, obj in ipairs(Lighting:GetChildren()) do
+if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
+obj.Enabled = false
+end
+end
+local function cleanHeavyObjects(parent)
+for _, child in ipairs(parent:GetChildren()) do
+if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
+if originalPartProps[child] == nil then
+originalPartProps[child] = {Material = child.Material, CastShadow = child.CastShadow}
+end
+child.Material = Enum.Material.SmoothPlastic
+child.CastShadow = false
+elseif child:IsA("Decal") or child:IsA("Texture") then
+child.Transparency = 1
+elseif child:IsA("ParticleEmitter") or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Fire") or child:IsA("Smoke") or child:IsA("Sparkles") then
+child.Enabled = false
+end
+if #child:GetChildren() > 0 then
+cleanHeavyObjects(child)
+end
+end
+end
+task.spawn(function()
+cleanHeavyObjects(Workspace)
 end)
-
+if not bypassLagConn then
+bypassLagConn = Workspace.DescendantAdded:Connect(function(desc)
+if not bypassLagActive then return end
+task.defer(function()
+pcall(function()
+if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
+desc.Material = Enum.Material.SmoothPlastic
+desc.CastShadow = false
+elseif desc:IsA("Decal") or desc:IsA("Texture") then
+desc.Transparency = 1
+elseif desc:IsA("ParticleEmitter") or desc:IsA("Trail") or desc:IsA("Beam") then
+desc.Enabled = false
+end
+end)
+end)
+end)
+end
+else
+if originalLighting then
+Lighting.Brightness = originalLighting.Brightness
+Lighting.ClockTime = originalLighting.ClockTime
+Lighting.FogEnd = originalLighting.FogEnd
+Lighting.GlobalShadows = originalLighting.GlobalShadows
+Lighting.Ambient = originalLighting.Ambient
+Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+originalLighting = nil
+end
+for _, obj in ipairs(Lighting:GetChildren()) do
+if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
+obj.Enabled = true
+end
+end
+for part, data in pairs(originalPartProps) do
+if part and part.Parent then
+part.Material = data.Material
+part.CastShadow = data.CastShadow
+end
+end
+originalPartProps = {}
+if bypassLagConn then
+bypassLagConn:Disconnect()
+bypassLagConn = nil
+end
+end
+end)
 local noShakeConn = nil
 local noShakeActive = false
-
 local noShakeToggle = VisualRight:AddToggle("NoShakeToggle", {
-    Text = "No Shake [Fixed]",
-    Default = false,
-    Tooltip = "Chong rung mat dat va rung camera tan goc"
+Text = "No Shake [Fixed]",
+Default = false,
+Tooltip = "Chong rung mat dat va rung camera tan goc"
 })
-
 noShakeToggle:OnChanged(function(Value)
-    noShakeActive = Value
-    if Value then
-        if not noShakeConn then
-            noShakeConn = RunService.RenderStepped:Connect(function()
-                if not noShakeActive then return end
-                pcall(function()
-                    local cam = Workspace.CurrentCamera
-                    if cam then
-                        for _, child in ipairs(cam:GetChildren()) do
-                            local n = child.Name:lower()
-                            if n:find("shake") or n:find("quake") or n:find("rumble") or n:find("camshaker") then
-                                child:Destroy()
-                            end
-                        end
-                    end
-                    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-                    if pg then
-                        local mainUI = pg:FindFirstChild("MainUI")
-                        if mainUI then
-                            local initiator = mainUI:FindFirstChild("Initiator")
-                            if initiator then
-                                local animHolder = initiator:FindFirstChild("AnimationHolder")
-                                if animHolder then
-                                    for _, v in ipairs(animHolder:GetChildren()) do
-                                        if v.Name:lower():find("shake") or v.Name:lower():find("rumble") then
-                                            v:Destroy()
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-            end)
-        end
-    else
-        if noShakeConn then
-            noShakeConn:Disconnect()
-            noShakeConn = nil
-        end
-    end
+noShakeActive = Value
+if Value then
+if not noShakeConn then
+noShakeConn = RunService.RenderStepped:Connect(function()
+if not noShakeActive then return end
+pcall(function()
+local cam = Workspace.CurrentCamera
+if cam then
+for _, child in ipairs(cam:GetChildren()) do
+local n = child.Name:lower()
+if n:find("shake") or n:find("quake") or n:find("rumble") or n:find("camshaker") then
+child:Destroy()
+end
+end
+end
+local pg = LocalPlayer:FindFirstChild("PlayerGui")
+if pg then
+local mainUI = pg:FindFirstChild("MainUI")
+if mainUI then
+local initiator = mainUI:FindFirstChild("Initiator")
+if initiator then
+local animHolder = initiator:FindFirstChild("AnimationHolder")
+if animHolder then
+for _, v in ipairs(animHolder:GetChildren()) do
+if v.Name:lower():find("shake") or v.Name:lower():find("rumble") then
+v:Destroy()
+end
+end
+end
+end
+end
+end
 end)
-
+end)
+end
+else
+if noShakeConn then
+noShakeConn:Disconnect()
+noShakeConn = nil
+end
+end
+end)
 local weirdToggle = FuncRight:AddToggle("MakeWeirdToggle", {
-    Text = "Make yourself weird",
-    Default = false,
-    Tooltip = "Phong cach TwinKhook: Nhan vat dung im nhu pho tuong, khong hoat anh + ghost glass xanh la"
+Text = "Make yourself weird",
+Default = false,
+Tooltip = "Phong cach TwinKhook: Nhan vat dung im nhu pho tuong, khong hoat anh + ghost glass xanh la"
 })
-
 local weirdConn = nil
 local weirdActive = false
 local weirdSaved = {}
 local weirdAnimConn = nil
-
 local function hookWeirdAnimator(char)
-    if not char then return end
-    local hum = char:WaitForChild("Humanoid", 15)
-    if not hum then return end
-    local animator = hum:WaitForChild("Animator", 15)
-    if not animator then return end
-    if weirdAnimConn then weirdAnimConn:Disconnect() end
-    weirdAnimConn = animator.AnimationPlayed:Connect(function(track)
-        if not weirdActive then return end
-        pcall(function()
-            track:AdjustSpeed(0)
-            track:Stop(0)
-        end)
-    end)
+if not char then return end
+local hum = char:WaitForChild("Humanoid", 15)
+if not hum then return end
+local animator = hum:WaitForChild("Animator", 15)
+if not animator then return end
+if weirdAnimConn then weirdAnimConn:Disconnect() end
+weirdAnimConn = animator.AnimationPlayed:Connect(function(track)
+if not weirdActive then return end
+pcall(function()
+track:AdjustSpeed(0)
+track:Stop(0)
+end)
+end)
 end
-
 if LocalPlayer.Character then task.spawn(hookWeirdAnimator, LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(hookWeirdAnimator)
-
 weirdToggle:OnChanged(function(Value)
-    weirdActive = Value
-    local char = LocalPlayer.Character
-    if Value then
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                pcall(function()
-                    for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
-                        track:AdjustSpeed(0)
-                        track:Stop(0)
-                    end
-                end)
-            end
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    if weirdSaved[p] == nil then
-                        weirdSaved[p] = {
-                            Transparency = p.Transparency,
-                            Material = p.Material,
-                            Color = p.Color,
-                            Reflectance = p.Reflectance,
-                        }
-                    end
-                    if p.Name ~= "HumanoidRootPart" and p.Name ~= "CollisionPart" 
-                    and p.Name ~= "Collision" and p.Name ~= "CollisionClone" 
-                    and p.Name ~= "CollisionPartClone" then
-                        p.Transparency = 0.5
-                        p.Material = Enum.Material.ForceField
-                        p.Color = Color3.fromRGB(50, 255, 150)
-                        p.Reflectance = 0.3
-                    end
-                end
-            end
-        end
-        if not weirdConn then
-            weirdConn = RunService.Heartbeat:Connect(function()
-                if not weirdActive then return end
-                local c = LocalPlayer.Character
-                if not c then return end
-                local h = c:FindFirstChildOfClass("Humanoid")
-                if h then
-                    pcall(function()
-                        for _, track in ipairs(h:GetPlayingAnimationTracks()) do
-                            track:AdjustSpeed(0)
-                            track:Stop(0)
-                        end
-                    end)
-                end
-                if S.enabled then
-                    local lt = c:FindFirstChild("LowerTorso")
-                    if lt then
-                        for _, m in ipairs(lt:GetChildren()) do
-                            if m:IsA("Motor6D") and m.Name == "Root" then
-                                local yPos = m.C1.Y
-                                m.C1 = CFrame.new(m.C1.X, yPos, m.C1.Z)
-                                break
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    else
-        if weirdConn then
-            weirdConn:Disconnect()
-            weirdConn = nil
-        end
-        if weirdAnimConn then
-            weirdAnimConn:Disconnect()
-            weirdAnimConn = nil
-        end
-        if char then
-            for part, data in pairs(weirdSaved) do
-                if part and part.Parent then
-                    part.Transparency = data.Transparency
-                    part.Material = data.Material
-                    part.Color = data.Color
-                    part.Reflectance = data.Reflectance
-                end
-            end
-        end
-        weirdSaved = {}
-    end
+weirdActive = Value
+local char = LocalPlayer.Character
+if Value then
+if char then
+local hum = char:FindFirstChildOfClass("Humanoid")
+if hum then
+pcall(function()
+for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+track:AdjustSpeed(0)
+track:Stop(0)
+end
 end)
-
+end
+for _, p in ipairs(char:GetDescendants()) do
+if p:IsA("BasePart") then
+if weirdSaved[p] == nil then
+weirdSaved[p] = {
+Transparency = p.Transparency,
+Material = p.Material,
+Color = p.Color,
+Reflectance = p.Reflectance,
+}
+end
+if p.Name ~= "HumanoidRootPart" and p.Name ~= "CollisionPart"
+and p.Name ~= "Collision" and p.Name ~= "CollisionClone"
+and p.Name ~= "CollisionPartClone" then
+p.Transparency = 0.5
+p.Material = Enum.Material.ForceField
+p.Color = Color3.fromRGB(50, 255, 150)
+p.Reflectance = 0.3
+end
+end
+end
+end
+if not weirdConn then
+weirdConn = RunService.Heartbeat:Connect(function()
+if not weirdActive then return end
+local c = LocalPlayer.Character
+if not c then return end
+local h = c:FindFirstChildOfClass("Humanoid")
+if h then
+pcall(function()
+for _, track in ipairs(h:GetPlayingAnimationTracks()) do
+track:AdjustSpeed(0)
+track:Stop(0)
+end
+end)
+end
+if S.enabled then
+local lt = c:FindFirstChild("LowerTorso")
+if lt then
+for _, m in ipairs(lt:GetChildren()) do
+if m:IsA("Motor6D") and m.Name == "Root" then
+local yPos = m.C1.Y
+m.C1 = CFrame.new(m.C1.X, yPos, m.C1.Z)
+break
+end
+end
+end
+end
+end)
+end
+else
+if weirdConn then
+weirdConn:Disconnect()
+weirdConn = nil
+end
+if weirdAnimConn then
+weirdAnimConn:Disconnect()
+weirdAnimConn = nil
+end
+if char then
+for part, data in pairs(weirdSaved) do
+if part and part.Parent then
+part.Transparency = data.Transparency
+part.Material = data.Material
+part.Color = data.Color
+part.Reflectance = data.Reflectance
+end
+end
+end
+weirdSaved = {}
+end
+end)
 local footMusicToggle = MiscLeft:AddToggle("NoFootMusicToggle", {
-    Text = "No Foot Music[50]",
-    Default = false,
-    Tooltip = "An tieng buoc chan"
+Text = "No Foot Music[50]",
+Default = false,
+Tooltip = "An tieng buoc chan"
 })
-
 local footMusicConn = nil
 local footMusicActive = false
-
 footMusicToggle:OnChanged(function(Value)
-    footMusicActive = Value
-    if Value then
-        if not footMusicConn then
-            footMusicConn = Workspace.DescendantAdded:Connect(function(desc)
-                if not footMusicActive then return end
-                if desc:IsA("Sound") then
-                    local n = desc.Name:lower()
-                    if n:find("footstep") or n:find("walk") or n:find("step")
-                    or n:find("running") or n:find("sprint") then
-                        desc.Volume = 0
-                        pcall(function() desc:Stop() end)
-                    end
-                end
-            end)
-        end
-        local char = LocalPlayer.Character
-        if char then
-            for _, desc in ipairs(char:GetDescendants()) do
-                if desc:IsA("Sound") then
-                    local n = desc.Name:lower()
-                    if n:find("footstep") or n:find("walk") or n:find("step")
-                    or n:find("running") or n:find("sprint") then
-                        desc.Volume = 0
-                        pcall(function() desc:Stop() end)
-                    end
-                end
-            end
-        end
-    else
-        if footMusicConn then
-            footMusicConn:Disconnect()
-            footMusicConn = nil
-        end
-    end
+footMusicActive = Value
+if Value then
+if not footMusicConn then
+footMusicConn = Workspace.DescendantAdded:Connect(function(desc)
+if not footMusicActive then return end
+if desc:IsA("Sound") then
+local n = desc.Name:lower()
+if n:find("footstep") or n:find("walk") or n:find("step")
+or n:find("running") or n:find("sprint") then
+desc.Volume = 0
+pcall(function() desc:Stop() end)
+end
+end
 end)
-
+end
+local char = LocalPlayer.Character
+if char then
+for _, desc in ipairs(char:GetDescendants()) do
+if desc:IsA("Sound") then
+local n = desc.Name:lower()
+if n:find("footstep") or n:find("walk") or n:find("step")
+or n:find("running") or n:find("sprint") then
+desc.Volume = 0
+pcall(function() desc:Stop() end)
+end
+end
+end
+end
+else
+if footMusicConn then
+footMusicConn:Disconnect()
+footMusicConn = nil
+end
+end
+end)
 local noEntityConn = nil
 local noEntityActive = false
-
 local NO_ENTITY_NAMES = {"eyes","halt","timothy","screech","shadow","jack","glitch","dupe","hide","snare","giggle","window","sally"}
 local NO_ENTITY_DAMAGE = {"rush","ambush","a60","seek","figure","sally"}
-
 local noEntityToggle = MiscLeft:AddToggle("NoEntityToggle", {
-    Text = "No Entity [GodMode Safe]",
-    Default = false,
-    Tooltip = "Chan va vo hieu hoa sat thuong, xoa entity nguy hiem tan goc"
+Text = "No Entity [GodMode Safe]",
+Default = false,
+Tooltip = "Chan va vo hieu hoa sat thuong, xoa entity nguy hiem tan goc"
 })
-
 noEntityToggle:OnChanged(function(Value)
-    noEntityActive = Value
-    if Value then
-        if not noEntityConn then
-            noEntityConn = RunService.Stepped:Connect(function()
-                if not noEntityActive then return end
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                for _, v in ipairs(Workspace:GetChildren()) do
-                    if char and v:IsA("Model") and not v:IsDescendantOf(char) then
-                        local n = v.Name:lower()
-                        local isBad = false
-                        for _, k in ipairs(NO_ENTITY_NAMES) do
-                            if n:find(k, 1, true) then isBad = true break end
-                        end
-                        if isBad then
-                            pcall(function()
-                                local primary = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")
-                                if hrp and primary and (hrp.Position - primary.Position).Magnitude < 250 then
-                                    for _, p in ipairs(v:GetDescendants()) do
-                                        if p:IsA("BasePart") then
-                                            p.CanQuery = false
-                                            p.CanTouch = false
-                                            p.CanCollide = false
-                                            p.Size = Vector3.new(0.1, 0.1, 0.1)
-                                        end
-                                    end
-                                    v:PivotTo(CFrame.new(0, -9999, 0))
-                                end
-                            end)
-                        end
-                    end
-                end
-            end)
-        end
-    else
-        if noEntityConn then
-            noEntityConn:Disconnect()
-            noEntityConn = nil
-        end
-    end
+noEntityActive = Value
+if Value then
+if not noEntityConn then
+noEntityConn = RunService.Stepped:Connect(function()
+if not noEntityActive then return end
+local char = LocalPlayer.Character
+local hrp = char and char:FindFirstChild("HumanoidRootPart")
+for _, v in ipairs(Workspace:GetChildren()) do
+if char and v:IsA("Model") and not v:IsDescendantOf(char) then
+local n = v.Name:lower()
+local isBad = false
+for _, k in ipairs(NO_ENTITY_NAMES) do
+if n:find(k, 1, true) then isBad = true break end
+end
+if isBad then
+pcall(function()
+local primary = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")
+if hrp and primary and (hrp.Position - primary.Position).Magnitude < 250 then
+for _, p in ipairs(v:GetDescendants()) do
+if p:IsA("BasePart") then
+p.CanQuery = false
+p.CanTouch = false
+p.CanCollide = false
+p.Size = Vector3.new(0.1, 0.1, 0.1)
+end
+end
+v:PivotTo(CFrame.new(0, -9999, 0))
+end
 end)
-
+end
+end
+end
+end)
+end
+else
+if noEntityConn then
+noEntityConn:Disconnect()
+noEntityConn = nil
+end
+end
+end)
 local bypassJumpScareToggle = FuncRight:AddToggle("BypassJumpScareToggle", {
-    Text = "Bypass JumpScare",
-    Default = false,
-    Tooltip = "Xoa sach hieu ung nhieu, jumpscare va animation chet choc"
+Text = "Bypass JumpScare",
+Default = false,
+Tooltip = "Xoa sach hieu ung nhieu, jumpscare va animation chet choc"
 })
-
 local bypassJumpScareConn = nil
 local jumpScareAnimConn = nil
 local jumpScareCamConn = nil
 local jumpScareSoundConn = nil
-
 local ANIM_KEYS = {"jumpscare","screech","rush","ambush","a60","a90","a120","seek","figure","eyes","halt","glitch","death","dying","scare","scream"}
-
 local function matchJumpScareAnim(name, id)
-    local n = tostring(name or ""):lower()
-    local i = tostring(id or ""):lower()
-    for _, k in ipairs(ANIM_KEYS) do
-        if n:find(k, 1, true) then return true end
-        if i:find(k, 1, true) then return true end
-    end
-    return false
+local n = tostring(name or ""):lower()
+local i = tostring(id or ""):lower()
+for _, k in ipairs(ANIM_KEYS) do
+if n:find(k, 1, true) then return true end
+if i:find(k, 1, true) then return true end
 end
-
+return false
+end
 local function hookJumpScareAnimator(char)
-    if not char then return end
-    local hum = char:WaitForChild("Humanoid", 15)
-    if not hum then return end
-    local animator = hum:WaitForChild("Animator", 15)
-    if not animator then return end
-    if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
-    jumpScareAnimConn = animator.AnimationPlayed:Connect(function(track)
-        if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
-        local n, i = "", ""
-        pcall(function()
-            n = track.Name or ""
-            if track.Animation then i = track.Animation.AnimationId or "" end
-        end)
-        if matchJumpScareAnim(n, i) then
-            pcall(function()
-                track:AdjustSpeed(100)
-                track:Stop(0)
-            end)
-        end
-    end)
+if not char then return end
+local hum = char:WaitForChild("Humanoid", 15)
+if not hum then return end
+local animator = hum:WaitForChild("Animator", 15)
+if not animator then return end
+if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
+jumpScareAnimConn =animator.AnimationPlayed:Connect(function(track)
+if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
+local n, i = "", ""
+pcall(function()
+n = track.Name or ""
+if track.Animation then i = track.Animation.AnimationId or "" end
+end)
+if matchJumpScareAnim(n, i) then
+pcall(function()
+track:AdjustSpeed(100)
+track:Stop(0)
+end)
 end
-
+end)
+end
 if LocalPlayer.Character then task.spawn(hookJumpScareAnimator, LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(hookJumpScareAnimator)
-
 bypassJumpScareToggle:OnChanged(function(Value)
-    if Value then
-        if not bypassJumpScareConn then
-            bypassJumpScareConn = RunService.Stepped:Connect(function()
-                local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                if pGui then
-                    for _, gui in ipairs(pGui:GetChildren()) do
-                        if gui:IsA("ScreenGui") then
-                            local gName = gui.Name:lower()
-                            if gName:find("jumpscare") or gName:find("deatheffect") or gName:find("screech") or gName:find("death") or gName:find("scare") or gName:find("eyes") or gName:find("halt") then
-                                gui:Destroy()
-                            end
-                        end
-                    end
-                end
-                local camera = Workspace.CurrentCamera
-                if camera then
-                    for _, effect in ipairs(camera:GetChildren()) do
-                        local eName = effect.Name:lower()
-                        if eName:find("jumpscare") or eName:find("deatheffect") or eName:find("screech") or eName:find("death") then
-                            effect:Destroy()
-                        end
-                    end
-                end
-            end)
-        end
-
-        if not jumpScareCamConn then
-            local lastCF = Workspace.CurrentCamera and Workspace.CurrentCamera.CFrame or CFrame.new()
-            jumpScareCamConn = RunService.RenderStepped:Connect(function()
-                if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
-                local cam = Workspace.CurrentCamera
-                if not cam then return end
-                if cam.CameraSubject ~= LocalPlayer.Character then return end
-                local current = cam.CFrame
-                local delta = (current.Position - lastCF.Position).Magnitude
-                if delta > 15 then
-                    pcall(function() cam.CFrame = lastCF end)
-                else
-                    lastCF = current
-                end
-            end)
-        end
-
-        if not jumpScareSoundConn then
-            jumpScareSoundConn = Workspace.DescendantAdded:Connect(function(desc)
-                if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
-                if desc:IsA("Sound") then
-                    local n = desc.Name:lower()
-                    if n:find("screech") or n:find("jumpscare") or n:find("scream") or n:find("shriek") or n:find("rush") or n:find("ambush") or n:find("eyes") then
-                        desc.Volume = 0
-                        desc:Destroy()
-                    end
-                end
-            end)
-        end
-    else
-        if bypassJumpScareConn then bypassJumpScareConn:Disconnect() bypassJumpScareConn = nil end
-        if jumpScareCamConn then jumpScareCamConn:Disconnect() jumpScareCamConn = nil end
-        if jumpScareSoundConn then jumpScareSoundConn:Disconnect() jumpScareSoundConn = nil end
-    end
+if Value then
+if not bypassJumpScareConn then
+bypassJumpScareConn = RunService.Stepped:Connect(function()
+local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+if pGui then
+for _, gui in ipairs(pGui:GetChildren()) do
+if gui:IsA("ScreenGui") then
+local gName = gui.Name:lower()
+if gName:find("jumpscare") or gName:find("deatheffect") or gName:find("screech") or gName:find("death") or gName:find("scare") or gName:find("eyes") or gName:find("halt") then
+gui:Destroy()
+end
+end
+end
+end
+local camera = Workspace.CurrentCamera
+if camera then
+for _, effect in ipairs(camera:GetChildren()) do
+local eName = effect.Name:lower()
+if eName:find("jumpscare") or eName:find("deatheffect") or eName:find("screech") or eName:find("death") then
+effect:Destroy()
+end
+end
+end
 end)
-
+end
+if not jumpScareCamConn then
+local lastCF = Workspace.CurrentCamera and Workspace.CurrentCamera.CFrame or CFrame.new()
+jumpScareCamConn = RunService.RenderStepped:Connect(function()
+if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
+local cam = Workspace.CurrentCamera
+if not cam then return end
+if cam.CameraSubject ~= LocalPlayer.Character then return end
+local current = cam.CFrame
+local delta = (current.Position - lastCF.Position).Magnitude
+if delta > 15 then
+pcall(function() cam.CFrame = lastCF end)
+else
+lastCF = current
+end
+end)
+end
+if not jumpScareSoundConn then
+jumpScareSoundConn = Workspace.DescendantAdded:Connect(function(desc)
+if not (bypassJumpScareToggle and bypassJumpScareToggle.Value) then return end
+if desc:IsA("Sound") then
+local n = desc.Name:lower()
+if n:find("screech") or n:find("jumpscare") or n:find("scream") or n:find("shriek") or n:find("rush") or n:find("ambush") or n:find("eyes") then
+desc.Volume = 0
+desc:Destroy()
+end
+end
+end)
+end
+else
+if bypassJumpScareConn then bypassJumpScareConn:Disconnect() bypassJumpScareConn = nil end
+if jumpScareCamConn then jumpScareCamConn:Disconnect() jumpScareCamConn = nil end
+if jumpScareSoundConn then jumpScareSoundConn:Disconnect() jumpScareSoundConn = nil end
+end
+end)
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
-    Text = "Notify Entity",
-    Default = true,
-    Tooltip = "Thong bao khi Entity xuat hien"
+Text = "Notify Entity",
+Default = true,
+Tooltip = "Thong bao khi Entity xuat hien"
 })
-
 local notifiedSet = {}
-
 Workspace.DescendantAdded:Connect(function(desc)
-    if not desc or not desc.Parent then return end
-    local char = LocalPlayer.Character
-    if char and desc:IsDescendantOf(char) then return end
-    if desc:IsA("Model") or desc:IsA("BasePart") then
-        local cleanName = nil
-        for _, k in ipairs({"rush","ambush","screech","eyes","halt","seek","figure","a60","a90","a120","timothy","jack","shadow","glitch","sally"}) do
-            if tostring(desc.Name):lower():find(k, 1, true) then
-                cleanName = desc.Name
-                break
-            end
-        end
-        if cleanName and not notifiedSet[desc] then
-            notifiedSet[desc] = true
-            if entityNotifyToggle and entityNotifyToggle.Value then
-                pcall(function()
-                    Obsidian:Notify({
-                        Title = "ENTITY ALERT",
-                        Description = cleanName .. " has spawned!",
-                        Time = 5
-                    })
-                end)
-            end
-        end
-    end
-end)
-
-local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
-    Text = "Auto Interact [Advanced]",
-    Default = false,
-    Tooltip = "Tu dong tuong tac, tu dong mo ngan ban, quet toan bo pham vi va loai bo ghe/tu tron"
+if not desc or not desc.Parent then return end
+local char = LocalPlayer.Character
+if char and desc:IsDescendantOf(char) then return end
+if desc:IsA("Model") or desc:IsA("BasePart") then
+local cleanName = nil
+for _, k in ipairs({"rush","ambush","screech","eyes","halt","seek","figure","a60","a90","a120","timothy","jack","shadow","glitch","sally"}) do
+if tostring(desc.Name):lower():find(k, 1, true) then
+cleanName = desc.Name
+break
+end
+end
+if cleanName and not notifiedSet[desc] then
+notifiedSet[desc] = true
+if entityNotifyToggle and entityNotifyToggle.Value then
+pcall(function()
+Obsidian:Notify({
+Title = "ENTITY ALERT",
+Description = cleanName .. " has spawned!",
+Time = 5
 })
-
+end)
+end
+end
+end
+end)
+local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
+Text = "Auto Interact [Advanced]",
+Default = false,
+Tooltip = "Tu dong tuong tac, tu dong mo ngan ban, quet toan bo pham vi va loai bo ghe/tu tron"
+})
 local reachSliderVal = 2.0
 MiscRight:AddSlider("AutoInteractReachSlider", {
-    Text = "Reach Multiplier",
-    Default = 2.0,
-    Min = 1,
-    Max = 4,
-    Rounding = 1,
-    Compact = true
+Text = "Reach Multiplier",
+Default = 2.0,
+Min = 1,
+Max = 4,
+Rounding = 1,
+Compact = true
 }):OnChanged(function(v)
-    reachSliderVal = v
+reachSliderVal = v
 end)
-
 local autoInteractConn = nil
 local lastPromptTime = {}
-
 autoInteractToggle:OnChanged(function(Value)
-    if Value then
-        if not autoInteractConn then
-            autoInteractConn = RunService.Heartbeat:Connect(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                local radius = reachSliderVal * 55
-                for _, desc in ipairs(Workspace:GetDescendants()) do
-                    if desc:IsA("ProximityPrompt") and desc.Enabled then
-                        local parent = desc.Parent
-                        local pPos = nil
-                        if parent:IsA("BasePart") then pPos = parent.Position
-                        elseif parent:IsA("Model") and parent.PrimaryPart then pPos = parent.PrimaryPart.Position
-                        elseif parent:IsA("Model") then
-                            pcall(function() pPos = parent:GetPivot().Position end)
-                        end
-                        if pPos and (hrp.Position - pPos).Magnitude <= radius then
-                            local actionText = desc.ActionText:lower()
-                            local objectText = desc.ObjectText:lower()
-                            local parentName = parent.Name:lower()
-                            local nameLower = actionText .. " " .. objectText .. " " .. parentName
-                            
-                            local isExcluded = nameLower:find("closet") or nameLower:find("wardrobe") or nameLower:find("hide") or nameLower:find("chair") or nameLower:find("seat") or parentName:find("closet") or parentName:find("wardrobe") or parentName:find("chair") or parentName:find("seat")
-                            
-                            if not isExcluded then
-                                local now = tick()
-                                if not lastPromptTime[desc] or (now - lastPromptTime[desc] > 0.15) then
-                                    lastPromptTime[desc] = now
-                                    pcall(function()
-                                        fireproximityprompt(desc, 0)
-                                        desc:InputHoldBegin()
-                                        desc:InputHoldEnd()
-                                    end)
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    else
-        if autoInteractConn then
-            autoInteractConn:Disconnect()
-            autoInteractConn = nil
-        end
-        table.clear(lastPromptTime)
-    end
-end)
-
-local skipProximityToggle = MiscRight:AddToggle("SkipProximityToggle", {
-    Text = "Skip Proximity",
-    Default = false,
-    Tooltip = "Bo qua thoi gian giu ProximityPrompt"
-})
-
-local skipProximityConn = nil
-
-local function applySkipPrompt(prompt)
-    if prompt:IsA("ProximityPrompt") then
-        prompt.HoldDuration = 0
-        prompt.MaxActivationDistance = 999
-    end
+if Value then
+if not autoInteractConn then
+autoInteractConn = RunService.Heartbeat:Connect(function()
+local char = LocalPlayer.Character
+if not char then return end
+local hrp = char:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+local radius = reachSliderVal * 55
+for _, desc in ipairs(Workspace:GetDescendants()) do
+if desc:IsA("ProximityPrompt") and desc.Enabled then
+local parent = desc.Parent
+local pPos = nil
+if parent:IsA("BasePart") then pPos = parent.Position
+elseif parent:IsA("Model") and parent.PrimaryPart then pPos = parent.PrimaryPart.Position
+elseif parent:IsA("Model") then
+pcall(function() pPos = parent:GetPivot().Position end)
 end
-
-skipProximityToggle:OnChanged(function(Value)
-    if Value then
-        for _, d in ipairs(Workspace:GetDescendants()) do
-            pcall(applySkipPrompt, d)
-        end
-        if not skipProximityConn then
-            skipProximityConn = Workspace.DescendantAdded:Connect(function(d)
-                if skipProximityToggle.Value then
-                    pcall(applySkipPrompt, d)
-                end
-            end)
-        end
-    else
-        if skipProximityConn then
-            skipProximityConn:Disconnect()
-            skipProximityConn = nil
-        end
-    end
+if pPos and (hrp.Position - pPos).Magnitude <= radius then
+local actionText = desc.ActionText:lower()
+local objectText = desc.ObjectText:lower()
+local parentName = parent.Name:lower()
+local nameLower = actionText .. " " .. objectText .. " " .. parentName
+local isExcluded = nameLower:find("closet") or nameLower:find("wardrobe") or nameLower:find("hide") or nameLower:find("chair") or nameLower:find("seat") or parentName:find("closet") or parentName:find("wardrobe") or parentName:find("chair") or parentName:find("seat")
+if not isExcluded then
+local now = tick()
+if not lastPromptTime[desc] or (now - lastPromptTime[desc] > 0.15) then
+lastPromptTime[desc] = now
+pcall(function()
+fireproximityprompt(desc, 0)
+desc:InputHoldBegin()
+desc:InputHoldEnd()
 end)
-
-local autoDoorsToggle = MiscRight:AddToggle("AutoDoorsToggle", {
-    Text = "Auto Doors Reach",
-    Default = false,
-    Tooltip = "Tu dong mo cua va phong to hitbox phan va cham cua cua ra player"
+end
+end
+end
+end
+end
+end)
+end
+else
+if autoInteractConn then
+autoInteractConn:Disconnect()
+autoInteractConn = nil
+end
+table.clear(lastPromptTime)
+end
+end)
+local skipProximityToggle = MiscRight:AddToggle("SkipProximityToggle", {
+Text = "Skip Proximity",
+Default = false,
+Tooltip = "Bo qua thoi gian giu ProximityPrompt"
 })
-
+local skipProximityConn = nil
+local function applySkipPrompt(prompt)
+if prompt:IsA("ProximityPrompt") then
+prompt.HoldDuration = 0
+prompt.MaxActivationDistance = 999
+end
+end
+skipProximityToggle:OnChanged(function(Value)
+if Value then
+for _, d in ipairs(Workspace:GetDescendants()) do
+pcall(applySkipPrompt, d)
+end
+if not skipProximityConn then
+skipProximityConn = Workspace.DescendantAdded:Connect(function(d)
+if skipProximityToggle.Value then
+pcall(applySkipPrompt, d)
+end
+end)
+end
+else
+if skipProximityConn then
+skipProximityConn:Disconnect()
+skipProximityConn = nil
+end
+end
+end)
+local autoDoorsToggle = MiscRight:AddToggle("AutoDoorsToggle", {
+Text = "Auto Doors Reach",
+Default = false,
+Tooltip = "Tu dong mo cua va phong to hitbox phan va cham cua cua ra player"
+})
 local reachToggleVal = false
 MiscRight:AddToggle("AutoDoorsReachToggle", {
-    Text = "Extended Door Hitbox",
-    Default = true,
-    Tooltip = "Mo rong hitbox cua va cham cua doors cuc dai"
+Text = "Extended Door Hitbox",
+Default = true,
+Tooltip = "Mo rong hitbox cua va cham cua doors cuc dai"
 }):OnChanged(function(v)
-    reachToggleVal = v
+reachToggleVal = v
 end)
-
 local doorsStudsVal = 12
 MiscRight:AddSlider("AutoDoorsStudsSlider", {
-    Text = "Door Reach Studs",
-    Default = 12,
-    Min = 5,
-    Max = 40,
-    Rounding = 1,
-    Compact = true
+Text = "Door Reach Studs",
+Default = 12,
+Min = 5,
+Max = 40,
+Rounding = 1,
+Compact = true
 }):OnChanged(function(v)
-    doorsStudsVal = v
+doorsStudsVal = v
 end)
-
 local autoDoorsConn = nil
 local lastDoorTrigger = {}
-
 autoDoorsToggle:OnChanged(function(Value)
-    if Value then
-        if not autoDoorsConn then
-            autoDoorsConn = RunService.Heartbeat:Connect(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                local currentMaxDist = reachToggleVal and 60 or doorsStudsVal
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                    local nameL = obj.Name:lower()
-                    if nameL:find("door") then
-                        local pos = nil
-                        if obj:IsA("BasePart") then
-                            pos = obj.Position
-                            pcall(function()
-                                obj.Size = Vector3.new(math.max(obj.Size.X, 8), math.max(obj.Size.Y, 8), math.max(obj.Size.Z, 8))
-                                obj.CanCollide = false
-                            end)
-                        elseif obj:IsA("Model") then
-                            pcall(function()
-                                pos = obj:GetPivot().Position
-                                for _, p in ipairs(obj:GetDescendants()) do
-                                    if p:IsA("BasePart") then
-                                        p.Size = Vector3.new(math.max(p.Size.X, 8), math.max(p.Size.Y, 8), math.max(p.Size.Z, 8))
-                                        p.CanCollide = false
-                                    end
-                                end
-                            end)
-                        end                        if pos and (hrp.Position - pos).Magnitude <= currentMaxDist then
-                            local now = tick()
-                            if not lastDoorTrigger[obj] or (now - lastDoorTrigger[obj] > 0.3) then
-                                lastDoorTrigger[obj] = now
-                                for _, p in ipairs(obj:GetDescendants()) do
-                                    if p:IsA("ProximityPrompt") then
-                                        pcall(function()
-                                            fireproximityprompt(p, 0)
-                                            p:InputHoldBegin()
-                                            p:InputHoldEnd()
-                                        end)
-                                    elseif p:IsA("ClickDetector") then
-                                        pcall(function() fireclickdetector(p) end)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    else
-        if autoDoorsConn then
-            autoDoorsConn:Disconnect()
-            autoDoorsConn = nil
-        end
-        table.clear(lastDoorTrigger)
-    end
+if Value then
+if not autoDoorsConn then
+autoDoorsConn = RunService.Heartbeat:Connect(function()
+local char = LocalPlayer.Character
+if not char then return end
+local hrp = char:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+local currentMaxDist = reachToggleVal and 60 or doorsStudsVal
+for _, obj in ipairs(Workspace:GetDescendants()) do
+local nameL = obj.Name:lower()
+if nameL:find("door") then
+local pos = nil
+if obj:IsA("BasePart") then
+pos = obj.Position
+pcall(function()
+obj.Size = Vector3.new(math.max(obj.Size.X, 8), math.max(obj.Size.Y, 8), math.max(obj.Size.Z, 8))
+obj.CanCollide = false
 end)
-
+elseif obj:IsA("Model") then
+pcall(function()
+pos = obj:GetPivot().Position
+for _, p in ipairs(obj:GetDescendants()) do
+if p:IsA("BasePart") then
+p.Size = Vector3.new(math.max(p.Size.X, 8), math.max(p.Size.Y, 8), math.max(p.Size.Z, 8))
+p.CanCollide = false
+end
+end
+end)
+end
+if pos and (hrp.Position - pos).Magnitude <= currentMaxDist then
+local now = tick()
+if not lastDoorTrigger[obj] or (now - lastDoorTrigger[obj] > 0.3) then
+lastDoorTrigger[obj] = now
+for _, p in ipairs(obj:GetDescendants()) do
+if p:IsA("ProximityPrompt") then
+pcall(function()
+fireproximityprompt(p, 0)
+p:InputHoldBegin()
+p:InputHoldEnd()
+end)
+elseif p:IsA("ClickDetector") then
+pcall(function() fireclickdetector(p) end)
+end
+end
+end
+end
+end
+end
+end)
+end
+else
+if autoDoorsConn then
+autoDoorsConn:Disconnect()
+autoDoorsConn = nil
+end
+table.clear(lastDoorTrigger)
+end
+end)
 local autoPathWalkToggle = MiscRight:AddToggle("AutoPathWalkToggle", {
-    Text = "Auto Doors [Pathfinder Float]",
-    Default = false,
-    Tooltip = "Tu di chuyen den cua tiep theo bang cach bay lo lung bam sat huong, khong lo va dap tuong"
+Text = "Auto Doors [Pathfinder Float]",
+Default = false,
+Tooltip = "Tu di chuyen den cua tiep theo bang cach bay lo lung bam sat huong, khong lo va dap tuong"
 })
-
 local autoPathWalkConn = nil
-
 autoPathWalkToggle:OnChanged(function(Value)
-    if Value then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "AUTO DOORS PATH",
-                Description = "Đã bật chế độ tự động bay tìm cửa thông minh!",
-                Time = 4
-            })
-        end)
-        if not autoPathWalkConn then
-            autoPathWalkConn = RunService.Heartbeat:Connect(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if not hrp or not hum then return end
-                
-                local targetDoor = nil
-                local shortestDist = math.huge
-                
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                    if obj:IsA("Model") and obj.Name:lower():find("door") then
-                        local pivot = nil
-                        pcall(function() pivot = obj:GetPivot().Position end)
-                        if pivot then
-                            local dist = (hrp.Position - pivot).Magnitude
-                            local roomVal = tonumber(obj.Name) or 0
-                            if dist < shortestDist and dist < 120 then
-                                shortestDist = dist
-                                targetDoor = obj
-                            end
-                        end
-                    end
-                end
-                
-                if targetDoor then
-                    local targetPos = nil
-                    pcall(function() targetPos = targetDoor:GetPivot().Position end)
-                    if targetPos then
-                        local dir = (targetPos - hrp.Position)
-                        local flatDir = Vector3.new(dir.X, 0, dir.Z)
-                        if flatDir.Magnitude > 3 then
-                            flatDir = flatDir.Unit
-                            hrp.AssemblyLinearVelocity = Vector3.new(flatDir.X * 14, 2, flatDir.Z * 14)
-                            hum:Move(flatDir, false)
-                        else
-                            for _, p in ipairs(targetDoor:GetDescendants()) do
-                                if p:IsA("ProximityPrompt") then
-                                    pcall(function() fireproximityprompt(p, 0) end)
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    else
-        if autoPathWalkConn then
-            autoPathWalkConn:Disconnect()
-            autoPathWalkConn = nil
-        end
-    end
+if Value then
+pcall(function()
+Obsidian:Notify({
+Title = "AUTO DOORS PATH",
+Description = "Đã bật chế độ tự động bay tìm cửa thông minh!",
+Time = 4
+})
 end)
-
+if not autoPathWalkConn then
+autoPathWalkConn = RunService.Heartbeat:Connect(function()
+local char = LocalPlayer.Character
+if not char then return end
+local hrp = char:FindFirstChild("HumanoidRootPart")
+local hum = char:FindFirstChildOfClass("Humanoid")
+if not hrp or not hum then return end
+local targetDoor = nil
+local shortestDist = math.huge
+for _, obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("Model") and obj.Name:lower():find("door") then
+local pivot = nil
+pcall(function() pivot = obj:GetPivot().Position end)
+if pivot then
+local dist = (hrp.Position - pivot).Magnitude
+local roomVal = tonumber(obj.Name) or 0
+if dist < shortestDist and dist < 120 then
+shortestDist = dist
+targetDoor = obj
+end
+end
+end
+end
+if targetDoor then
+local targetPos = nil
+pcall(function() targetPos = targetDoor:GetPivot().Position end)
+if targetPos then
+local dir = (targetPos - hrp.Position)
+local flatDir = Vector3.new(dir.X, 0, dir.Z)
+if flatDir.Magnitude > 3 then
+flatDir = flatDir.Unit
+hrp.AssemblyLinearVelocity = Vector3.new(flatDir.X * 14, 2, flatDir.Z * 14)
+hum:Move(flatDir, false)
+else
+for _, p in ipairs(targetDoor:GetDescendants()) do
+if p:IsA("ProximityPrompt") then
+pcall(function() fireproximityprompt(p, 0) end)
+end
+end
+end
+end
+end
+end)
+end
+else
+if autoPathWalkConn then
+autoPathWalkConn:Disconnect()
+autoPathWalkConn = nil
+end
+end
+end)
 local infiniteItemVal = "Lockpicking"
 MiscRight:AddDropdown("InfiniteItemDropdown", {
-    Text = "Select Infinite Item",
-    Values = {"Lockpicking", "Skeleton Key", "Crucifix"},
-    Default = 1,
-    Tooltip = "Chon vat pham de vo han"
+Text = "Select Infinite Item",
+Values = {"Lockpicking", "Skeleton Key", "Crucifix"},
+Default = 1,
+Tooltip = "Chon vat pham de vo han"
 }):OnChanged(function(v)
-    infiniteItemVal = v
+infiniteItemVal = v
 end)
-
 MiscRight:AddButton("Infinite Item [Apply]", function()
-    if infiniteItemVal == "Crucifix" then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "INFINITE ITEM",
-                Description = "Vô hạn thánh giá cần phải đúng Floors hoặc Server!",
-                Time = 6
-            })
-        end)
-    else
-        pcall(function()
-            Obsidian:Notify({
-                Title = "INFINITE ITEM",
-                Description = "Đã kích hoạt vô hạn cho: " .. infiniteItemVal,
-                Time = 5
-            })
-        end)
-    end
+if infiniteItemVal == "Crucifix" then
+pcall(function()
+Obsidian:Notify({
+Title = "INFINITE ITEM",
+Description = "Vô hạn thánh giá cần phải đúng Floors hoặc Server!",
+Time = 6
+})
 end)
-
+else
+pcall(function()
+Obsidian:Notify({
+Title = "INFINITE ITEM",
+Description = "Đã kích hoạt vô hạn cho: " .. infiniteItemVal,
+Time = 5
+})
+end)
+end
+end)
 SettingsRight:AddButton("Save Toggle", function()
-    pcall(function()
-        Obsidian:Notify({
-            Title = "CONFIG",
-            Description = "Đã lưu tất cả trạng thái toggle hiện tại thành công!",
-            Time = 4
-        })
-    end)
+pcall(function()
+Obsidian:Notify({
+Title = "CONFIG",
+Description = "Đã lưu tất cả trạng thái toggle hiện tại thành công!",
+Time = 4
+})
 end)
-
+end)
 SettingsRight:AddButton("Load Toggle Đã Save", function()
-    pcall(function()
-        Obsidian:Notify({
-            Title = "CONFIG",
-            Description = "Đã tải lại các trạng thái toggle đã lưu trước đó!",
-            Time = 4
-        })
-    end)
+pcall(function()
+Obsidian:Notify({
+Title = "CONFIG",
+Description = "Đã tải lại các trạng thái toggle đã lưu trước đó!",
+Time = 4
+})
 end)
-
+end)
 SettingsLeft:AddButton("Bypass Doors50 [Floor1]", function()
-    local currentRoom = 1
-    pcall(function()
-        local roomsFolder = Workspace:FindFirstChild("Rooms")
-        if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
-            currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
-        end
-    end)
-
-    if currentRoom ~= 50 then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "DOORS 50 BYPASS",
-                Description = "Hiện tại chưa thể hoạt động trong room này!",
-                Time = 6
-            })
-        end)
-        return
-    end
-
-    local passFound = "12345"
-    pcall(function()
-        Obsidian:Notify({
-            Title = "DOORS 50 BYPASS",
-            Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
-            Time = 6
-        })
-    end)
+local currentRoom = 1
+pcall(function()
+local roomsFolder = Workspace:FindFirstChild("Rooms")
+if roomsFolder and LocalPlayer:GetAttribute("CurrentRoom") then
+currentRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 1
+end
 end)
-
+if currentRoom ~= 50 then
+pcall(function()
+Obsidian:Notify({
+Title = "DOORS 50 BYPASS",
+Description = "Hiện tại chưa thể hoạt động trong room này!",
+Time = 6
+})
+end)
+return
+end
+local passFound = "12345"
+pcall(function()
+Obsidian:Notify({
+Title = "DOORS 50 BYPASS",
+Description = "Pass: " .. passFound .. " | Đã tự động giải mã phòng 50!",
+Time = 6
+})
+end)
+end)
 SettingsLeft:AddButton("Unload Engine", function()
-    Obsidian:Unload()
+Obsidian:Unload()
 end)
-
 SettingsLeft:AddButton("Reload Character", function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Dead)
-        end
-    end
+local char = LocalPlayer.Character
+if char then
+local hum = char:FindFirstChildOfClass("Humanoid")
+if hum then
+hum:ChangeState(Enum.HumanoidStateType.Dead)
+end
+end
 end)
-
 Obsidian:OnUnload(function()
-    safeUnlockCharacter()
-    togglePositionSpoof(false)
-    if velocityConn then velocityConn:Disconnect() end
-    if speedConn then speedConn:Disconnect() end
-    if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
-    if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
-    if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
-    if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
-    if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
-    if bypassLagConn then bypassLagConn:Disconnect() end
-    if jumpScareCamConn then jumpScareCamConn:Disconnect() end
-    if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
-    if noEntityConn then noEntityConn:Disconnect() end
-    if footMusicConn then footMusicConn:Disconnect() end
-    if noShakeConn then noShakeConn:Disconnect() end
-    if weirdConn then weirdConn:Disconnect() end
-    if weirdAnimConn then weirdAnimConn:Disconnect() end
-    if fullBrightConn then fullBrightConn:Disconnect() end
-    if autoInteractConn then autoInteractConn:Disconnect() end
-    if skipProximityConn then skipProximityConn:Disconnect() end
-    if autoDoorsConn then autoDoorsConn:Disconnect() end
-    if autoPathWalkConn then autoPathWalkConn:Disconnect() end
-    if seeThroughConn then seeThroughConn:Disconnect() end
-    if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
-    if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
-    if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
-    if remoteThreadVel then task.cancel(remoteThreadVel) end
-    table.clear(notifiedSet)
-    table.clear(velocitySavedCanCollide)
-    table.clear(noClipSavedCanCollide)
-    table.clear(weirdSaved)
-    table.clear(lastPromptTime)
-    table.clear(lastDoorTrigger)
-    table.clear(preMadePathParts)
+safeUnlockCharacter()
+togglePositionSpoof(false)
+if velocityConn then velocityConn:Disconnect() end
+if speedConn then speedConn:Disconnect() end
+if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
+if noEntityActive and noEntityToggle then noEntityToggle:SetValue(false) end
+if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
+if bypassJumpScareConn then bypassJumpScareConn:Disconnect() end
+if jumpScareAnimConn then jumpScareAnimConn:Disconnect() end
+if bypassLagConn then bypassLagConn:Disconnect() end
+if jumpScareCamConn then jumpScareCamConn:Disconnect() end
+if jumpScareSoundConn then jumpScareSoundConn:Disconnect() end
+if noEntityConn then noEntityConn:Disconnect() end
+if footMusicConn then footMusicConn:Disconnect() end
+if noShakeConn then noShakeConn:Disconnect() end
+if weirdConn then weirdConn:Disconnect() end
+if weirdAnimConn then weirdAnimConn:Disconnect() end
+if fullBrightConn then fullBrightConn:Disconnect() end
+if autoInteractConn then autoInteractConn:Disconnect() end
+if skipProximityConn then skipProximityConn:Disconnect() end
+if autoDoorsConn then autoDoorsConn:Disconnect() end
+if autoPathWalkConn then autoPathWalkConn:Disconnect() end
+if seeThroughConn then seeThroughConn:Disconnect() end
+if preMadePathToggle and preMadePathToggle.Value then preMadePathToggle:SetValue(false) end
+if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
+if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
+if remoteThreadVel then task.cancel(remoteThreadVel) end
+table.clear(notifiedSet)
+table.clear(velocitySavedCanCollide)
+table.clear(noClipSavedCanCollide)
+table.clear(weirdSaved)
+table.clear(lastPromptTime)
+table.clear(lastDoorTrigger)
+table.clear(preMadePathParts)
 end)
-    
