@@ -505,7 +505,8 @@ noClipToggle:OnChanged(function(Value)
                 end
             end
         end
-            else        for part, data in pairs(noClipSavedCanCollide) do
+            else
+        for part, data in pairs(noClipSavedCanCollide) do
             if part and part.Parent then
                 part.CanCollide = data.CanCollide
                 part.CanQuery = data.CanQuery
@@ -739,10 +740,18 @@ seeThroughToggle:OnChanged(function(Value)
 end)
 
 local preMadePathParts = {}
+local preMadePathHeight = 2.0
 local preMadePathToggle = VisualLeft:AddToggle("PreMadePathToggle", {
     Text = "Create a Pre-made Path", Default = false,
     Tooltip = "Tao part dai va to che phu cac cho lun hoac khong phang tu chan toi day"
 })
+local preMadePathSlider = VisualLeft:AddSlider("PreMadePathHeightSlider", {
+    Text = "Part Height", Default = 2.0, Min = 1.0, Max = 3.5, Rounding = 1, Compact = true,
+    Suffix = " studs"
+})
+preMadePathSlider:OnChanged(function(v)
+    preMadePathHeight = v
+end)
 preMadePathToggle:OnChanged(function(Value)
     if Value then
         pcall(function()
@@ -758,7 +767,7 @@ preMadePathToggle:OnChanged(function(Value)
             if hrp then
                 for i = 1, 8 do
                     local p = Instance.new("Part")
-                    p.Size = Vector3.new(12, 1, 12)
+                    p.Size = Vector3.new(12, preMadePathHeight, 12)
                     p.Position = hrp.Position + Vector3.new(0, -4.2, i * 8)
                     p.Anchored = true
                     p.CanCollide = true
@@ -999,7 +1008,7 @@ local function hookWeirdAnimator(char)
         if not weirdActive then return end
         pcall(function()
             track:AdjustSpeed(0)
-            track:Stop(0)
+              track:Stop(0)
         end)
     end)
 end
@@ -1007,7 +1016,7 @@ if LocalPlayer.Character then task.spawn(hookWeirdAnimator, LocalPlayer.Characte
 LocalPlayer.CharacterAdded:Connect(hookWeirdAnimator)
 weirdToggle:OnChanged(function(Value)
     weirdActive = Value
-                local char = LocalPlayer.Character
+    local char = LocalPlayer.Character
     if Value then
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1489,7 +1498,7 @@ infinityItemsToggle:OnChanged(function(Value)
                 if item:IsA("Tool") or item:IsA("Accessory") or item:IsA("Folder") or item:IsA("Model") then
                     infinityItemSnapshots[item.Name] = snapshotItem(item)
                 end
-                end
+            end
         end
         local backpack = LocalPlayer:FindFirstChild("Backpack")
         local char = LocalPlayer.Character
@@ -1963,8 +1972,8 @@ skipProximityToggle:OnChanged(function(Value)
     end
 end)
 
-SettingsRight:AddButton("Save Toggle", function:
-                pcall(function()
+SettingsRight:AddButton("Save Toggle", function()
+    pcall(function()
         Obsidian:Notify({
             Title = "CONFIG",
             Description = "Da luu tat ca trang thai toggle hien tai thanh cong!",
@@ -1972,7 +1981,6 @@ SettingsRight:AddButton("Save Toggle", function:
         })
     end)
 end)
-
 SettingsRight:AddButton("Load Toggle Da Save", function()
     pcall(function()
         Obsidian:Notify({
