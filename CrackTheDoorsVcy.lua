@@ -1133,7 +1133,7 @@ end)
 local noJumpScareActive = false
 local noJumpScareConn = nil
 local noJumpScareDescConn = nil
-local JUMP_KEYS = {"jumpscare", "screech", "glitch", "static", "vignette", "flash", "blind", "darkness", "hideoverlay", "locker", "scare", "death", "dying"}
+local JUMP_KEYS = {"jumpscare","screech","glitch","static","vignette","flash","blind","darkness","hideoverlay","locker","scare","death","dying","eyes","dread","timothy","a-90","a90","figure","seek","chase","running","red","blood","screen","overlay","damage","hurt","scary"}
 local noJumpScareToggle = VisualRight:AddToggle("NoJumpScareToggle", {
     Text = "No JumpScare", Default = false,
     Tooltip = "Chan man hinh hu doa Screech Glitch Eyes"
