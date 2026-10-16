@@ -3,7 +3,7 @@ local success, Obsidian = pcall(function()
     return loadstring(game:HttpGet(Repository .. "Library.lua"))()
 end)
 
-if not success or type(Obsidian) \~= "table" then
+if not success or type(Obsidian) ~= "table" then
     task.wait(1)
     local retrySuccess, retryLib = pcall(function()
         return loadstring(game:HttpGet(Repository .. "Library.lua"))()
@@ -171,7 +171,7 @@ local function loadPositionSpoof()
     S.char = char; S.hrp = hrp; S.humanoid = humanoid
     local t0 = tick()
     while tick() - t0 < 5 do
-        if humanoid.FloorMaterial \~= Enum.Material.Air then break end
+        if humanoid.FloorMaterial ~= Enum.Material.Air then break end
         task.wait(0.1)
     end
     task.wait(0.3)
@@ -847,7 +847,7 @@ antiLagToggle:OnChanged(function(Value)
         task.spawn(function()
             for _, child in ipairs(Workspace:GetDescendants()) do
                 if not antiLagActive then break end
-                if child:IsA("BasePart") and child.Name \~= "HumanoidRootPart" and child.Name \~= "Baseplate" then
+                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" and child.Name \~= "Baseplate" then
                     if originalPartProps[child] == nil then
                         originalPartProps[child] = {
                             Material = child.Material,
@@ -871,7 +871,7 @@ antiLagToggle:OnChanged(function(Value)
             if not antiLagActive then return end
             task.defer(function()
                 pcall(function()
-                    if desc:IsA("BasePart") and desc.Name \~= "HumanoidRootPart" then
+                    if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
                         if originalPartProps[desc] == nil then
                             originalPartProps[desc] = {
                                 Material = desc.Material,
@@ -1567,7 +1567,7 @@ weirdToggle:OnChanged(function(Value)
                             Reflectance = p.Reflectance,
                         }
                     end
-                    if p.Name \~= "HumanoidRootPart" and p.Name \~= "CollisionPart"
+                    if p.Name ~= "HumanoidRootPart" and p.Name \~= "CollisionPart"
                         and p.Name \~= "Collision" and p.Name \~= "CollisionClone"
                         and p.Name \~= "CollisionPartClone" then
                         p.Transparency = 0.5
