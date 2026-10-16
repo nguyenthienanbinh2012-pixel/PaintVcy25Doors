@@ -98,6 +98,141 @@ local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
 local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 
+local ndOn = false
+local ndConn, ndDesc, ndHumConn, ndHookConn = nil, nil, nil, nil
+local ndTick, ndSaved = 0, {}
+local ndChar = nil
+
+local ndKeys = {"fire","flame","lava","burn","spike","debris","rock","fall","falling","seek","chase","running","damage","hurt","kill","touchdamage","touchhurt","blood"}
+
+local function ndMatch(n)
+    n = tostring(n or ""):lower()
+    for i = 1, #ndKeys do
+        if n:find(ndKeys[i], 1, true) then return true end
+    end
+    return false
+end
+
+local function ndKill(obj)
+    if not obj or not obj.Parent then return end
+    pcall(function()
+        if obj:IsA("BasePart") then
+            if ndSaved[obj] == nil then
+                ndSaved[obj] = {t = obj.CanTouch, c = obj.CanCollide}
+            end
+            obj.CanTouch = false
+        elseif obj:IsA("Script") or obj:IsA("LocalScript") then
+            obj.Disabled = true
+        elseif obj:IsA("ScreenGui") then
+            obj.Enabled = false
+        elseif obj:IsA("GuiObject") then
+            obj.Visible = false
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+            obj.Enabled = false
+        end
+    end)
+end
+
+local function ndHookHum(hum)
+    if not hum then return end
+    if ndHumConn then ndHumConn:Disconnect() end
+    ndHumConn = hum.HealthChanged:Connect(function(newH)
+        if not ndOn then return end
+        if newH < hum.MaxHealth then
+            pcall(function() hum.Health = hum.MaxHealth end)
+        end
+    end)
+    if not ndHookConn then
+        ndHookConn = RunService.Heartbeat:Connect(function()
+            if not ndOn then return end
+            local c = LocalPlayer.Character
+            if not c then return end
+            local h = c:FindFirstChildOfClass("Humanoid")
+            if h and h.Health < h.MaxHealth then
+                pcall(function() h.Health = h.MaxHealth end)
+            end
+        end)
+    end
+end
+
+local function ndBindChar(c)
+    if not c then return end
+    ndChar = c
+    local h = c:WaitForChild("Humanoid", 5)
+    if h then ndHookHum(h) end
+end
+
+if LocalPlayer.Character then ndBindChar(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(ndBindChar)
+
+local ndTog = VisualRight:AddToggle("NoDameRunningSeekToggle", {
+    Text = "No Dame Running Screen Seek",
+    Default = false
+})
+
+ndTog:OnChanged(function(v)
+    ndOn = v
+    if v then
+        task.spawn(function()
+            local i = 0
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if not ndOn then break end
+                if ndMatch(obj.Name) then ndKill(obj) end
+                i = i + 1
+                if i % 200 == 0 then RunService.Heartbeat:Wait() end
+            end
+            for _, obj in ipairs(PlayerGui:GetDescendants()) do
+                if not ndOn then break end
+                if ndMatch(obj.Name) then ndKill(obj) end
+                i = i + 1
+                if i % 200 == 0 then RunService.Heartbeat:Wait() end
+            end
+        end)
+
+        ndDesc = Workspace.DescendantAdded:Connect(function(d)
+            if ndOn and ndMatch(d.Name) then
+                task.defer(ndKill, d)
+            end
+        end)
+
+        ndConn = RunService.Heartbeat:Connect(function()
+            if not ndOn then return end
+            ndTick = ndTick + 1
+            if ndTick % 18 ~= 0 then return end
+            local hrp = ndChar and ndChar:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local pos = hrp.Position
+            local parts = Workspace:GetPartBoundsInRadius(pos, 60)
+            for _, p in ipairs(parts) do
+                if p.CanTouch and ndMatch(p.Name) then
+                    if ndSaved[p] == nil then
+                        ndSaved[p] = {t = p.CanTouch, c = p.CanCollide}
+                    end
+                    p.CanTouch = false
+                end
+            end
+            local h = ndChar and ndChar:FindFirstChildOfClass("Humanoid")
+            if h and h.Health < h.MaxHealth then
+                pcall(function() h.Health = h.MaxHealth end)
+            end
+        end)
+    else
+        if ndConn then ndConn:Disconnect() ndConn = nil end
+        if ndDesc then ndDesc:Disconnect() ndDesc = nil end
+        if ndHumConn then ndHumConn:Disconnect() ndHumConn = nil end
+        if ndHookConn then ndHookConn:Disconnect() ndHookConn = nil end
+        ndTick = 0
+        for p, d in pairs(ndSaved) do
+            if p and p.Parent then
+                pcall(function()
+                    p.CanTouch = d.t
+                    p.CanCollide = d.c
+                end)
+            end
+        end
+        ndSaved = {}
+    end
+end)  
 local function getCrouchRemote()
     local char = LocalPlayer.Character
     if char then
@@ -205,7 +340,7 @@ local function loadPositionSpoof()
     cpClone.Transparency = 1
     cpClone.CanCollide = false
     cpClone.CanQuery = true
-    cpClone.CanTouch = true
+    cpClone.CanTouch = false
     cpClone.Massless = true
     cpClone.Anchored = false
     cpClone.Parent = char
@@ -397,7 +532,7 @@ velocityDropdown:OnChanged(function(Value) velocityMode = Value end)
 
 local velocityToggle = FuncLeft:AddToggle("VelocityModeToggle", {
     Text = "Velocity Manip", Default = false,
-    Tooltip = "Truot xuyen tuong voi toc do co dinh 6.5"
+    Tooltip = "Di Xuyen Vat Can tranh keo lai,di chuyen cham!"
 })
 velocityToggle:OnChanged(function(Value)
     isVelocityActive = Value
@@ -545,7 +680,7 @@ end)
 
 local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
     Text = "Position Spoof", Default = false,
-    Tooltip = "Ha HRP.Y xuong ne raycast cua Rush Ambush A-60"
+    Tooltip = "Gia Mao vi tri,danh lua sever va entity"
 })
 positionSpoofToggle:OnChanged(function(Value)
     togglePositionSpoof(Value)
