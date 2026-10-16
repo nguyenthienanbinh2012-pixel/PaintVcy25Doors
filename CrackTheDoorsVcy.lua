@@ -847,7 +847,7 @@ antiLagToggle:OnChanged(function(Value)
         task.spawn(function()
             for _, child in ipairs(Workspace:GetDescendants()) do
                 if not antiLagActive then break end
-                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" and child.Name \~= "Baseplate" then
+                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" and child.Name ~= "Baseplate" then
                     if originalPartProps[child] == nil then
                         originalPartProps[child] = {
                             Material = child.Material,
@@ -1567,9 +1567,9 @@ weirdToggle:OnChanged(function(Value)
                             Reflectance = p.Reflectance,
                         }
                     end
-                    if p.Name ~= "HumanoidRootPart" and p.Name \~= "CollisionPart"
-                        and p.Name \~= "Collision" and p.Name \~= "CollisionClone"
-                        and p.Name \~= "CollisionPartClone" then
+                    if p.Name ~= "HumanoidRootPart" and p.Name ~= "CollisionPart"
+                        and p.Name ~= "Collision" and p.Name ~= "CollisionClone"
+                        and p.Name ~= "CollisionPartClone" then
                         p.Transparency = 0.5
                         p.Material = Enum.Material.ForceField
                         p.Color = Color3.fromRGB(50, 255, 150)
