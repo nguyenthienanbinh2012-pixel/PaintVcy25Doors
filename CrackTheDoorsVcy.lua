@@ -340,7 +340,7 @@ local function loadPositionSpoof()
     cpClone.Transparency = 1
     cpClone.CanCollide = false
     cpClone.CanQuery = true
-    cpClone.CanTouch = false
+    cpClone.CanTouch = true
     cpClone.Massless = true
     cpClone.Anchored = false
     cpClone.Parent = char
@@ -355,7 +355,7 @@ local function loadPositionSpoof()
     ccClone.Name = "CollisionClone"
     ccClone.Size = colSize
     ccClone.Transparency = 1
-    ccClone.CanCollide = true
+    ccClone.CanCollide = false
     ccClone.CanQuery = true
     ccClone.CanTouch = true
     ccClone.Massless = true
@@ -1310,7 +1310,7 @@ local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
 })
 local notifiedSet = {}
-local ALLOWED_NOTIFY = {"rush", "ambush"}
+local ALLOWED_NOTIFY = {"rushmoving", "ambush,"}
 Workspace.DescendantAdded:Connect(function(desc)
     if not desc or not desc.Parent then return end
     local char = LocalPlayer.Character
@@ -1533,7 +1533,7 @@ local escapeTimerGui = nil
 local escapeTimerLabel = nil
 local escapeTimerConn = nil
 local hideStartTime = 0
-local HIDE_LIMIT = 15
+local HIDE_LIMIT = 15.5
 
 local function createEscapeTimerUI()
     if escapeTimerGui then return end
