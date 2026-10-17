@@ -1569,9 +1569,10 @@ local autoInteractCooldown = {}
 local INTERACT_BLACKLIST = {
     closet = true, wardrobe = true, stash = true, bed = true,
     seat = true, chair = true, bedroom = true, armchair = true,
-    hide = true, locker = true, couch = true, sofa = true
-    photo = true,picture = true,room photo = true
-}
+    hide = true, locker = true, couch = true, sofa = true,
+    photo = true, picture = true, painting = true, frame = true, art = true, canvas = true, portrait = true
+                    }
+
 
 local function isInteractBlacklisted(prompt, parent)
     local pName = tostring(parent and parent.Name or ""):lower()
@@ -1589,10 +1590,6 @@ local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
     Tooltip = "Tu lay va tuong tac o khoa, item xung quanh, loai bo ghe/tu/giuong"
 })
-local autoInteractSlider = MiscRight:AddSlider("AutoInteractRangeSlider", {
-    Text = "Interact Range", Default = 12, Min = 5, Max = 30, Rounding = 1, Compact = true
-})
-autoInteractSlider:OnChanged(function(v) autoInteractRange = v end)
 
 autoInteractToggle:OnChanged(function(Value)
     autoInteractActive = Value
