@@ -50,21 +50,25 @@ local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
 local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
 task.spawn(function()
     pcall(function()
+task.spawn(function()
+    pcall(function()
         local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://9045801272"
-        sound.Volume = 1.2
+        sound.SoundId = "rbxassetid://4590657391"
+        sound.Volume = 0.8
         sound.Parent = game:GetService("SoundService")
         sound:Play()
-        task.delay(2, function()
+        task.delay(1.5, function()
             if sound then sound:Destroy() end
         end)
     end)
 end)
 local noteGroup = Tabs.Info:AddLeftGroupbox("Changelog")
 noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Anti+lag</font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Fix Jumpscare</font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Fix Position Spoof</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
+noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 17/10/2026</font>", true)
+
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
@@ -92,21 +96,26 @@ end)
 
 local resetClickCount = 0
 local resetClickTime = 0
-InfoGroup:AddButton("Reset Player", function()
+local resetBtn = InfoGroup:AddButton("Reset Player", function()
     local now = tick()
-    if now - resetClickTime > 1.5 then
+    if now - resetClickTime > 2 then
         resetClickCount = 0
     end
     resetClickCount = resetClickCount + 1
     resetClickTime = now
-    if resetClickCount >= 2 then
+    if resetClickCount == 1 then
+        pcall(function()
+            Obsidian:Notify({Title = "RESET", Description = "<font color='#FF3232'><b>Chắc Chắn Reset?</b></font>", Time = 2})
+        end)
+    elseif resetClickCount >= 2 then
         resetClickCount = 0
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
                 pcall(function()
-                    hum:SetAttribute("DiedBy", "PaintCrack")
+                    hum:SetAttribute("DiedBy", "Paint")
+                    hum:SetAttribute("DeathCause", "Died By Paint")
                     hum:ChangeState(Enum.HumanoidStateType.Dead)
                 end)
             end
@@ -749,6 +758,71 @@ speedToggle:OnChanged(function(Value)
         safeUnlockCharacter()
     end
 end)
+local thirdPersonActive = false
+local thirdPersonConn = nil
+local thirdPersonZ = 8
+local thirdPersonSens = 0.6
+local yaw, pitch = 0, 0
+local cam = Workspace.CurrentCamera
+
+local thirdPersonToggle = FuncRight:AddToggle("ThirdPersonToggle", {
+    Text = "Third Person", Default = false,
+    Tooltip = "Ho Tro Goc nhin So 3 của Game Doors"
+})
+FuncRight:AddSlider("ThirdPersonZSlider", {
+    Text = "Z offset Cam", Default = 8, Min = 1, Max = 20, Rounding = 1, Compact = true
+}):OnChanged(function(v) thirdPersonZ = v end)
+FuncRight:AddSlider("ThirdPersonSensSlider", {
+    Text = "Do Nhay Cua Camera", Default = 0.6, Min = 0.35, Max = 1, Rounding = 2, Compact = true
+}):OnChanged(function(v) thirdPersonSens = v end)
+
+thirdPersonToggle:OnChanged(function(Value)
+    thirdPersonActive = Value
+    if Value then
+        cam.CameraType = Enum.CameraType.Scriptable
+        local char = LocalPlayer.Character
+        if char then
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.LocalTransparencyModifier = 0 end
+            end
+        end
+        thirdPersonConn = RunService.RenderStepped:Connect(function()
+            if not thirdPersonActive then return end
+            local char = LocalPlayer.Character
+            if not char then return end
+            local head = char:FindFirstChild("Head")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not head or not hrp then return end
+            local focus = head.Position
+            local cf = CFrame.new(focus) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0) * CFrame.new(0, 0, thirdPersonZ)
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {char}
+            params.FilterType = Enum.RaycastFilterType.Exclude
+            local ray = Workspace:Raycast(focus, (cf.Position - focus), params)
+            if ray then
+                cf = CFrame.new(ray.Position + ray.Normal * 0.5) * (cf - cf.Position)
+            end
+            cam.CFrame = cf
+            hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, yaw, 0)
+        end)
+    else
+        if thirdPersonConn then thirdPersonConn:Disconnect() thirdPersonConn = nil end
+        cam.CameraType = Enum.CameraType.Custom
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input, gp)
+    if gp or not thirdPersonActive then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        yaw = yaw - input.Delta.X * 0.003 * thirdPersonSens
+        pitch = math.clamp(pitch - input.Delta.Y * 0.003 * thirdPersonSens, -1.2, 1.2)
+    elseif input.UserInputType == Enum.UserInputType.Touch then
+        if input.Position.X > cam.ViewportSize.X * 0.35 then
+            yaw = yaw - input.Delta.X * 0.004 * thirdPersonSens
+            pitch = math.clamp(pitch - input.Delta.Y * 0.004 * thirdPersonSens, -1.2, 1.2)
+        end
+    end
+end)
 
 FuncRight:AddSlider("SpeedBypassSlider", {
     Text = "Speed Val", Default = 16, Min = 0, Max = 80, Rounding = 1, Compact = true
@@ -1219,53 +1293,62 @@ local removeEntityGCConn = nil
 local TargetEntities = {"dread", "screech", "timothy", "halt", "a-90", "a90"}
 local selectedEntities = {Dread = true, Screech = true, Timothy = true, Halt = true, A90 = true}
 
-local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
-    Text = "Remove Entity & Dame", Default = false,
-    Tooltip = "Xoa UI va damage cua entity duoc chon"
-})
-
-local entityMulti = MiscLeft:AddDropdown("EntitySelectDropdown", {
-    Text = "Select Entities",
-    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90"},
-    Multi = true,
-    Default = {1, 2, 3, 4, 5},
-    Tooltip = "Chon entity can remove"
-})
-entityMulti:OnChanged(function(Value)
-    selectedEntities = {
-        Dread = Value["Dread"] or false,
-        Screech = Value["Screech"] or false,
-        Timothy = Value["Timothy"] or false,
-        Halt = Value["Halt"] or false,
-        A90 = Value["A-90"] or false
-    }
-    TargetEntities = {}
-    if selectedEntities.Dread then table.insert(TargetEntities, "dread") end
-    if selectedEntities.Screech then table.insert(TargetEntities, "screech") end
-    if selectedEntities.Timothy then table.insert(TargetEntities, "timothy") end
-    if selectedEntities.Halt then table.insert(TargetEntities, "halt") end
-    if selectedEntities.A90 then table.insert(TargetEntities, "a-90") table.insert(TargetEntities, "a90") end
-end)
-
-local function matchEntity(name)
-    local n = tostring(name or ""):lower()
-    for _, k in ipairs(TargetEntities) do
-        if n:find(k, 1, true) then return true end
-    end
-    return false
-end
-
-local function destroySafe(obj)
-    pcall(function()
-        if obj and obj.Parent then
-            if obj:IsA("ScreenGui") or obj:IsA("GuiObject") then
-                obj.Enabled = false
-                obj.Visible = false
+removeEntityToggle:OnChanged(function(Value)
+    removeEntityActive = Value
+    if Value then
+        removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
+            if not removeEntityActive then return end
+            if matchEntity(desc.Name) then
+                task.defer(function()
+                    pcall(function()
+                        for _, p in ipairs(desc:GetDescendants()) do
+                            if p:IsA("BasePart") then
+                                p.CanTouch = false
+                                p.CanQuery = false
+                                p.CanCollide = false
+                                p.Transparency = 1
+                            elseif p:IsA("Sound") or p:IsA("ParticleEmitter") or p:IsA("Light") or p:IsA("BillboardGui") then
+                                p:Destroy()
+                            end
+                        end
+                        if desc:IsA("Model") or desc:IsA("BasePart") then
+                            desc:Destroy()
+                        end
+                    end)
+                end)
             end
-            obj:Destroy()
-        end
-    end)
-end
+        end)
+        -- quét định kỳ nhẹ hơn
+        removeEntityConn = task.spawn(function()
+            while removeEntityActive do
+                pcall(function()
+                    for _, obj in ipairs(Workspace:GetChildren()) do
+                        if matchEntity(obj.Name) then
+                            for _, p in ipairs(obj:GetDescendants()) do
+                                if p:IsA("BasePart") then
+                                    p.CanTouch = false
+                                    p.CanQuery = false
+                                elseif p:IsA("Sound") or p:IsA("ParticleEmitter") then
+                                    p:Destroy()
+                                end
+                            end
+                            obj:Destroy()
+                        end
+                    end
+                    for _, gui in ipairs(PlayerGui:GetDescendants()) do
+                        if matchEntity(gui.Name) then
+                            gui:Destroy()
+                        end
+                    end
+                end)
+                task.wait(0.4)
+            end
+        end)
+    else
+        if removeEntityConn then task.cancel(removeEntityConn) removeEntityConn = nil end
+        if removeEntityDescConn then removeEntityDescConn:Disconnect() removeEntityDescConn = nil end
+    end
+end)
 
 removeEntityToggle:OnChanged(function(Value)
     removeEntityActive = Value
@@ -1487,6 +1570,7 @@ local INTERACT_BLACKLIST = {
     closet = true, wardrobe = true, stash = true, bed = true,
     seat = true, chair = true, bedroom = true, armchair = true,
     hide = true, locker = true, couch = true, sofa = true
+    photo = true,picture = true,room photo = true
 }
 
 local function isInteractBlacklisted(prompt, parent)
