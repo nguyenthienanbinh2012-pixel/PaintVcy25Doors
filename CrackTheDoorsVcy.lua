@@ -1382,62 +1382,6 @@ removeEntityToggle:OnChanged(function(Value)
 end)
 
 removeEntityToggle:OnChanged(function(Value)
-    removeEntityActive = Value
-    if Value then
-        removeEntityDescConn = PlayerGui.DescendantAdded:Connect(function(desc)
-            if not removeEntityActive then return end
-            if matchEntity(desc.Name) then
-                task.defer(function() destroySafe(desc) end)
-            end
-        end)
-        pcall(function()
-            local cg = CoreGui
-            if cg then
-                removeEntityGCConn = cg.DescendantAdded:Connect(function(desc)
-                    if not removeEntityActive then return end
-                    if matchEntity(desc.Name) then
-                        task.defer(function() destroySafe(desc) end)
-                    end
-                end)
-            end
-        end)
-        removeEntityConn = task.spawn(function()
-            while removeEntityActive do
-                pcall(function()
-                    for _, gui in ipairs(PlayerGui:GetDescendants()) do
-                        if matchEntity(gui.Name) then
-                            destroySafe(gui)
-                        end
-                    end
-                    for _, obj in ipairs(Workspace:GetChildren()) do
-                        if obj:IsA("Model") and matchEntity(obj.Name) then
-                            for _, p in ipairs(obj:GetDescendants()) do
-                                if p:IsA("BasePart") then
-                                    p.CanTouch = false
-                                    p.CanQuery = false
-                                    p.CanCollide = false
-                                elseif p:IsA("Sound") or p:IsA("ParticleEmitter") or p:IsA("Light") then
-                                    p:Destroy()
-                                end
-                            end
-                            destroySafe(obj)
-                        end
-                    end
-                end)
-                task.wait(0.35)
-            end
-        end)
-        pcall(function()
-            for _, v in ipairs(getgc(true)) do
-                if type(v) == "thread" then
-                    local info = debug.getinfo(v, "n")
-                    if info and info.name and matchEntity(info.name) then
-                        pcall(function() task.cancel(v) end)
-                    end
-                end
-            end
-        end)
-    else
 
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
