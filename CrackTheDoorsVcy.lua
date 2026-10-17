@@ -1136,26 +1136,34 @@ local noJumpScareDescConn = nil
 local JUMP_KEYS = {"jumpscare","screech","glitch","static","vignette","flash","blind","darkness","hideoverlay","locker","scare","death","dying","eyes","dread","timothy","a-90","a90","figure","seek","chase","running","red","blood","screen","overlay","damage","hurt","scary"}
 local noJumpScareToggle = VisualRight:AddToggle("NoJumpScareToggle", {
     Text = "No JumpScare", Default = false,
-    Tooltip = "Chan man hinh hu doa Screech Glitch Eyes"
+    Tooltip = "Bo qua doan cat canh kinh di"
 })
 noJumpScareToggle:OnChanged(function(Value)
     noJumpScareActive = Value
     if Value then
-        local function cleanGui(obj)
-            if not obj then return end
-            local n = tostring(obj.Name or ""):lower()
-            for _, k in ipairs(JUMP_KEYS) do
-                if n:find(k, 1, true) then
-                    if obj:IsA("ScreenGui") then
-                        obj.Enabled = false
-                    elseif obj:IsA("GuiObject") then
-                        obj.Visible = false
-                        obj.BackgroundTransparency = 1
-                    end
-                    return
+    local function cleanGui(obj)
+    if not obj then return end
+    local n = tostring(obj.Name or ""):lower()
+    for _, k in ipairs(JUMP_KEYS) do
+        if n:find(k, 1, true) then
+            pcall(function()
+                if obj:IsA("ScreenGui") then
+                    obj.Enabled = false
+                elseif obj:IsA("GuiObject") then
+                    obj.Visible = false
+                    obj.BackgroundTransparency = 1
+                    if obj:IsA("ImageLabel") then obj.ImageTransparency = 1 end
+                elseif obj:IsA("Sound") then
+                    obj.Volume = 0
+                    obj:Stop()
+                elseif obj:IsA("ColorCorrectionEffect") or obj:IsA("BlurEffect") then
+                    obj.Enabled = false
                 end
-            end
+            end)
+            return
         end
+    end
+                end
         for _, gui in ipairs(PlayerGui:GetDescendants()) do
             cleanGui(gui)
         end
@@ -1202,7 +1210,7 @@ local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
 
 local entityMulti = MiscLeft:AddDropdown("EntitySelectDropdown", {
     Text = "Select Entities",
-    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90"},
+    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90","die","blood","error","A90","entity","rush", "ambush"},
     Multi = true,
     Default = {1, 2, 3, 4, 5},
     Tooltip = "Chon entity can remove"
