@@ -1285,11 +1285,27 @@ noJumpScareToggle:OnChanged(function(Value)
         if noJumpScareDescConn then noJumpScareDescConn:Disconnect() noJumpScareDescConn = nil end
     end
 end)
+local removeEntityActive = false
+local removeEntityConn = nil
+local removeEntityDescConn = nil
+local TargetEntities = {"dread", "screech", "timothy", "halt", "a-90", "a90"}
 
-local removedFunctions = {} -- lưu hàm đã hook để khỏi quét lại
+local function matchEntity(name)
+    local n = tostring(name or ""):lower()
+    for _, k in ipairs(TargetEntities) do
+        if n:find(k, 1, true) then return true end
+    end
+    return false
+end
 
+local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
+    Text = "Remove Entity & Dame", Default = false,
+    Tooltip = "Xoa Entity va damage cua entity duoc chon"
+})
+
+local removedFunctions = {}
 local function tryHookDamageFuncs()
-    if next(removedFunctions) then return end -- đã quét rồi thì thôi
+    if next(removedFunctions) then return end
     pcall(function()
         for _, v in ipairs(getgc(true)) do
             if type(v) == "function" then
@@ -1298,8 +1314,6 @@ local function tryHookDamageFuncs()
                     local n = tostring(info.name):lower()
                     if n:find("screech") or n:find("bite") or n:find("damage") or n:find("takeDamage") or n:find("applyDamage") then
                         removedFunctions[v] = true
-                        -- ghi đè thành hàm rỗng
-                        -- (một số executor hỗ trợ hookfunction tốt hơn)
                     end
                 end
             end
@@ -1310,7 +1324,7 @@ end
 removeEntityToggle:OnChanged(function(Value)
     removeEntityActive = Value
     if Value then
-        tryHookDamageFuncs() -- chỉ chạy 1 lần
+        tryHookDamageFuncs()
 
         removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
             if not removeEntityActive then return end
@@ -1332,7 +1346,6 @@ removeEntityToggle:OnChanged(function(Value)
             end
         end)
 
-        -- quét nhẹ, không dùng getgc trong loop
         removeEntityConn = task.spawn(function()
             while removeEntityActive do
                 pcall(function()
@@ -1348,7 +1361,6 @@ removeEntityToggle:OnChanged(function(Value)
                             obj:Destroy()
                         end
                     end
-                    -- xóa sound psst
                     for _, s in ipairs(Workspace:GetDescendants()) do
                         if s:IsA("Sound") then
                             local sn = s.Name:lower()
@@ -1361,63 +1373,6 @@ removeEntityToggle:OnChanged(function(Value)
                     end
                 end)
                 task.wait(0.25)
-            end
-        end)
-    else
-        if removeEntityConn then task.cancel(removeEntityConn) removeEntityConn = nil end
-        if removeEntityDescConn then removeEntityDescConn:Disconnect() removeEntityDescConn = nil end
-    end
-end)
-
-removeEntityToggle:OnChanged(function(Value)
-    removeEntityActive = Value
-    if Value then
-        removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
-            if not removeEntityActive then return end
-            if matchEntity(desc.Name) then
-                task.defer(function()
-                    pcall(function()
-                        for _, p in ipairs(desc:GetDescendants()) do
-                            if p:IsA("BasePart") then
-                                p.CanTouch = false
-                                p.CanQuery = false
-                                p.CanCollide = false
-                                p.Transparency = 1
-                            elseif p:IsA("Sound") or p:IsA("ParticleEmitter") or p:IsA("Light") or p:IsA("BillboardGui") then
-                                p:Destroy()
-                            end
-                        end
-                        if desc:IsA("Model") or desc:IsA("BasePart") then
-                            desc:Destroy()
-                        end
-                    end)
-                end)
-            end
-        end)
-        -- quét định kỳ nhẹ hơn
-        removeEntityConn = task.spawn(function()
-            while removeEntityActive do
-                pcall(function()
-                    for _, obj in ipairs(Workspace:GetChildren()) do
-                        if matchEntity(obj.Name) then
-                            for _, p in ipairs(obj:GetDescendants()) do
-                                if p:IsA("BasePart") then
-                                    p.CanTouch = false
-                                    p.CanQuery = false
-                                elseif p:IsA("Sound") or p:IsA("ParticleEmitter") then
-                                    p:Destroy()
-                                end
-                            end
-                            obj:Destroy()
-                        end
-                    end
-                    for _, gui in ipairs(PlayerGui:GetDescendants()) do
-                        if matchEntity(gui.Name) then
-                            gui:Destroy()
-                        end
-                    end
-                end)
-                task.wait(0.4)
             end
         end)
     else
