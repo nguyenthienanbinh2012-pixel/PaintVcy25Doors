@@ -43,7 +43,11 @@ local Tabs = {
     Misc = Window:AddTab("Misc", "swords"),
     Settings = Window:AddTab("Settings", "cog")
 }
+local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
+local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
+local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
+local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
 task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
@@ -56,16 +60,11 @@ task.spawn(function()
         end)
     end)
 end)
-
 local noteGroup = Tabs.Info:AddLeftGroupbox("Changelog")
 noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Anti+lag</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Jumpscare</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Position Spoof</font>", true)
-
-local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
-local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
-local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
