@@ -1571,8 +1571,7 @@ local INTERACT_BLACKLIST = {
     seat = true, chair = true, bedroom = true, armchair = true,
     hide = true, locker = true, couch = true, sofa = true,
     photo = true, picture = true, painting = true, frame = true, art = true, canvas = true, portrait = true
-                    }
-
+    }
 
 local function isInteractBlacklisted(prompt, parent)
     local pName = tostring(parent and parent.Name or ""):lower()
@@ -1588,7 +1587,7 @@ end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu lay va tuong tac o khoa, item xung quanh, loai bo ghe/tu/giuong"
+    Tooltip = "Tu lay va tuong tac o khoa, item xung quanh, fix tuong tac do khac khong can thiep"
 })
 
 autoInteractToggle:OnChanged(function(Value)
