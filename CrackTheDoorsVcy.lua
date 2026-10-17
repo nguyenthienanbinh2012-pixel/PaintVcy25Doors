@@ -48,20 +48,7 @@ local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
 local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
 local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
-task.spawn(function()
-    pcall(function()
-task.spawn(function()
-    pcall(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://4590657391"
-        sound.Volume = 0.8
-        sound.Parent = game:GetService("SoundService")
-        sound:Play()
-        task.delay(1.5, function()
-            if sound then sound:Destroy() end
-        end)
-    end)
-end)
+
 local noteGroup = Tabs.Info:AddLeftGroupbox("Changelog")
 noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
@@ -79,6 +66,16 @@ local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
 local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 task.spawn(function()
     pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://4590657391"
+        sound.Volume = 0.8
+        sound.Parent = game:GetService("SoundService")
+        sound:Play()
+        task.delay(1.5, function()
+            if sound then sound:Destroy() end
+        end)
+    end)
+end)
         local thumb = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
         InfoGroup:AddImage("Avatar", {
             Image = thumb,
@@ -1380,8 +1377,6 @@ removeEntityToggle:OnChanged(function(Value)
         if removeEntityDescConn then removeEntityDescConn:Disconnect() removeEntityDescConn = nil end
     end
 end)
-
-removeEntityToggle:OnChanged(function(Value)
 
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
