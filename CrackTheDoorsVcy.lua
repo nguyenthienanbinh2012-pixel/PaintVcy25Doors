@@ -27,8 +27,8 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Window = Obsidian:CreateWindow({
-    Title = "PaintCrack12",
-    SubTitle = "PaintVcy1.2",
+    Title = "PaintCrack1.5",
+    SubTitle = "PaintVcyCrack",
     TabWidth = 135,
     Size = UDim2.new(0, 650, 0, 380),
     Center = true,
@@ -47,7 +47,14 @@ local Tabs = {
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
-
+local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
+local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
+local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
+local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
+local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
+local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
+local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
+local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 task.spawn(function()
     pcall(function()
         local thumb = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
@@ -1210,7 +1217,7 @@ local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
 
 local entityMulti = MiscLeft:AddDropdown("EntitySelectDropdown", {
     Text = "Select Entities",
-    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90","die","blood","error","A90","entity","rush", "ambush"},
+    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90",},
     Multi = true,
     Default = {1, 2, 3, 4, 5},
     Tooltip = "Chon entity can remove"
@@ -1317,37 +1324,79 @@ end)
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
 })
+
 local notifiedSet = {}
-local ALLOWED_NOTIFY = {"rushmoving", "ambush,"}
-Workspace.DescendantAdded:Connect(function(desc)
-    if not desc or not desc.Parent then return end
+local connChild, connDesc, connGui = nil, nil, nil
+
+local ENTITY_EXACT = {
+    ["rushmoving"] = "RUSH",
+    ["rush"] = "RUSH",
+    ["ambush"] = "AMBUSH",
+    ["seek"] = "SEEK",
+    ["eyes"] = "EYES",
+    ["figure"] = "FIGURE",
+    ["glitch"] = "GLITCH",
+    ["halt"] = "HALT",
+    ["dread"] = "DREAD",
+    ["timothy"] = "TIMOTHY",
+    ["screech"] = "SCREECH",
+    ["jack"] = "JACK",
+    ["dupe"] = "DUPE",
+    ["a-90"] = "A-90",
+    ["a90"] = "A-90"
+}
+
+local function notifyCatch(inst)
+    if not inst or not inst.Parent then return end
+    if notifiedSet[inst] then return end
     local char = LocalPlayer.Character
-    if char and desc:IsDescendantOf(char) then return end
-    if desc:IsA("Model") or desc:IsA("BasePart") then
-        local n = tostring(desc.Name):lower()
-        local cleanName = nil
-        for _, k in ipairs(ALLOWED_NOTIFY) do
-            if n == k or n:find("^" .. k .. "$") or n:find("^" .. k .. "[%s%d_-]") then
-                if not n:find("arm") and not n:find("new") and not n:find("year") and not n:find("seek") then
-                    cleanName = k:upper()
-                    break
-                end
-            end
-        end
-        if cleanName and not notifiedSet[desc] then
-            notifiedSet[desc] = true
-            if entityNotifyToggle and entityNotifyToggle.Value then
-                pcall(function()
-                    Obsidian:Notify({
-                        Title = "ENTITY!",
-                        Description = cleanName .. " has spawned!",
-                        Time = 4
-                    })
-                end)
-            end
-        end
+    if char and inst:IsDescendantOf(char) then return end
+    if not (inst:IsA("Model") or inst:IsA("BasePart") or inst:IsA("ScreenGui") or inst:IsA("Folder")) then return end
+    local n = tostring(inst.Name):lower()
+    local label = ENTITY_EXACT[n]
+    if not label then return end
+    notifiedSet[inst] = true
+    if entityNotifyToggle and entityNotifyToggle.Value then
+        pcall(function()
+            Obsidian:Notify({
+                Title = "ENTITY!",
+                Description = label .. " has spawned!",
+                Time = 4
+            })
+        end)
     end
+end
+
+local function bind()
+    if connChild then connChild:Disconnect() end
+    if connDesc then connDesc:Disconnect() end
+    if connGui then connGui:Disconnect() end
+
+    connChild = Workspace.ChildAdded:Connect(function(inst)
+        task.defer(function() notifyCatch(inst) end)
+    end)
+
+    connDesc = Workspace.DescendantAdded:Connect(function(inst)
+        task.defer(function() notifyCatch(inst) end)
+    end)
+
+    connGui = PlayerGui.DescendantAdded:Connect(function(inst)
+        task.defer(function() notifyCatch(inst) end)
+    end)
+end
+
+local function unbind()
+    if connChild then connChild:Disconnect() connChild = nil end
+    if connDesc then connDesc:Disconnect() connDesc = nil end
+    if connGui then connGui:Disconnect() connGui = nil end
+    notifiedSet = {}
+end
+
+entityNotifyToggle:OnChanged(function(v)
+    if v then bind() else unbind() end
 end)
+
+if entityNotifyToggle.Value then bind() end
 
 local autoPadlockActive = false
 local autoPadlockThread = nil
