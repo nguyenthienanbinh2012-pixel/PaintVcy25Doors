@@ -30,7 +30,7 @@ local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
     SubTitle = "PaintVcyCrack",
     TabWidth = 135,
-    Size = UDim2.new(0, 650, 0, 380),
+    Size = UDim2.new(0, 680, 0, 390),
     Center = true,
     AutoShow = true,
     MenuFadeTime = 0.15
@@ -64,7 +64,7 @@ noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", tr
 noteGroup:AddLabel("<font color='#FF3232'>+ Anti+lag</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Jumpscare</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Position Spoof</font>", true)
-    
+
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
