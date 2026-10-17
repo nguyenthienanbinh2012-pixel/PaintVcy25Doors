@@ -43,9 +43,7 @@ local Tabs = {
     Misc = Window:AddTab("Misc", "swords"),
     Settings = Window:AddTab("Settings", "cog")
 }
-local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
-local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
-
+local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
 task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
