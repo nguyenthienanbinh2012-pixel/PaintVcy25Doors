@@ -1322,7 +1322,6 @@ removeEntityToggle:OnChanged(function(Value)
     removeEntityActive = Value
     if Value then
         tryHookDamageFuncs()
-
         removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
             if not removeEntityActive then return end
             if matchEntity(desc.Name) then
@@ -1381,7 +1380,6 @@ end)
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
 })
-
 local notifiedSet = {}
 local connChild, connDesc, connGui = nil, nil, nil
 
