@@ -43,7 +43,28 @@ local Tabs = {
     Misc = Window:AddTab("Misc", "swords"),
     Settings = Window:AddTab("Settings", "cog")
 }
+local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
+local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
 
+task.spawn(function()
+    pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://9045801272"
+        sound.Volume = 1.2
+        sound.Parent = game:GetService("SoundService")
+        sound:Play()
+        task.delay(2, function()
+            if sound then sound:Destroy() end
+        end)
+    end)
+end)
+
+local noteGroup = Tabs.Info:AddLeftGroupbox("Changelog")
+noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Anti+lag</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix Jumpscare</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix Position Spoof</font>", true)
+    
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Ultimate Optimization Active")
@@ -95,15 +116,6 @@ InfoGroup:AddButton("Reset Player", function()
         end
     end
 end)
-
-local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
-local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
-local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
-local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
-local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
-local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
-local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
-local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 
 local ndOn = false
 local ndConn, ndDesc, ndHumConn, ndHookConn = nil, nil, nil, nil
@@ -1217,7 +1229,7 @@ local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
 
 local entityMulti = MiscLeft:AddDropdown("EntitySelectDropdown", {
     Text = "Select Entities",
-    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90",},
+    Values = {"Dread", "Screech", "Timothy", "Halt", "A-90"},
     Multi = true,
     Default = {1, 2, 3, 4, 5},
     Tooltip = "Chon entity can remove"
