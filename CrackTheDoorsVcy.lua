@@ -1292,7 +1292,10 @@ local removeEntityDescConn = nil
 local removeEntityGCConn = nil
 local TargetEntities = {"dread", "screech", "timothy", "halt", "a-90", "a90"}
 local selectedEntities = {Dread = true, Screech = true, Timothy = true, Halt = true, A90 = true}
-
+local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
+    Text = "Remove Entity & Dame", Default = false,
+    Tooltip = "Xoa Entity va damage cua entity duoc chon"
+})
 removeEntityToggle:OnChanged(function(Value)
     removeEntityActive = Value
     if Value then
@@ -1407,11 +1410,6 @@ removeEntityToggle:OnChanged(function(Value)
             end
         end)
     else
-        if removeEntityConn then task.cancel(removeEntityConn) removeEntityConn = nil end
-        if removeEntityDescConn then removeEntityDescConn:Disconnect() removeEntityDescConn = nil end
-        if removeEntityGCConn then removeEntityGCConn:Disconnect() removeEntityGCConn = nil end
-    end
-end)
 
 local entityNotifyToggle = VisualRight:AddToggle("EntityNotifyToggle", {
     Text = "Notify Entity", Default = true, Tooltip = "Thong bao khi Entity xuat hien"
