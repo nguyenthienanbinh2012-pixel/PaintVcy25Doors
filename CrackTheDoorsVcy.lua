@@ -1632,6 +1632,7 @@ noJumpScareToggle:OnChanged(function(Value)
         if noJumpScareDescConn then noJumpScareDescConn:Disconnect() noJumpScareDescConn = nil end
     end
 end)
+
 local removeEntityActive = false
 local removeEntityConn = nil
 local removeEntityDescConn = nil
@@ -2280,26 +2281,13 @@ footMusicToggle:OnChanged(function(Value)
     end
 end)
 
-SettingsLeft:AddButton("Unload Engine", function()
-    Obsidian:Unload()
-end)
-
-SettingsLeft:AddButton("Reload Character", function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Dead)
-        end
-    end
-end)
 local espColor = Color3.fromRGB(0, 255, 200)
 local doorHighlights = {}
 local doorBillboards = {}
 
 local doorEspToggle = DoorEspGroup:AddToggle("DoorEspToggle", {
-    Text = "Door Tracker (ESP)", Default = false,
-    Tooltip = "Hien thi cua hien tai va tiep theo"
+    Text = "Door Esp", Default = false,
+    Tooltip = "Hien thi Cua"
 })
 
 DoorEspGroup:AddLabel("ESP Color"):AddColorPicker("DoorEspColor", {
@@ -2321,35 +2309,6 @@ DoorEspGroup:AddLabel("ESP Color"):AddColorPicker("DoorEspColor", {
     end
 })
 
-local function checkDoorLocked(door)
-    if not door then return false end
-    if door:GetAttribute("Locked") or door:GetAttribute("IsLocked") then return true end
-    if door.Parent and door.Parent:GetAttribute("Locked") then return true end
-    for _, v in pairs(door:GetDescendants()) do
-        local n = v.Name:lower()
-        if (v:IsA("BasePart") or v:IsA("Model")) and (n:find("lock") or n:find("padlock") or n:find("code")) then
-            if (v:IsA("BasePart") and v.Transparency ~= 1) or v:IsA("Model") then return true end
-        end
-        if v:IsA("BoolValue") and (n:find("lock") and v.Value) then return true end
-        if v:IsA("NumberValue") and (n:find("lock") and v.Value > 0) then return true end
-    end
-    return false
-end
-
-local function checkDoorOpen(door)
-    if not door then return false end
-    if door:GetAttribute("Opened") or door:GetAttribute("IsOpen") then return true end
-    for _, v in pairs(door:GetDescendants()) do
-        local n = v.Name:lower()
-        if v:IsA("BoolValue") and (n:find("open") or n:find("unlock")) and v.Value then return true end
-        if v.Name == "Opened" or v.Name == "IsOpen" then
-            if (v:IsA("BoolValue") and v.Value) or (v:IsA("NumberValue") and v.Value > 0) then return true end
-        end
-    end
-    return false
-end
-
-local doorEspConn = nil
 doorEspToggle:OnChanged(function(Value)
     if Value then
         local tick = 0
