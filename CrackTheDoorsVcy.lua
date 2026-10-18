@@ -56,6 +56,102 @@ noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
 noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 18/10/2026</font>", true)
+local checkGroup = Tabs.Info:AddRightGroupbox("Check System")
+
+local checkPlayerLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Player: Đang quét...</font>", true)
+local checkRoomLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Room: Đang quét...</font>", true)
+local checkEntityLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Entity: Không có Entity</font>", true)
+local checkAntiCheatLabel = checkGroup:AddLabel("<font color='#32FF64'><b>Check Anti Cheat: 0% (Ping: 0ms)</b></font>", true)
+
+checkGroup:AddButton("Check Player", function()
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hum and hrp then
+            local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+            checkPlayerLabel:SetText(string.format("<font color='#32FF64'>Check Player: HP %d | Speed %d | Ping %dms</font>", math.floor(hum.Health), math.floor(hum.WalkSpeed), ping))
+        end
+    end
+end)
+
+checkGroup:AddButton("Check Room", function()
+    local currentRoom = LocalPlayer:GetAttribute("CurrentRoom")
+    local inGame = LocalPlayer:GetAttribute("InGame")
+    checkRoomLabel:SetText(string.format("<font color='#32FF64'>Check Room: Room %s | Status: %s</font>", tostring(currentRoom or "Lobby"), tostring(inGame or "Sảnh")))
+end)
+
+local activeEntityName = nil
+local entityTimeout = 0
+
+local function onEntityDetected(inst)
+    if not inst or not inst.Parent then return end
+    local char = LocalPlayer.Character
+    if char and inst:IsDescendantOf(char) then return end
+    
+    local hum = inst:FindFirstChildOfClass("Humanoid")
+    local isEntity = false
+    
+    if hum and inst.Name ~= LocalPlayer.Name then
+        isEntity = true
+    elseif inst:FindFirstChild("Hitbox") or inst:FindFirstChild("EntityHitbox") then
+        isEntity = true
+    end
+
+    if isEntity then
+        activeEntityName = inst.Name
+        entityTimeout = tick() + 4
+        checkEntityLabel:SetText("<font color='#FF3232'><b>Check Entity: " .. tostring(inst.Name):upper() .. " ĐANG XUẤT HIỆN!</b></font>")
+    end
+end
+
+Workspace.ChildAdded:Connect(function(inst) task.defer(function() onEntityDetected(inst) end) end)
+Workspace.DescendantAdded:Connect(function(inst)
+    if inst:IsA("Model") or inst:IsA("BasePart") then
+        task.defer(function() onEntityDetected(inst) end)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if activeEntityName and tick() > entityTimeout then
+            activeEntityName = nil
+            checkEntityLabel:SetText("<font color='#32FF64'>Check Entity: Không có Entity</font>")
+        end
+        
+        pcall(function()
+            local riskScore = 0
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+            if ping > 250 then riskScore = riskScore + 50
+            elseif ping > 150 then riskScore = riskScore + 30
+            elseif ping > 80 then riskScore = riskScore + 10 end
+            
+            if hrp and hum then
+                if hrp.AssemblyLinearVelocity.Magnitude > 50 then riskScore = riskScore + 30 end
+                if hum.WalkSpeed > 30 then riskScore = riskScore + 15 end
+                if hum.PlatformStand or char:FindFirstChild("PaintFlyAttachment") then riskScore = riskScore + 20 end
+                
+                if not _G.LastCheckPos then _G.LastCheckPos = hrp.Position end
+                if (hrp.Position - _G.LastCheckPos).Magnitude > 50 then riskScore = riskScore + 40 end
+                _G.LastCheckPos = hrp.Position
+            end
+            
+            riskScore = math.clamp(riskScore, 0, 100)
+            
+            if riskScore > 60 then
+                checkAntiCheatLabel:SetText(string.format("<font color='#FF0000'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
+            elseif riskScore > 30 then
+                checkAntiCheatLabel:SetText(string.format("<font color='#FFAA00'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
+            else
+                checkAntiCheatLabel:SetText(string.format("<font color='#32FF64'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
+            end
+        end)
+    end
+end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
@@ -114,11 +210,20 @@ local resetBtn = InfoGroup:AddButton("Reset Player", function()
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                pcall(function()
-                    hum:SetAttribute("DiedBy", "Paint")
-                    hum:SetAttribute("DeathCause", "Died By Paint")
-                    hum:ChangeState(Enum.HumanoidStateType.Dead)
+                local diedConn
+                diedConn = hum.Died:Connect(function()
+                    pcall(function()
+                        hum:SetAttribute("DiedBy", "PaintCrack")
+                        hum:SetAttribute("DeathCause", "Died By PaintCrack")
+                    end)
+                    if diedConn then diedConn:Disconnect() end
                 end)
+                pcall(function()
+                    hum:SetAttribute("DiedBy", "PaintCrack")
+                    hum:SetAttribute("DeathCause", "Died By PaintCrack")
+                end)
+                task.wait(0.1)
+                hum.Health = 0
             end
         end
     end
@@ -869,7 +974,7 @@ FuncRight:AddSlider("ThirdPersonZSlider", {
     Text = "Z offset Cam", Default = 8, Min = 1, Max = 20, Rounding = 1, Compact = true
 }):OnChanged(function(v) thirdPersonZ = v end)
 FuncRight:AddSlider("ThirdPersonSensSlider", {
-    Text = "Do Nhay Cua Camera", Default = 0.6, Min = 0.35, Max = 2.5, Rounding = 2, Compact = true
+    Text = "Do Nhay Cua Camera", Default = 3, Min = 1.0, Max = 3.75, Rounding = 2, Compact = true
 }):OnChanged(function(v) thirdPersonSens = v end)
 
 thirdPersonToggle:OnChanged(function(Value)
@@ -965,61 +1070,131 @@ end)
 
 local bookEspActive = false
 local bookEspConnections = {}
+local bookEspCache = setmetatable({}, {__mode = "k"})
+local bookEspUpdateConn = nil
+
 local function createBookEsp(bookObj)
     if not bookObj or not bookObj.Parent then return end
-    if bookObj:FindFirstChild("BookEspBillboard") then return end
+    if bookEspCache[bookObj] then return end
+
+    local prompt = bookObj:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if not prompt or not prompt.Enabled then return end
+    local actionText = tostring(prompt.ActionText or ""):lower()
+    if not actionText:find("read") and not actionText:find("book") and not actionText:find("take") then
+        return
+    end
+
+    -- Hiệu ứng Highlight ma mị
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "BookEspHighlight"
+    highlight.FillColor = Color3.fromRGB(0, 255, 100)
+    highlight.FillTransparency = 0.7
+    highlight.OutlineColor = Color3.fromRGB(0, 255, 150)
+    highlight.OutlineTransparency = 0.1
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = bookObj
+
+    -- Bảng thông tin
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BookEspBillboard"
-    billboard.Size = UDim2.new(0, 80, 0, 30)
+    billboard.Size = UDim2.new(0, 100, 0, 35)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.AlwaysOnTop = true
+
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Book"
-    textLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-    textLabel.TextStrokeTransparency = 0.2
-    textLabel.TextSize = 14
-    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Text = "Book [--m]"
+    textLabel.TextColor3 = Color3.fromRGB(50, 255, 100) -- Xanh lá ma mị
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 50, 0) -- Viền xanh đen
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextSize = 16
+    textLabel.Font = Enum.Font.GothamBold
     textLabel.Parent = billboard
+
+    local holder = nil
     if bookObj:IsA("BasePart") then
-        billboard.Parent = bookObj
+        holder = bookObj
     elseif bookObj:IsA("Model") and bookObj.PrimaryPart then
-        billboard.Parent = bookObj.PrimaryPart
+        holder = bookObj.PrimaryPart
     elseif bookObj:IsA("Model") then
-        local targetPart = bookObj:FindFirstChildWhichIsA("BasePart")
-        if targetPart then billboard.Parent = targetPart end
+        holder = bookObj:FindFirstChildWhichIsA("BasePart")
+    end
+
+    if holder then
+        billboard.Parent = holder
+        bookEspCache[bookObj] = {
+            billboard = billboard,
+            highlight = highlight,
+            label = textLabel
+        }
     end
 end
+
 local function removeBookEsp()
-    for _, desc in ipairs(Workspace:GetDescendants()) do
-        if desc.Name == "BookEspBillboard" then
-            desc:Destroy()
-        end
+    if bookEspUpdateConn then bookEspUpdateConn:Disconnect() bookEspUpdateConn = nil end
+    for obj, data in pairs(bookEspCache) do
+        if data.billboard and data.billboard.Parent then data.billboard:Destroy() end
+        if data.highlight and data.highlight.Parent then data.highlight:Destroy() end
     end
+    bookEspCache = setmetatable({}, {__mode = "k"})
 end
+
 local bookEspToggle = VisualLeft:AddToggle("BookEspToggle", {
     Text = "Book ESP (Room 50)", Default = false,
-    Tooltip = "Ve mau va ten Book[1..] len cac sach trong phong 50"
+    Tooltip = "ESP sach ma mi, do khoang cach [m]"
 })
+
 bookEspToggle:OnChanged(function(Value)
     bookEspActive = Value
     if Value then
         for _, desc in ipairs(Workspace:GetDescendants()) do
-            local nameLower = desc.Name:lower()
-            if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
-                local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
-                pcall(function() createBookEsp(target) end)
+            if desc:IsA("ProximityPrompt") then
+                local actionText = tostring(desc.ActionText or ""):lower()
+                if actionText:find("read") or actionText:find("book") or actionText:find("take") then
+                    local target = desc.Parent
+                    if target then
+                        pcall(function() createBookEsp(target) end)
+                    end
+                end
             end
         end
+
         table.insert(bookEspConnections, Workspace.DescendantAdded:Connect(function(desc)
             if not bookEspActive then return end
-            local nameLower = desc.Name:lower()
-            if nameLower:find("book") or (desc:IsA("ProximityPrompt") and desc.ActionText:lower():find("book")) then
-                local target = desc:IsA("ProximityPrompt") and desc.Parent or desc
-                pcall(function() createBookEsp(target) end)
+            if desc:IsA("ProximityPrompt") then
+                local actionText = tostring(desc.ActionText or ""):lower()
+                if actionText:find("read") or actionText:find("book") or actionText:find("take") then
+                    local target = desc.Parent
+                    if target then
+                        task.defer(function() 
+                            pcall(function() createBookEsp(target) end)
+                        end)
+                    end
+                end
             end
         end))
+
+        -- Cập nhật khoảng cách [m] liên tục (tối ưu 0.5s/lần)
+        local tickCount = 0
+        bookEspUpdateConn = RunService.RenderStepped:Connect(function()
+            tickCount = tickCount + 1
+            if tickCount % 30 ~= 0 then return end
+            
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            for obj, data in pairs(bookEspCache) do
+                if data.label and data.label.Parent and obj.Parent then
+                    local targetPart = obj:IsA("BasePart") and obj or (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))
+                    if targetPart then
+                        local dist = math.floor((hrp.Position - targetPart.Position).Magnitude)
+                        data.label.Text = string.format("Book [%dm]", dist)
+                    end
+                end
+            end
+        end)
     else
         for _, conn in ipairs(bookEspConnections) do
             if conn then conn:Disconnect() end
@@ -1193,6 +1368,7 @@ local function applyAntiLagToPart(part)
     part.Reflectance = 0
     if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
+    end
     end
 
 local function applyAntiLagToEffect(effect)
