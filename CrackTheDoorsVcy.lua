@@ -15,22 +15,6 @@ for _, url in ipairs(urls) do
     end
 end
 
-if not Obsidian then
-    error("Không thể tải Obsidian từ bất kỳ nguồn nào! Kiểm tra mạng hoặc Executor.")
-end
-
-if not success or type(Obsidian) ~= "table" then
-    task.wait(1)
-    local retrySuccess, retryLib = pcall(function()
-        return loadstring(game:HttpGet(Repository .. "Library.lua"))()
-    end)
-    if retrySuccess and type(retryLib) == "table" then
-        Obsidian = retryLib
-    else
-        error("Khong the tai thu vien UI Obsidian!")
-    end
-end
-
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
