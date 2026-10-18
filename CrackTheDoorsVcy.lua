@@ -33,7 +33,7 @@ local Window = Obsidian:CreateWindow({
     Size = UDim2.new(0, 700, 0, 390),
     Center = true,
     AutoShow = true,
-    MenuFadeTime = 0.15
+    MenuFadeTime = 0.10
 })
 
 local Tabs = {
