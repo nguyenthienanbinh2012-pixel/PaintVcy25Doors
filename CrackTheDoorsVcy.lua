@@ -1376,7 +1376,7 @@ local function applyAntiLagToPart(part)
     if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
     end
-end
+    end
 local function applyAntiLagToEffect(effect)
     if not effect or not effect.Parent then return end
     if antiLagProcessed[effect] then return end
