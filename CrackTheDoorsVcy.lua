@@ -48,7 +48,7 @@ local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
 local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
 
-local noteGroup = Tabs.Info:AddLeftGroupbox("Changelog")
+local noteGroup = Tabs.Info:AddRightGroupbox("Changelog")
 noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
@@ -66,7 +66,7 @@ local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://4590657391"
+        sound.SoundId = "rbxassetid://1548304764"
         sound.Volume = 0.8
         sound.Parent = game:GetService("SoundService")
         sound:Play()
@@ -81,7 +81,7 @@ task.spawn(function()
         local thumb = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
         InfoGroup:AddImage("Avatar", {
             Image = thumb,
-            Height = 120,
+            Height = 100,
             Tooltip = "Your Avatar"
         })
     end)
@@ -772,7 +772,7 @@ FuncRight:AddSlider("ThirdPersonZSlider", {
     Text = "Z offset Cam", Default = 8, Min = 1, Max = 20, Rounding = 1, Compact = true
 }):OnChanged(function(v) thirdPersonZ = v end)
 FuncRight:AddSlider("ThirdPersonSensSlider", {
-    Text = "Do Nhay Cua Camera", Default = 0.6, Min = 0.35, Max = 1, Rounding = 2, Compact = true
+    Text = "Do Nhay Cua Camera", Default = 0.6, Min = 0.35, Max = 2.5, Rounding = 2, Compact = true
 }):OnChanged(function(v) thirdPersonSens = v end)
 
 thirdPersonToggle:OnChanged(function(Value)
@@ -936,6 +936,42 @@ local seeThroughActive = false
 local seeThroughVal = 0.5
 local seeThroughConn = nil
 local seeThroughToggle = VisualLeft:AddToggle("SeeThroughHidingToggle", {
+
+local seeThroughTick = 0
+local cachedWardrobes = {}
+local cacheBuilt = false
+
+local function buildWardrobeCache()
+    cachedWardrobes = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            local n = obj.Name:lower()
+            if n:find("wardrobe") or n:find("closet") or n:find("hide") or n:find("locker") then
+                local pivotPos = nil
+                pcall(function() pivotPos = obj:GetPivot().Position end)
+                if not pivotPos then
+                    local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if primary then pivotPos = primary.Position end
+                end
+                if pivotPos then
+                    local parts = {}
+                    for _, p in ipairs(obj:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                            parts[#parts + 1] = p
+                        end
+                    end
+                    cachedWardrobes[#cachedWardrobes + 1] = {
+                        position = pivotPos,
+                        parts = parts,
+                    }
+                end
+            end
+        end
+    end
+    cacheBuilt = true
+end
+
+local seeThroughToggle = VisualLeft:AddToggle("SeeThroughHidingToggle", {
     Text = "See-through while hiding", Default = false,
     Tooltip = "Chi lam mo tu khi nhan vat thuc su dang tron ben trong"
 })
@@ -946,11 +982,18 @@ seeThroughSlider:OnChanged(function(v) seeThroughVal = v end)
 seeThroughToggle:OnChanged(function(Value)
     seeThroughActive = Value
     if Value then
+        if not cacheBuilt then
+            task.spawn(buildWardrobeCache)
+        end
         seeThroughConn = RunService.Heartbeat:Connect(function()
             if not seeThroughActive then return end
+            seeThroughTick = seeThroughTick + 1
+            if seeThroughTick % 30 ~= 0 then return end
+
             local char = LocalPlayer.Character
             if not char or not char:FindFirstChild("HumanoidRootPart") then return end
             local hrp = char.HumanoidRootPart
+
             local isHiding = false
             pcall(function()
                 local hiding = char:GetAttribute("Hiding") or char:GetAttribute("IsHiding")
@@ -960,20 +1003,13 @@ seeThroughToggle:OnChanged(function(Value)
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum and hum.Sit then isHiding = true end
             end
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide") or obj.Name:lower():find("locker")) then
-                    local pivotPos = nil
-                    pcall(function() pivotPos = obj:GetPivot().Position end)
-                    if not pivotPos then
-                        local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                        if primary then pivotPos = primary.Position end
-                    end
-                    local near = pivotPos and (hrp.Position - pivotPos).Magnitude < 4.5
-                    local shouldFade = isHiding and near
-                    for _, p in ipairs(obj:GetDescendants()) do
-                        if p:IsA("BasePart") then
-                            p.Transparency = shouldFade and seeThroughVal or 0
-                        end
+
+            for _, data in ipairs(cachedWardrobes) do
+                local near = (hrp.Position - data.position).Magnitude < 4.5
+                local shouldFade = isHiding and near
+                for _, p in ipairs(data.parts) do
+                    if p and p.Parent then
+                        p.Transparency = shouldFade and seeThroughVal or 0
                     end
                 end
             end
@@ -983,15 +1019,16 @@ seeThroughToggle:OnChanged(function(Value)
             seeThroughConn:Disconnect()
             seeThroughConn = nil
         end
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and (obj.Name:lower():find("wardrobe") or obj.Name:lower():find("closet") or obj.Name:lower():find("hide") or obj.Name:lower():find("locker")) then
-                for _, p in ipairs(obj:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        p.Transparency = 0
-                    end
+        for _, data in ipairs(cachedWardrobes) do
+            for _, p in ipairs(data.parts) do
+                if p and p.Parent then
+                    p.Transparency = 0
                 end
             end
         end
+        cachedWardrobes = {}
+        cacheBuilt = false
+        seeThroughTick = 0
     end
 end)
 
@@ -1043,7 +1080,7 @@ local originalPartProps = {}
 
 local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
     Text = "Anti-Lag", Default = false,
-    Tooltip = "Toi uu FPS, tat shadow, particle, post effect, khoi phuc 100% khi tat"
+    Tooltip = "Boost FPS Tranh Lag giam Do hoa!"
 })
 antiLagToggle:OnChanged(function(Value)
     antiLagActive = Value
@@ -1103,45 +1140,249 @@ antiLagToggle:OnChanged(function(Value)
                                 Reflectance = desc.Reflectance
                             }
                         end
-                        desc.Material = Enum.Material.SmoothPlastic
-                        desc.CastShadow = false
-                        desc.Reflectance = 0
-                    elseif desc:IsA("ParticleEmitter") or desc:IsA("Smoke") or desc:IsA("Fire") or desc:IsA("Trail") or desc:IsA("Beam") then
-                        desc.Enabled = false
+local antiLagActive = false
+local antiLagDescConn = nil
+local originalLightingState = {}
+local originalPostEffects = {}
+local originalPartProps = setmetatable({}, {__mode = "k"})
+local antiLagProcessed = setmetatable({}, {__mode = "k"})
+
+local function applyAntiLagToPart(part)
+    if not part or not part.Parent then return end
+    if antiLagProcessed[part] then return end
+    antiLagProcessed[part] = true
+    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
+    if originalPartProps[part] == nil then
+        originalPartProps[part] = {
+            Material = part.Material,
+            CastShadow = part.CastShadow,
+            Reflectance = part.Reflectance,
+            TextureID = part:IsA("MeshPart") and part.TextureID or nil,
+        }
+    end
+    part.Material = Enum.Material.SmoothPlastic
+    part.CastShadow = false
+    part.Reflectance = 0
+    if part:IsA("MeshPart") and part.TextureID ~= "" then
+        part.TextureID = ""
+    end
+
+local function applyAntiLagToPart(part)
+    if not part or not part.Parent then return end
+    if antiLagProcessed[part] then return end
+    antiLagProcessed[part] = true
+    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
+    if originalPartProps[part] == nil then
+        originalPartProps[part] = {
+            Material = part.Material,
+            CastShadow = part.CastShadow,
+            Reflectance = part.Reflectance,
+            TextureID = part:IsA("MeshPart") and part.TextureID or nil,
+        }
+    end
+    part.Material = Enum.Material.SmoothPlastic
+    part.CastShadow = false
+    part.Reflectance = 0
+    if part:IsA("MeshPart") and part.TextureID ~= "" then
+        part.TextureID = ""
+    end
+end
+
+local function applyAntiLagToEffect(effect)
+    if not effect or not effect.Parent then return end
+    if antiLagProcessed[effect] then return end
+    antiLagProcessed[effect] = true
+    if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
+        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
+        if originalPartProps[effect] == nil then
+            originalPartProps[effect] = {Enabled = effect.Enabled}
+        end
+        effect.Enabled = false
+    end
+end
+
+local function restoreAntiLag()
+    for obj, data in pairs(originalPartProps) do
+        if obj and obj.Parent then
+            pcall(function()
+                if data.Material ~= nil then obj.Material = data.Material end
+                if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
+                if data.Reflectance ~= nil then obj.Reflectance = data.Reflectance end
+                if data.TextureID and obj:IsA("MeshPart") then obj.TextureID = data.TextureID end
+                if data.Enabled ~= nil then obj.Enabled = data.Enabled end
+            end)
+        end
+    end
+    originalPartProps = setmetatable({}, {__mode = "k"})
+    antiLagProcessed = setmetatable({}, {__mode = "k"})
+end
+
+local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
+    Text = "Anti-Lag", Default = false,
+    Tooltip = "Boost FPS,Giam Do hoa Tranh Lag!"
+})
+
+antiLagToggle:OnChanged(function(Value)
+    antiLagActive = Value
+    if Value then
+        originalLightingState = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            FogEnd = Lighting.FogEnd,
+            ColorShift_Top = Lighting.ColorShift_Top,
+            ColorShift_Bottom = Lighting.ColorShift_Bottom,
+        }
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 1
+        Lighting.ClockTime = 12
+
+        for _, obj in ipairs(Lighting:GetChildren()) do
+            if obj:IsA("PostEffect") then
+                originalPostEffects[obj] = obj.Enabled
+local antiLagActive = false
+local antiLagDescConn = nil
+local originalLightingState = {}
+local originalPostEffects = {}
+local originalPartProps = setmetatable({}, {__mode = "k"})
+local antiLagProcessed = setmetatable({}, {__mode = "k"})
+
+local function applyAntiLagToPart(part)
+    if not part or not part.Parent then return end
+    if antiLagProcessed[part] then return end
+    antiLagProcessed[part] = true
+    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
+    if originalPartProps[part] == nil then
+        originalPartProps[part] = {
+            Material = part.Material,
+            CastShadow = part.CastShadow,
+            Reflectance = part.Reflectance,
+            TextureID = part:IsA("MeshPart") and part.TextureID or nil,
+        }
+    end
+    part.Material = Enum.Material.SmoothPlastic
+    part.CastShadow = false
+    part.Reflectance = 0
+    if part:IsA("MeshPart") and part.TextureID ~= "" then
+        part.TextureID = ""
+    end
+end
+
+local function applyAntiLagToEffect(effect)
+    if not effect or not effect.Parent then return end
+    if antiLagProcessed[effect] then return end
+    antiLagProcessed[effect] = true
+    if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
+        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
+        if originalPartProps[effect] == nil then
+            originalPartProps[effect] = {Enabled = effect.Enabled}
+        end
+        effect.Enabled = false
+    end
+end
+
+local function restoreAntiLag()
+    for obj, data in pairs(originalPartProps) do
+        if obj and obj.Parent then
+            pcall(function()
+                if data.Material ~= nil then obj.Material = data.Material end
+                if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
+                if data.Reflectance ~= nil then obj.Reflectance = data.Reflectance end
+                if data.TextureID and obj:IsA("MeshPart") then obj.TextureID = data.TextureID end
+                if data.Enabled ~= nil then obj.Enabled = data.Enabled end
+            end)
+        end
+    end
+    originalPartProps = setmetatable({}, {__mode = "k"})
+    antiLagProcessed = setmetatable({}, {__mode = "k"})
+end
+
+local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
+    Text = "Anti-Lag", Default = false,
+    Tooltip = "Boost FPS,Giam Do hoa Tranh Lag!"
+})
+
+antiLagToggle:OnChanged(function(Value)
+    antiLagActive = Value
+    if Value then
+        originalLightingState = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            FogEnd = Lighting.FogEnd,
+            ColorShift_Top = Lighting.ColorShift_Top,
+            ColorShift_Bottom = Lighting.ColorShift_Bottom,
+        }
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 1
+        Lighting.ClockTime = 12
+
+        for _, obj in ipairs(Lighting:GetChildren()) do
+            if obj:IsA("PostEffect") then
+                originalPostEffects[obj] = obj.Enabled
+                obj.Enabled = false
+            end
+        end
+
+        task.spawn(function()
+            local count = 0
+            for _, child in ipairs(Workspace:GetDescendants()) do
+                if not antiLagActive then break end
+                if child:IsA("BasePart") then
+                    applyAntiLagToPart(child)
+                elseif child:IsA("ParticleEmitter") or child:IsA("Smoke") or child:IsA("Fire")
+                    or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles") then
+                    applyAntiLagToEffect(child)
+                end
+                count = count + 1
+                if count % 50 == 0 then
+                    RunService.Heartbeat:Wait()
+                end
+            end
+        end)
+
+        antiLagDescConn = Workspace.DescendantAdded:Connect(function(desc)
+            if not antiLagActive then return end
+            task.defer(function()
+                pcall(function()
+                    if desc:IsA("BasePart") then
+                        applyAntiLagToPart(desc)
+                    elseif desc:IsA("ParticleEmitter") or desc:IsA("Smoke") or desc:IsA("Fire")
+                        or desc:IsA("Trail") or desc:IsA("Beam") or desc:IsA("Sparkles") then
+                        applyAntiLagToEffect(desc)
                     end
                 end)
             end)
         end)
     else
-        if antiLagDescConn then
-            antiLagDescConn:Disconnect()
-            antiLagDescConn = nil
-        end
+        if antiLagDescConn then antiLagDescConn:Disconnect() antiLagDescConn = nil end
+
         if originalLightingState then
-            Lighting.GlobalShadows = originalLightingState.GlobalShadows
-            Lighting.Brightness = originalLightingState.Brightness
-            Lighting.ClockTime = originalLightingState.ClockTime
-            Lighting.Ambient = originalLightingState.Ambient
-            Lighting.OutdoorAmbient = originalLightingState.OutdoorAmbient
-            Lighting.FogEnd = originalLightingState.FogEnd
-            Lighting.ColorShift_Top = originalLightingState.ColorShift_Top
-            Lighting.ColorShift_Bottom = originalLightingState.ColorShift_Bottom
+            pcall(function()
+                Lighting.GlobalShadows = originalLightingState.GlobalShadows
+                Lighting.Brightness = originalLightingState.Brightness
+                Lighting.ClockTime = originalLightingState.ClockTime
+                Lighting.Ambient = originalLightingState.Ambient
+                Lighting.OutdoorAmbient = originalLightingState.OutdoorAmbient
+                Lighting.FogEnd = originalLightingState.FogEnd
+                Lighting.ColorShift_Top = originalLightingState.ColorShift_Top
+                Lighting.ColorShift_Bottom = originalLightingState.ColorShift_Bottom
+            end)
             originalLightingState = {}
         end
+
         for obj, enabled in pairs(originalPostEffects) do
             if obj and obj.Parent then
-                obj.Enabled = enabled
+                pcall(function() obj.Enabled = enabled end)
             end
         end
         originalPostEffects = {}
-        for part, data in pairs(originalPartProps) do
-            if part and part.Parent then
-                part.Material = data.Material
-                part.CastShadow = data.CastShadow
-                part.Reflectance = data.Reflectance
-            end
-        end
-        originalPartProps = {}
+
+        restoreAntiLag()
     end
 end)
 
@@ -1529,14 +1770,14 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 12
-local autoInteractCooldown = {}
+local autoInteractRange = 5
+local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 local INTERACT_BLACKLIST = {
     closet = true, wardrobe = true, stash = true, bed = true,
     seat = true, chair = true, bedroom = true, armchair = true,
     hide = true, locker = true, couch = true, sofa = true,
     photo = true, picture = true, painting = true, frame = true, art = true, canvas = true, portrait = true
-    }
+}
 
 local function isInteractBlacklisted(prompt, parent)
     local pName = tostring(parent and parent.Name or ""):lower()
@@ -1552,7 +1793,7 @@ end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu lay va tuong tac o khoa, item xung quanh, fix tuong tac do khac khong can thiep"
+    Tooltip = "Tu dong tuong tac o khoa, item GAN nhat (5 studs). Nhanh, khong lag, khong tuong tac xa"
 })
 
 autoInteractToggle:OnChanged(function(Value)
@@ -1566,33 +1807,42 @@ autoInteractToggle:OnChanged(function(Value)
                         if char then
                             local hrp = char:FindFirstChild("HumanoidRootPart")
                             if hrp then
-                                for _, desc in ipairs(Workspace:GetDescendants()) do
-                                    if desc:IsA("ProximityPrompt") and desc.Enabled then
-                                        local parent = desc.Parent
-                                        if parent and not isInteractBlacklisted(desc, parent) then
-                                            local pos = nil
-                                            if parent:IsA("BasePart") then
-                                                pos = parent.Position
-                                            elseif parent:IsA("Model") then
-                                                local p = parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart")
-                                                if p then pos = p.Position end
-                                            end
-                                            if pos and (hrp.Position - pos).Magnitude <= autoInteractRange then
-                                                local now = tick()
-                                                if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.25) then
-                                                    autoInteractCooldown[desc] = now
-                                                    pcall(function()
-                                                        fireproximityprompt(desc, 0)
-                                                    end)
-                                                end
+                                local pos = hrp.Position
+                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
+                                local nearestPrompt = nil
+                                local nearestDist = math.huge
+
+                                for _, part in ipairs(parts) do
+                                    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+                                    if not prompt and part.Parent then
+                                        prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
+                                    end
+                                    if prompt and prompt.Enabled then
+                                        local parent = prompt.Parent
+                                        if parent and not isInteractBlacklisted(prompt, parent) then
+                                            local promptPos = part.Position
+                                            local dist = (pos - promptPos).Magnitude
+                                            if dist <= autoInteractRange and dist < nearestDist then
+                                                nearestDist = dist
+                                                nearestPrompt = prompt
                                             end
                                         end
+                                    end
+                                end
+
+                                if nearestPrompt then
+                                    local now = tick()
+                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
+                                        autoInteractCooldown[nearestPrompt] = now
+                                        pcall(function()
+                                            fireproximityprompt(nearestPrompt, 0)
+                                        end)
                                     end
                                 end
                             end
                         end
                     end)
-                    task.wait(0.3)
+                    task.wait(0.15)
                 end
             end)
         end
@@ -1601,7 +1851,7 @@ autoInteractToggle:OnChanged(function(Value)
             task.cancel(autoInteractThread)
             autoInteractThread = nil
         end
-        autoInteractCooldown = {}
+        autoInteractCooldown = setmetatable({}, {__mode = "k"})
     end
 end)
 
@@ -1609,7 +1859,7 @@ local skipProximityActive = false
 local skipProximityConn = nil
 local skipProximityToggle = MiscRight:AddToggle("ProximitySkipToggle", {
     Text = "Proximity Skip", Default = false,
-    Tooltip = "Bo qua thoi gian giu ProximityPrompt cua Roblox"
+    Tooltip = "Bo qua thoi ProximityPrompt cua Roblox"
 })
 local function applySkipPrompt(prompt)
     if prompt:IsA("ProximityPrompt") then
