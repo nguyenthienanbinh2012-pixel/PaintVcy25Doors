@@ -1,7 +1,23 @@
-local Repository = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local success, Obsidian = pcall(function()
-    return loadstring(game:HttpGet(Repository .. "Library.lua"))()
-end)
+local Obsidian = nil
+local urls = {
+    "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/Library.lua",
+    "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/Library.luau",
+    "https://gitlab.com/upio/obsidian/-/raw/main/Library.lua"
+}
+for _, url in ipairs(urls) do
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if ok and res and #res > 1000 then
+        local ok2, lib = pcall(function() return loadstring(res)() end)
+        if ok2 and type(lib) == "table" then
+            Obsidian = lib
+            break
+        end
+    end
+end
+
+if not Obsidian then
+    error("Không thể tải Obsidian từ bất kỳ nguồn nào! Kiểm tra mạng hoặc Executor.")
+end
 
 if not success or type(Obsidian) ~= "table" then
     task.wait(1)
