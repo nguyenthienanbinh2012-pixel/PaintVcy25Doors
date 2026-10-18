@@ -41,7 +41,8 @@ local Tabs = {
     Function = Window:AddTab("Function", "user"),
     Visual = Window:AddTab("Visual", "eye"),
     Misc = Window:AddTab("Misc", "Door"),
-    Settings = Window:AddTab("Settings", "cog")
+    Settings = Window:AddTab("Settings", "cog"),
+    Display = Window:AddTab("Display", "eye"),
 }
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
@@ -161,9 +162,8 @@ local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
 local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
-local DisplayTab = Window:AddTab("Display", "eye")
-local DoorEspGroup = DisplayTab:AddLeftGroupbox("Door ESP")
-local KeyEspGroup = DisplayTab:AddRightGroupbox("Key & Entity")
+local DoorEspGroup = Tabs.Display:AddLeftGroupbox("Door ESP")
+local KeyEspGroup = Tabs.Display:AddRightGroupbox("Key & Entity")
 task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
