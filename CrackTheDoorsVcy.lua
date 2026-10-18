@@ -29,8 +29,8 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
     SubTitle = "PaintVcyCrack",
-    TabWidth = 135,
-    Size = UDim2.new(0, 680, 0, 390),
+    TabWidth = 150,
+    Size = UDim2.new(0, 700, 0, 390),
     Center = true,
     AutoShow = true,
     MenuFadeTime = 0.15
@@ -49,11 +49,13 @@ local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
 local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loaded Successfully!</b></font>", true)
 
 local noteGroup = Tabs.Info:AddRightGroupbox("Changelog")
-noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.2 Fix + Add</b></font>", true)
+noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.5 Fix + Add</b></font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Add Fly</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Add Axial Velocity</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
-noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 17/10/2026</font>", true)
+noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 18/10/2026</font>", true)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
@@ -67,7 +69,7 @@ task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
         sound.SoundId = "rbxassetid://1548304764"
-        sound.Volume = 0.8
+        sound.Volume = 3.5
         sound.Parent = game:GetService("SoundService")
         sound:Play()
         task.delay(1.5, function()
@@ -545,117 +547,94 @@ local velocitySpeedVal = 6.5
 local targetWalkSpeed = 16
 local velocitySavedCanCollide = {}
 
-local velocityMode = "Press once"
-local velocityDropdown = FuncLeft:AddDropdown("VelocityModeDropdown", {
-    Text = "Velocity Mode",
-    Values = {"Press once", "Auto Velocity"},
-    Default = 1,
-    Tooltip = "Press once: Bat tat di chuyen | Auto Velocity: Tu dong kich hoat khi va cham tuong"
-})
-velocityDropdown:OnChanged(function(Value) velocityMode = Value end)
+local axialActive = false
+local axialSpeed = 6.0
+local axialConn = nil
+local axialSavedCanCollide = setmetatable({}, {__mode = "k"})
 
-local velocityToggle = FuncLeft:AddToggle("VelocityModeToggle", {
-    Text = "Velocity Manip", Default = false,
-    Tooltip = "Di Xuyen Vat Can tranh keo lai,di chuyen cham!"
-})
-velocityToggle:OnChanged(function(Value)
-    isVelocityActive = Value
-    if Value and velocityMode == "Press once" then
-        lockInputs(true)
-        local camera = Workspace.CurrentCamera
-        velocityConn = RunService.Heartbeat:Connect(function()
-            local currentTargetChar = LocalPlayer.Character
-            if not currentTargetChar then return end
-            local hrp = currentTargetChar:FindFirstChild("HumanoidRootPart")
-            local hum = currentTargetChar:FindFirstChildOfClass("Humanoid")
-            if not hrp or not hum then return end
-            for _, p in ipairs(currentTargetChar:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    if velocitySavedCanCollide[p] == nil then
-                        velocitySavedCanCollide[p] = {
-                            CanCollide = p.CanCollide, CanQuery = p.CanQuery, CanTouch = p.CanTouch
-                        }
-                    end
-                    p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+local function stopAxial()
+    axialActive = false
+    if axialConn then axialConn:Disconnect() axialConn = nil end
+    for part, data in pairs(axialSavedCanCollide) do
+        if part and part.Parent then
+            part.CanCollide = data.CanCollide
+            part.CanQuery = data.CanQuery
+            part.CanTouch = data.CanTouch
+        end
+    end
+    axialSavedCanCollide = setmetatable({}, {__mode = "k"})
+    safeUnlockCharacter()
+end
+
+local function startAxial()
+    stopAxial()
+    axialActive = true
+    local cam = Workspace.CurrentCamera
+    axialConn = RunService.Heartbeat:Connect(function()
+        if not axialActive then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                if axialSavedCanCollide[p] == nil then
+                    axialSavedCanCollide[p] = {
+                        CanCollide = p.CanCollide,
+                        CanQuery = p.CanQuery,
+                        CanTouch = p.CanTouch,
+                    }
                 end
-            end
-            for _, n in ipairs({"Collision","CollisionPart","CollisionClone","CollisionPartClone"}) do
-                local spPart = currentTargetChar:FindFirstChild(n)
-                if spPart and spPart:IsA("BasePart") then
-                    if velocitySavedCanCollide[spPart] == nil then
-                        velocitySavedCanCollide[spPart] = {
-                            CanCollide = spPart.CanCollide, CanQuery = spPart.CanQuery, CanTouch = spPart.CanTouch
-                        }
-                    end
-                    spPart.CanCollide = false; spPart.CanQuery = false; spPart.CanTouch = false
-                end
-            end
-            hum.WalkSpeed = 0
-            local look = camera.CFrame.LookVector
-            local dir = Vector3.new(look.X, 0, look.Z)
-            if dir.Magnitude > 0 then dir = dir.Unit else dir = Vector3.new(0,0,-1) end
-            hrp.AssemblyLinearVelocity = Vector3.new(dir.X * velocitySpeedVal, 0, dir.Z * velocitySpeedVal)
-            hrp.AssemblyAngularVelocity = Vector3.zero
-        end)
-        remoteThreadVel = task.spawn(function()
-            while isVelocityActive do
-                if not S.enabled then
-                    local cr = getCrouchRemote()
-                    if cr then pcall(function() cr:FireServer(false, true) end) end
-                end
-                task.wait(0.4)
-            end
-        end)
-    elseif Value and velocityMode == "Auto Velocity" then
-        lockInputs(true)
-        local camera = Workspace.CurrentCamera
-        velocityConn = RunService.Heartbeat:Connect(function()
-            local currentTargetChar = LocalPlayer.Character
-            if not currentTargetChar then return end
-            local hrp = currentTargetChar:FindFirstChild("HumanoidRootPart")
-            local hum = currentTargetChar:FindFirstChildOfClass("Humanoid")
-            if not hrp or not hum then return end
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {currentTargetChar}
-            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-            local hit = Workspace:Raycast(hrp.Position, hrp.CFrame.LookVector * 2, raycastParams)
-            if hit then
-                for _, p in ipairs(currentTargetChar:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        if velocitySavedCanCollide[p] == nil then
-                            velocitySavedCanCollide[p] = {
-                                CanCollide = p.CanCollide, CanQuery = p.CanQuery, CanTouch = p.CanTouch
-                            }
-                        end
-                        p.CanCollide = false
-                    end
-                end
-                hum.WalkSpeed = 0
-                local look = camera.CFrame.LookVector
-                local dir = Vector3.new(look.X, 0, look.Z)
-                if dir.Magnitude > 0 then dir = dir.Unit else dir = Vector3.new(0,0,-1) end
-                hrp.AssemblyLinearVelocity = Vector3.new(dir.X * velocitySpeedVal, 0, dir.Z * velocitySpeedVal)
-            else
-                for part, data in pairs(velocitySavedCanCollide) do
-                    if part and part.Parent then part.CanCollide = data.CanCollide end
-                end
-                hum.WalkSpeed = 16
-            end
-        end)
-    else
-        if velocityConn then velocityConn:Disconnect() velocityConn = nil end
-        if remoteThreadVel then task.cancel(remoteThreadVel) remoteThreadVel = nil end
-        for part, data in pairs(velocitySavedCanCollide) do
-            if part and part.Parent then
-                part.CanCollide = data.CanCollide
-                part.CanQuery = data.CanQuery
-                part.CanTouch = data.CanTouch
+                p.CanCollide = false
+                p.CanQuery = false
+                p.CanTouch = false
             end
         end
-        velocitySavedCanCollide = {}
-        safeUnlockCharacter()
+        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+            local sp = char:FindFirstChild(n)
+            if sp and sp:IsA("BasePart") then
+                if axialSavedCanCollide[sp] == nil then
+                    axialSavedCanCollide[sp] = {
+                        CanCollide = sp.CanCollide,
+                        CanQuery = sp.CanQuery,
+                        CanTouch = sp.CanTouch,
+                    }
+                end
+                sp.CanCollide = false
+                sp.CanQuery = false
+                sp.CanTouch = false
+            end
+        end
+
+        hum.WalkSpeed = 0
+        local look = cam.CFrame.LookVector
+        hrp.AssemblyLinearVelocity = look * axialSpeed
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
+    Text = "Axial Velocity", Default = false,
+    Tooltip = "Di chuyen theo cam,tranh game keo lui"
+})
+local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
+    Text = "Axial Speed", Default = 6.0, Min = 1.0, Max = 20.0, Rounding = 1, Compact = true
+})
+axialSlider:OnChanged(function(v) axialSpeed = v end)
+
+axialToggle:OnChanged(function(Value)
+    if Value then startAxial() else stopAxial() end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if axialActive then
+        task.wait(1)
+        if axialToggle.Value then startAxial() end
     end
 end)
+
 local noClipActive = false
 local noClipSavedCanCollide = {}
 local noClipToggle = FuncLeft:AddToggle("NoClipToggle", {
@@ -708,6 +687,111 @@ local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
 })
 positionSpoofToggle:OnChanged(function(Value)
     togglePositionSpoof(Value)
+end)
+
+local flyActive = false
+local flySpeed = 30
+local flyVelocity = nil
+local flyAttachment = nil
+local flyUpdateConn = nil
+local flyInputConn = nil
+
+local function stopFly()
+    flyActive = false
+    if flyUpdateConn then flyUpdateConn:Disconnect() flyUpdateConn = nil end
+    if flyInputConn then flyInputConn:Disconnect() flyInputConn = nil end
+    if flyVelocity then flyVelocity:Destroy() flyVelocity = nil end
+    if flyAttachment then flyAttachment:Destroy() flyAttachment = nil end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+            hum.WalkSpeed = 16
+        end
+    end
+end
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    stopFly()
+    flyActive = true
+    hum.PlatformStand = true
+    hum.WalkSpeed = 0
+
+    flyAttachment = Instance.new("Attachment")
+    flyAttachment.Name = "PaintFlyAttachment"
+    flyAttachment.Parent = hrp
+
+    flyVelocity = Instance.new("LinearVelocity")
+    flyVelocity.Name = "PaintFlyVelocity"
+    flyVelocity.Attachment0 = flyAttachment
+    flyVelocity.MaxForce = math.huge
+    flyVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+    flyVelocity.VectorVelocity = Vector3.zero
+    flyVelocity.Parent = hrp
+
+    local function getMoveVector()
+        local md = hum.MoveDirection
+        if md.Magnitude < 0.05 then return Vector3.zero end
+        return md.Unit
+    end
+
+    flyUpdateConn = RunService.RenderStepped:Connect(function()
+        if not flyActive or not flyVelocity or not flyVelocity.Parent then
+            stopFly()
+            return
+        end
+        local cam = Workspace.CurrentCamera
+        if not cam then return end
+        local move = getMoveVector()
+        local look = cam.CFrame.LookVector
+        local right = cam.CFrame.RightVector
+        local up = Vector3.new(0, 1, 0)
+
+        local moveDir = (look * move.Z + right * move.X)
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit
+        else
+            moveDir = Vector3.zero
+        end
+
+        local vertical = 0
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+            or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+            vertical = vertical - 1
+        end
+
+        local finalDir = (moveDir + up * vertical)
+        if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
+        flyVelocity.VectorVelocity = finalDir * flySpeed
+    end)
+end
+
+local flyToggle = FuncLeft:AddToggle("FlyToggle", {
+    Text = "Fly", Default = false,
+    Tooltip = "Giup Nhan Vat Bay"
+})
+local flySlider = FuncLeft:AddSlider("FlySpeedSlider", {
+    Text = "Fly Speed", Default = 30, Min = 25, Max = 70, Rounding = 1, Compact = true
+})
+flySlider:OnChanged(function(v) flySpeed = v end)
+
+flyToggle:OnChanged(function(Value)
+    if Value then startFly() else stopFly() end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if flyActive then
+        task.wait(1)
+        if flyToggle.Value then startFly() end
+    end
 end)
 
 local speedMethod = "Boost"
@@ -1128,7 +1212,7 @@ end
 
 local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
     Text = "Anti-Lag", Default = false,
-    Tooltip = "Boost FPS, giam do hoa, tranh lag. Khong dung script khac."
+    Tooltip = "Boost FPS, giam do hoa, tranh lag"
 })
 
 antiLagToggle:OnChanged(function(Value)
@@ -1603,7 +1687,8 @@ local INTERACT_BLACKLIST = {
     closet = true, wardrobe = true, stash = true, bed = true,
     seat = true, chair = true, bedroom = true, armchair = true,
     hide = true, locker = true, couch = true, sofa = true,
-    photo = true, picture = true, painting = true, frame = true, art = true, canvas = true, portrait = true
+    photo = true, picture = true, painting = true, frame = true,
+    art = true, canvas = true, portrait = true, poster = true,
 }
 
 local function isInteractBlacklisted(prompt, parent)
@@ -1620,7 +1705,7 @@ end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu dong tuong tac o khoa, item GAN nhat (5 studs). Nhanh, khong lag, khong tuong tac xa"
+    Tooltip = "Tu dong tuong tac xung quanh"
 })
 
 autoInteractToggle:OnChanged(function(Value)
@@ -1669,7 +1754,7 @@ autoInteractToggle:OnChanged(function(Value)
                             end
                         end
                     end)
-                    task.wait(0.15)
+                    task.wait(0.12)
                 end
             end)
         end
