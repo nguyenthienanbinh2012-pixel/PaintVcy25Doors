@@ -40,7 +40,7 @@ local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
     Visual = Window:AddTab("Visual", "eye"),
-    Misc = Window:AddTab("Misc", "swords"),
+    Misc = Window:AddTab("Misc", "Door"),
     Settings = Window:AddTab("Settings", "cog")
 }
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
@@ -154,6 +154,9 @@ task.spawn(function()
 end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
+local DisplayTab = Window:AddTab("Display", "eye")
+local DoorEspGroup = DisplayTab:AddLeftGroupbox("Door ESP")
+local KeyEspGroup = DisplayTab:AddRightGroupbox("Key & Entity")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
@@ -1871,8 +1874,9 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 2
+local autoInteractRange = 1.25 -- Chỉ tương tác trong 1.25 studs (gần mình)
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
+-- Chỉ chặn giường, ghế, tranh ảnh (để mở tủ/ngăn kéo bình thường)
 local INTERACT_BLACKLIST = {
     bed = true, seat = true, chair = true, armchair = true,
     couch = true, sofa = true,
@@ -1900,16 +1904,78 @@ local function preparePrompt(prompt)
         if prompt.RequiresLineOfSight then
             prompt.RequiresLineOfSight = false
         end
-        if prompt.MaxActivationDistance and prompt.MaxActivationDistance < 12 then
-            prompt.MaxActivationDistance = 12
+        if prompt.MaxActivationDistance and prompt.MaxActivationDistance < 10 then
+            prompt.MaxActivationDistance = 10
         end
     end)
 end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu dong Tuong tac "
+    Tooltip = "Tu Dong Tuong Tac"
 })
+
+autoInteractToggle:OnChanged(function(Value)
+    autoInteractActive = Value
+    if Value then
+        if not autoInteractThread then
+            autoInteractThread = task.spawn(function()
+                while autoInteractActive do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local hrp = char:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local pos = hrp.Position
+                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
+                                local nearestPrompt = nil
+                                local nearestDist = math.huge
+
+                                for _, part in ipairs(parts) do
+                                    if not part:IsDescendantOf(char) then
+                                        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+                                        if not prompt and part.Parent then
+                                            prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
+                                        end
+                                        if prompt and prompt.Enabled then
+                                            local parent = prompt.Parent
+                                            if parent and not isInteractBlacklisted(prompt, parent) then
+                                                local promptPos = part.Position
+                                                local dist = (pos - promptPos).Magnitude
+                                                if dist <= autoInteractRange and dist < nearestDist then
+                                                    nearestDist = dist
+                                                    nearestPrompt = prompt
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+
+                                if nearestPrompt then
+                                    preparePrompt(nearestPrompt)
+                                    local now = tick()
+                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
+                                        autoInteractCooldown[nearestPrompt] = now
+                                        pcall(function()
+                                            fireproximityprompt(nearestPrompt, 0)
+                                        end)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    task.wait(0.12)
+                end
+            end)
+        end
+    else
+        if autoInteractThread then
+            task.cancel(autoInteractThread)
+            autoInteractThread = nil
+        end
+        autoInteractCooldown = setmetatable({}, {__mode = "k"})
+    end
+end)
 
 autoInteractToggle:OnChanged(function(Value)
     autoInteractActive = Value
@@ -2345,6 +2411,264 @@ SettingsLeft:AddButton("Reload Character", function()
         end
     end
 end)
+local espColor = Color3.fromRGB(0, 255, 200)
+local doorHighlights = {}
+local doorBillboards = {}
+
+local doorEspToggle = DoorEspGroup:AddToggle("DoorEspToggle", {
+    Text = "Door Tracker (ESP)", Default = false,
+    Tooltip = "Hien thi cua hien tai va tiep theo"
+})
+
+DoorEspGroup:AddLabel("ESP Color"):AddColorPicker("DoorEspColor", {
+    Default = Color3.fromRGB(0, 255, 200),
+    Title = "Mau ESP",
+    Callback = function(v) 
+        espColor = v 
+        for _, hl in pairs(doorHighlights) do
+            if hl then
+                hl.FillColor = v
+                hl.OutlineColor = v
+            end
+        end
+        for _, bb in pairs(doorBillboards) do
+            if bb and bb:FindFirstChild("TextLabel") then
+                bb.TextLabel.TextColor3 = v
+            end
+        end
+    end
+})
+
+local function checkDoorLocked(door)
+    if not door then return false end
+    if door:GetAttribute("Locked") or door:GetAttribute("IsLocked") then return true end
+    if door.Parent and door.Parent:GetAttribute("Locked") then return true end
+    for _, v in pairs(door:GetDescendants()) do
+        local n = v.Name:lower()
+        if (v:IsA("BasePart") or v:IsA("Model")) and (n:find("lock") or n:find("padlock") or n:find("code")) then
+            if (v:IsA("BasePart") and v.Transparency ~= 1) or v:IsA("Model") then return true end
+        end
+        if v:IsA("BoolValue") and (n:find("lock") and v.Value) then return true end
+        if v:IsA("NumberValue") and (n:find("lock") and v.Value > 0) then return true end
+    end
+    return false
+end
+
+local function checkDoorOpen(door)
+    if not door then return false end
+    if door:GetAttribute("Opened") or door:GetAttribute("IsOpen") then return true end
+    for _, v in pairs(door:GetDescendants()) do
+        local n = v.Name:lower()
+        if v:IsA("BoolValue") and (n:find("open") or n:find("unlock")) and v.Value then return true end
+        if v.Name == "Opened" or v.Name == "IsOpen" then
+            if (v:IsA("BoolValue") and v.Value) or (v:IsA("NumberValue") and v.Value > 0) then return true end
+        end
+    end
+    return false
+end
+
+local doorEspConn = nil
+doorEspToggle:OnChanged(function(Value)
+    if Value then
+        local tick = 0
+        doorEspConn = RunService.Heartbeat:Connect(function()
+            tick = tick + 1
+            if tick % 6 ~= 0 then return end
+            
+            local currentRoom = LocalPlayer:GetAttribute("CurrentRoom")
+            if not currentRoom then return end
+            
+            local roomNum = tonumber(currentRoom)
+            local roomObj = Workspace.CurrentRooms:FindFirstChild(tostring(roomNum))
+            local nextRoomObj = Workspace.CurrentRooms:FindFirstChild(tostring(roomNum + 1))
+            
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            local function updateDoor(door, id, isNext)
+                if not door then return end
+                local part = door:FindFirstChild("Door") or door:FindFirstChildWhichIsA("BasePart")
+                if not part then return end
+                
+                if not doorHighlights[id] then
+                    doorHighlights[id] = Instance.new("Highlight")
+                    doorHighlights[id].FillTransparency = 0.7
+                    doorHighlights[id].OutlineTransparency = 0
+                    doorHighlights[id].DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    doorHighlights[id].Parent = door
+                end
+                if not doorBillboards[id] then
+                    doorBillboards[id] = Instance.new("BillboardGui")
+                    doorBillboards[id].Size = UDim2.new(0, 120, 0, 40)
+                    doorBillboards[id].StudsOffset = Vector3.new(0, 3, 0)
+                    doorBillboards[id].AlwaysOnTop = true
+                    local tl = Instance.new("TextLabel")
+                    tl.Size = UDim2.new(1, 0, 1, 0)
+                    tl.BackgroundTransparency = 1
+                    tl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    tl.TextStrokeTransparency = 0
+                    tl.TextSize = 16
+                    tl.Font = Enum.Font.GothamBold
+                    tl.Parent = doorBillboards[id]
+                    doorBillboards[id].Parent = part
+                end
+                
+                local dist = math.floor((hrp.Position - part.Position).Magnitude)
+                local locked = checkDoorLocked(door)
+                local isOpen = checkDoorOpen(door)
+                
+                local lockStr = locked and " [Locked]" or ""
+                local openStr = isOpen and " [Opened]" or ""
+                local prefix = isNext and "Next Door " or "Door "
+                
+                doorBillboards[id].TextLabel.Text = string.format("%s%s%s%s\n[%dm]", prefix, tostring(door.Parent.Name), openStr, lockStr, dist)
+                
+                if locked then
+                    doorBillboards[id].TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                    doorHighlights[id].FillColor = Color3.fromRGB(255, 50, 50)
+                    doorHighlights[id].OutlineColor = Color3.fromRGB(255, 50, 50)
+                elseif isOpen then
+                    doorBillboards[id].TextLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
+                    doorHighlights[id].FillColor = Color3.fromRGB(50, 255, 50)
+                    doorHighlights[id].OutlineColor = Color3.fromRGB(50, 255, 50)
+                else
+                    doorBillboards[id].TextLabel.TextColor3 = espColor
+                    doorHighlights[id].FillColor = espColor
+                    doorHighlights[id].OutlineColor = espColor
+                end
+            end
+            
+            if roomObj and roomObj:FindFirstChild("Door") then updateDoor(roomObj.Door, 1, false) end
+            if nextRoomObj and nextRoomObj:FindFirstChild("Door") then updateDoor(nextRoomObj.Door, 2, true) end
+        end)
+    else
+        if doorEspConn then doorEspConn:Disconnect() doorEspConn = nil end
+        for id, hl in pairs(doorHighlights) do if hl then hl:Destroy() end end
+        for id, bb in pairs(doorBillboards) do if bb then bb:Destroy() end end
+        doorHighlights = {}
+        doorBillboards = {}
+    end
+end)
+
+local keyEspToggle = KeyEspGroup:AddToggle("KeyEspToggle", {
+    Text = "DoorKey ESP", Default = false,
+    Tooltip = "Hien thi chi chia khoa mau vang"
+})
+
+local entityEspToggle = KeyEspGroup:AddToggle("EntityEspToggle", {
+    Text = "Entity ESP", Default = false,
+    Tooltip = "Hien thi quai vat mau do"
+})
+
+local keyEspConn = nil
+local entityEspConn = nil
+local keyCache = setmetatable({}, {__mode = "k"})
+local entityCache = setmetatable({}, {__mode = "k"})
+
+-- LOGIC KEY ESP
+keyEspToggle:OnChanged(function(Value)
+    if Value then
+        local function checkKey(obj)
+            if not obj or not obj.Parent then return end
+            if keyCache[obj] then return end
+            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt and prompt.Enabled then
+                local name = tostring(obj.Name):lower()
+                if name:find("key") then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(255, 200, 0)
+                    hl.OutlineColor = Color3.fromRGB(255, 200, 0)
+                    hl.Parent = obj
+                    
+                    local bb = Instance.new("BillboardGui")
+                    bb.Size = UDim2.new(0, 100, 0, 30)
+                    bb.StudsOffset = Vector3.new(0, 2, 0)
+                    bb.AlwaysOnTop = true
+                    local tl = Instance.new("TextLabel")
+                    tl.Size = UDim2.new(1, 0, 1, 0)
+                    tl.BackgroundTransparency = 1
+                    tl.Text = "Key"
+                    tl.TextColor3 = Color3.fromRGB(255, 200, 0)
+                    tl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    tl.TextStrokeTransparency = 0
+                    tl.Font = Enum.Font.GothamBold
+                    tl.Parent = bb
+                    
+                    local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
+                    if part then bb.Parent = part end
+                    keyCache[obj] = {hl = hl, bb = bb}
+                end
+            end
+        end
+        
+        for _, v in ipairs(Workspace:GetDescendants()) do
+            if v.Name:lower():find("key") then checkKey(v) end
+        end
+        keyEspConn = Workspace.DescendantAdded:Connect(function(v)
+            if v.Name:lower():find("key") then task.defer(function() checkKey(v) end) end
+        end)
+    else
+        if keyEspConn then keyEspConn:Disconnect() keyEspConn = nil end
+        for obj, data in pairs(keyCache) do
+            if data.hl then data.hl:Destroy() end
+            if data.bb then data.bb:Destroy() end
+        end
+        keyCache = setmetatable({}, {__mode = "k"})
+    end
+end)
+
+-- LOGIC ENTITY ESP
+entityEspToggle:OnChanged(function(Value)
+    if Value then
+        local targets = {"rush", "ambush", "seek", "figure", "screech", "dread", "timothy", "halt", "a-90", "jack"}
+        local function checkEntity(obj)
+            if not obj or not obj.Parent then return end
+            if entityCache[obj] then return end
+            if not obj:IsA("Model") then return end
+            
+            local name = tostring(obj.Name):lower()
+            for _, t in ipairs(targets) do
+                if name:find(t) then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+                    hl.Parent = obj
+                    
+                    local bb = Instance.new("BillboardGui")
+                    bb.Size = UDim2.new(0, 100, 0, 30)
+                    bb.StudsOffset = Vector3.new(0, 3, 0)
+                    bb.AlwaysOnTop = true
+                    local tl = Instance.new("TextLabel")
+                    tl.Size = UDim2.new(1, 0, 1, 0)
+                    tl.BackgroundTransparency = 1
+                    tl.Text = obj.Name:upper()
+                    tl.TextColor3 = Color3.fromRGB(255, 50, 50)
+                    tl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    tl.TextStrokeTransparency = 0
+                    tl.Font = Enum.Font.GothamBold
+                    tl.Parent = bb
+                    
+                    local part = obj:FindFirstChildWhichIsA("BasePart")
+                    if part then bb.Parent = part end
+                    entityCache[obj] = {hl = hl, bb = bb}
+                    break
+                end
+            end
+        end
+        
+        entityEspConn = Workspace.DescendantAdded:Connect(function(v)
+            if v:IsA("Model") then task.defer(function() checkEntity(v) end) end
+        end)
+    else
+        if entityEspConn then entityEspConn:Disconnect() entityEspConn = nil end
+        for obj, data in pairs(entityCache) do
+            if data.hl then data.hl:Destroy() end
+            if data.bb then data.bb:Destroy() end
+        end
+        entityCache = setmetatable({}, {__mode = "k"})
+    end
+end)
 
 Obsidian:OnUnload(function()
     safeUnlockCharacter()
@@ -2373,6 +2697,13 @@ Obsidian:OnUnload(function()
     if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
     if remoteThreadVel then task.cancel(remoteThreadVel) end
     if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
+    if doorEspConn then doorEspConn:Disconnect() end
+if keyEspConn then keyEspConn:Disconnect() end
+if entityEspConn then entityEspConn:Disconnect() end
+for _, hl in pairs(doorHighlights) do if hl then hl:Destroy() end end
+for _, bb in pairs(doorBillboards) do if bb then bb:Destroy() end end
+for _, data in pairs(keyCache) do if data.hl then data.hl:Destroy() end if data.bb then data.bb:Destroy() end end
+for _, data in pairs(entityCache) do if data.hl then data.hl:Destroy() end if data.bb then data.bb:Destroy() end end
     table.clear(notifiedSet)
     table.clear(velocitySavedCanCollide)
     table.clear(noClipSavedCanCollide)
