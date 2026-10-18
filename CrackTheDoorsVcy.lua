@@ -935,8 +935,6 @@ end)
 local seeThroughActive = false
 local seeThroughVal = 0.5
 local seeThroughConn = nil
-local seeThroughToggle = VisualLeft:AddToggle("SeeThroughHidingToggle", {
-
 local seeThroughTick = 0
 local cachedWardrobes = {}
 local cacheBuilt = false
@@ -1072,177 +1070,6 @@ fullBrightToggle:OnChanged(function(Value)
 end)
 
 local antiLagActive = false
-local antiLagConn = nil
-local antiLagDescConn = nil
-local originalLightingState = {}
-local originalPostEffects = {}
-local originalPartProps = {}
-
-local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
-    Text = "Anti-Lag", Default = false,
-    Tooltip = "Boost FPS Tranh Lag giam Do hoa!"
-})
-antiLagToggle:OnChanged(function(Value)
-    antiLagActive = Value
-    if Value then
-        originalLightingState = {
-            GlobalShadows = Lighting.GlobalShadows,
-            Brightness = Lighting.Brightness,
-            ClockTime = Lighting.ClockTime,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            FogEnd = Lighting.FogEnd,
-            ColorShift_Top = Lighting.ColorShift_Top,
-            ColorShift_Bottom = Lighting.ColorShift_Bottom
-        }
-        Lighting.GlobalShadows = false
-        Lighting.Brightness = 1
-        Lighting.ClockTime = 12
-        for _, obj in ipairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") then
-                originalPostEffects[obj] = obj.Enabled
-                obj.Enabled = false
-            end
-        end
-        local count = 0
-        task.spawn(function()
-            for _, child in ipairs(Workspace:GetDescendants()) do
-                if not antiLagActive then break end
-                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" and child.Name ~= "Baseplate" then
-                    if originalPartProps[child] == nil then
-                        originalPartProps[child] = {
-                            Material = child.Material,
-                            CastShadow = child.CastShadow,
-                            Reflectance = child.Reflectance
-                        }
-                    end
-                    child.Material = Enum.Material.SmoothPlastic
-                    child.CastShadow = false
-                    child.Reflectance = 0
-                elseif child:IsA("ParticleEmitter") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles") then
-                    child.Enabled = false
-                end
-                count = count + 1
-                if count % 150 == 0 then
-                    RunService.Heartbeat:Wait()
-                end
-            end
-        end)
-        antiLagDescConn = Workspace.DescendantAdded:Connect(function(desc)
-            if not antiLagActive then return end
-            task.defer(function()
-                pcall(function()
-                    if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
-                        if originalPartProps[desc] == nil then
-                            originalPartProps[desc] = {
-                                Material = desc.Material,
-                                CastShadow = desc.CastShadow,
-                                Reflectance = desc.Reflectance
-                            }
-                        end
-local antiLagActive = false
-local antiLagDescConn = nil
-local originalLightingState = {}
-local originalPostEffects = {}
-local originalPartProps = setmetatable({}, {__mode = "k"})
-local antiLagProcessed = setmetatable({}, {__mode = "k"})
-
-local function applyAntiLagToPart(part)
-    if not part or not part.Parent then return end
-    if antiLagProcessed[part] then return end
-    antiLagProcessed[part] = true
-    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
-    if originalPartProps[part] == nil then
-        originalPartProps[part] = {
-            Material = part.Material,
-            CastShadow = part.CastShadow,
-            Reflectance = part.Reflectance,
-            TextureID = part:IsA("MeshPart") and part.TextureID or nil,
-        }
-    end
-    part.Material = Enum.Material.SmoothPlastic
-    part.CastShadow = false
-    part.Reflectance = 0
-    if part:IsA("MeshPart") and part.TextureID ~= "" then
-        part.TextureID = ""
-    end
-
-local function applyAntiLagToPart(part)
-    if not part or not part.Parent then return end
-    if antiLagProcessed[part] then return end
-    antiLagProcessed[part] = true
-    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
-    if originalPartProps[part] == nil then
-        originalPartProps[part] = {
-            Material = part.Material,
-            CastShadow = part.CastShadow,
-            Reflectance = part.Reflectance,
-            TextureID = part:IsA("MeshPart") and part.TextureID or nil,
-        }
-    end
-    part.Material = Enum.Material.SmoothPlastic
-    part.CastShadow = false
-    part.Reflectance = 0
-    if part:IsA("MeshPart") and part.TextureID ~= "" then
-        part.TextureID = ""
-    end
-end
-
-local function applyAntiLagToEffect(effect)
-    if not effect or not effect.Parent then return end
-    if antiLagProcessed[effect] then return end
-    antiLagProcessed[effect] = true
-    if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
-        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
-        if originalPartProps[effect] == nil then
-            originalPartProps[effect] = {Enabled = effect.Enabled}
-        end
-        effect.Enabled = false
-    end
-end
-
-local function restoreAntiLag()
-    for obj, data in pairs(originalPartProps) do
-        if obj and obj.Parent then
-            pcall(function()
-                if data.Material ~= nil then obj.Material = data.Material end
-                if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
-                if data.Reflectance ~= nil then obj.Reflectance = data.Reflectance end
-                if data.TextureID and obj:IsA("MeshPart") then obj.TextureID = data.TextureID end
-                if data.Enabled ~= nil then obj.Enabled = data.Enabled end
-            end)
-        end
-    end
-    originalPartProps = setmetatable({}, {__mode = "k"})
-    antiLagProcessed = setmetatable({}, {__mode = "k"})
-end
-
-local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
-    Text = "Anti-Lag", Default = false,
-    Tooltip = "Boost FPS,Giam Do hoa Tranh Lag!"
-})
-
-antiLagToggle:OnChanged(function(Value)
-    antiLagActive = Value
-    if Value then
-        originalLightingState = {
-            GlobalShadows = Lighting.GlobalShadows,
-            Brightness = Lighting.Brightness,
-            ClockTime = Lighting.ClockTime,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            FogEnd = Lighting.FogEnd,
-            ColorShift_Top = Lighting.ColorShift_Top,
-            ColorShift_Bottom = Lighting.ColorShift_Bottom,
-        }
-        Lighting.GlobalShadows = false
-        Lighting.Brightness = 1
-        Lighting.ClockTime = 12
-
-        for _, obj in ipairs(Lighting:GetChildren()) do
-            if obj:IsA("PostEffect") then
-                originalPostEffects[obj] = obj.Enabled
-local antiLagActive = false
 local antiLagDescConn = nil
 local originalLightingState = {}
 local originalPostEffects = {}
@@ -1301,7 +1128,7 @@ end
 
 local antiLagToggle = MiscLeft:AddToggle("AntiLagToggle", {
     Text = "Anti-Lag", Default = false,
-    Tooltip = "Boost FPS,Giam Do hoa Tranh Lag!"
+    Tooltip = "Boost FPS, giam do hoa, tranh lag. Khong dung script khac."
 })
 
 antiLagToggle:OnChanged(function(Value)
