@@ -154,15 +154,15 @@ task.spawn(function()
 end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
-local DisplayTab = Window:AddTab("Display", "eye")
-local DoorEspGroup = DisplayTab:AddLeftGroupbox("Door ESP")
-local KeyEspGroup = DisplayTab:AddRightGroupbox("Key & Entity")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
+local DisplayTab = Window:AddTab("Display", "eye")
+local DoorEspGroup = DisplayTab:AddLeftGroupbox("Door ESP")
+local KeyEspGroup = DisplayTab:AddRightGroupbox("Key & Entity")
 local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
 task.spawn(function()
     pcall(function()
@@ -1372,7 +1372,7 @@ local function applyAntiLagToPart(part)
     if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
     end
-    end
+end
 
 local function applyAntiLagToEffect(effect)
     if not effect or not effect.Parent then return end
