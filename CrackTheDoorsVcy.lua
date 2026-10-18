@@ -15,6 +15,10 @@ for _, url in ipairs(urls) do
     end
 end
 
+if not Obsidian then
+    error("Không thể tải Obsidian từ bất kỳ nguồn nào! Kiểm tra mạng hoặc Executor.")
+end
+
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -1372,7 +1376,7 @@ local function applyAntiLagToPart(part)
     if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
     end
-    end
+end
 local function applyAntiLagToEffect(effect)
     if not effect or not effect.Parent then return end
     if antiLagProcessed[effect] then return end
