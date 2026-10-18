@@ -550,19 +550,22 @@ local velocitySavedCanCollide = {}
 local axialActive = false
 local axialSpeed = 6.0
 local axialConn = nil
-local axialSavedCanCollide = setmetatable({}, {__mode = "k"})
+local axialSaved = setmetatable({}, {__mode = "k"})
 
 local function stopAxial()
     axialActive = false
     if axialConn then axialConn:Disconnect() axialConn = nil end
-    for part, data in pairs(axialSavedCanCollide) do
+    for part, data in pairs(axialSaved) do
         if part and part.Parent then
-            part.CanCollide = data.CanCollide
-            part.CanQuery = data.CanQuery
-            part.CanTouch = data.CanTouch
+            pcall(function()
+                part.CanCollide = data.CanCollide
+                part.CanQuery = data.CanQuery
+                part.CanTouch = data.CanTouch
+                part.Transparency = data.Transparency
+            end)
         end
     end
-    axialSavedCanCollide = setmetatable({}, {__mode = "k"})
+    axialSaved = setmetatable({}, {__mode = "k"})
     safeUnlockCharacter()
 end
 
@@ -580,47 +583,52 @@ local function startAxial()
 
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
-                if axialSavedCanCollide[p] == nil then
-                    axialSavedCanCollide[p] = {
+                if axialSaved[p] == nil then
+                    axialSaved[p] = {
                         CanCollide = p.CanCollide,
                         CanQuery = p.CanQuery,
                         CanTouch = p.CanTouch,
+                        Transparency = p.Transparency,
                     }
                 end
                 p.CanCollide = false
                 p.CanQuery = false
                 p.CanTouch = false
+                p.Transparency = 1
             end
         end
         for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
             local sp = char:FindFirstChild(n)
             if sp and sp:IsA("BasePart") then
-                if axialSavedCanCollide[sp] == nil then
-                    axialSavedCanCollide[sp] = {
+                if axialSaved[sp] == nil then
+                    axialSaved[sp] = {
                         CanCollide = sp.CanCollide,
                         CanQuery = sp.CanQuery,
                         CanTouch = sp.CanTouch,
+                        Transparency = sp.Transparency,
                     }
                 end
                 sp.CanCollide = false
                 sp.CanQuery = false
                 sp.CanTouch = false
+                sp.Transparency = 1
             end
         end
 
         hum.WalkSpeed = 0
         local look = cam.CFrame.LookVector
-        hrp.AssemblyLinearVelocity = look * axialSpeed
+        hrp.CFrame = hrp.CFrame + look * (axialSpeed * (1/60))
+        hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
 end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
-    Tooltip = "Di chuyen theo cam,tranh game keo lui"
+    Tooltip = "Di chuyen 6.0 theo huong cam, xuyen vat can tranh keo lui"
 })
 local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
-    Text = "Axial Speed", Default = 6.0, Min = 1.0, Max = 20.0, Rounding = 1, Compact = true
+    Text = "Axial Speed", Default = 6.0, Min = 6.0, Max = 8.0, Rounding = 1, Compact = true
 })
 axialSlider:OnChanged(function(v) axialSpeed = v end)
 
@@ -639,7 +647,7 @@ local noClipActive = false
 local noClipSavedCanCollide = {}
 local noClipToggle = FuncLeft:AddToggle("NoClipToggle", {
     Text = "No Clip", Default = false,
-    Tooltip = "Di xuyen qua vat the va khoi phuc 100% trang thai cu"
+    Tooltip = "Di xuyen qua vat the nho"
 })
 noClipToggle:OnChanged(function(Value)
     noClipActive = Value
@@ -736,10 +744,18 @@ local function startFly()
     flyVelocity.VectorVelocity = Vector3.zero
     flyVelocity.Parent = hrp
 
-    local function getMoveVector()
+    local function getCameraRelativeInput()
         local md = hum.MoveDirection
-        if md.Magnitude < 0.05 then return Vector3.zero end
-        return md.Unit
+        if md.Magnitude < 0.05 then return 0, 0 end
+        local cam = Workspace.CurrentCamera
+        if not cam then return 0, 0 end
+        local flatLook = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+        if flatLook.Magnitude > 0 then flatLook = flatLook.Unit end
+        local flatRight = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z)
+        if flatRight.Magnitude > 0 then flatRight = flatRight.Unit end
+        local forward = md:Dot(flatLook)
+        local strafe = md:Dot(flatRight)
+        return forward, strafe
     end
 
     flyUpdateConn = RunService.RenderStepped:Connect(function()
@@ -749,17 +765,14 @@ local function startFly()
         end
         local cam = Workspace.CurrentCamera
         if not cam then return end
-        local move = getMoveVector()
+
+        local forward, strafe = getCameraRelativeInput()
         local look = cam.CFrame.LookVector
         local right = cam.CFrame.RightVector
         local up = Vector3.new(0, 1, 0)
 
-        local moveDir = (look * move.Z + right * move.X)
-        if moveDir.Magnitude > 0 then
-            moveDir = moveDir.Unit
-        else
-            moveDir = Vector3.zero
-        end
+        local moveDir = (look * forward + right * strafe)
+        if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
 
         local vertical = 0
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
@@ -779,7 +792,7 @@ local flyToggle = FuncLeft:AddToggle("FlyToggle", {
     Tooltip = "Giup Nhan Vat Bay"
 })
 local flySlider = FuncLeft:AddSlider("FlySpeedSlider", {
-    Text = "Fly Speed", Default = 30, Min = 25, Max = 70, Rounding = 1, Compact = true
+    Text = "Fly Speed", Default = 30, Min = 25, Max = 80, Rounding = 1, Compact = true
 })
 flySlider:OnChanged(function(v) flySpeed = v end)
 
@@ -1163,8 +1176,10 @@ local antiLagProcessed = setmetatable({}, {__mode = "k"})
 local function applyAntiLagToPart(part)
     if not part or not part.Parent then return end
     if antiLagProcessed[part] then return end
-    antiLagProcessed[part] = true
     if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
+    local char = LocalPlayer.Character
+    if char and part:IsDescendantOf(char) then return end
+    antiLagProcessed[part] = true
     if originalPartProps[part] == nil then
         originalPartProps[part] = {
             Material = part.Material,
@@ -1179,7 +1194,7 @@ local function applyAntiLagToPart(part)
     if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
     end
-end
+    end
 
 local function applyAntiLagToEffect(effect)
     if not effect or not effect.Parent then return end
@@ -1681,12 +1696,11 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 5
+local autoInteractRange = 2
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 local INTERACT_BLACKLIST = {
-    closet = true, wardrobe = true, stash = true, bed = true,
-    seat = true, chair = true, bedroom = true, armchair = true,
-    hide = true, locker = true, couch = true, sofa = true,
+    bed = true, seat = true, chair = true, armchair = true,
+    couch = true, sofa = true,
     photo = true, picture = true, painting = true, frame = true,
     art = true, canvas = true, portrait = true, poster = true,
 }
@@ -1703,10 +1717,86 @@ local function isInteractBlacklisted(prompt, parent)
     return false
 end
 
+local function preparePrompt(prompt)
+    pcall(function()
+        if prompt.HoldDuration and prompt.HoldDuration > 0 then
+            prompt.HoldDuration = 0
+        end
+        if prompt.RequiresLineOfSight then
+            prompt.RequiresLineOfSight = false
+        end
+        if prompt.MaxActivationDistance and prompt.MaxActivationDistance < 12 then
+            prompt.MaxActivationDistance = 12
+        end
+    end)
+end
+
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu dong tuong tac xung quanh"
+    Tooltip = "Tu dong Tuong tac "
 })
+
+autoInteractToggle:OnChanged(function(Value)
+    autoInteractActive = Value
+    if Value then
+        if not autoInteractThread then
+            autoInteractThread = task.spawn(function()
+                while autoInteractActive do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local hrp = char:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local pos = hrp.Position
+                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
+                                local nearestPrompt = nil
+                                local nearestDist = math.huge
+
+                                for _, part in ipairs(parts) do
+                                    if not part:IsDescendantOf(char) then
+                                        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+                                        if not prompt and part.Parent then
+                                            prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
+                                        end
+                                        if prompt and prompt.Enabled then
+                                            local parent = prompt.Parent
+                                            if parent and not isInteractBlacklisted(prompt, parent) then
+                                                local promptPos = part.Position
+                                                local dist = (pos - promptPos).Magnitude
+                                                if dist <= autoInteractRange and dist < nearestDist then
+                                                    nearestDist = dist
+                                                    nearestPrompt = prompt
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+
+                                if nearestPrompt then
+                                    preparePrompt(nearestPrompt)
+                                    local now = tick()
+                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
+                                        autoInteractCooldown[nearestPrompt] = now
+                                        pcall(function()
+                                            fireproximityprompt(nearestPrompt, 0)
+                                        end)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    task.wait(0.12)
+                end
+            end)
+        end
+    else
+        if autoInteractThread then
+            task.cancel(autoInteractThread)
+            autoInteractThread = nil
+        end
+        autoInteractCooldown = setmetatable({}, {__mode = "k"})
+    end
+end)
 
 autoInteractToggle:OnChanged(function(Value)
     autoInteractActive = Value
