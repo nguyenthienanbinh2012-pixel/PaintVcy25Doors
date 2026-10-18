@@ -1877,9 +1877,9 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 1.25 -- Chỉ tương tác trong 1.25 studs (gần mình)
+local autoInteractRange = 1.2
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
--- Chỉ chặn giường, ghế, tranh ảnh (để mở tủ/ngăn kéo bình thường)
+
 local INTERACT_BLACKLIST = {
     bed = true, seat = true, chair = true, armchair = true,
     couch = true, sofa = true,
@@ -1956,127 +1956,6 @@ autoInteractToggle:OnChanged(function(Value)
 
                                 if nearestPrompt then
                                     preparePrompt(nearestPrompt)
-                                    local now = tick()
-                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
-                                        autoInteractCooldown[nearestPrompt] = now
-                                        pcall(function()
-                                            fireproximityprompt(nearestPrompt, 0)
-                                        end)
-                                    end
-                                end
-                            end
-                        end
-                    end)
-                    task.wait(0.12)
-                end
-            end)
-        end
-    else
-        if autoInteractThread then
-            task.cancel(autoInteractThread)
-            autoInteractThread = nil
-        end
-        autoInteractCooldown = setmetatable({}, {__mode = "k"})
-    end
-end)
-
-autoInteractToggle:OnChanged(function(Value)
-    autoInteractActive = Value
-    if Value then
-        if not autoInteractThread then
-            autoInteractThread = task.spawn(function()
-                while autoInteractActive do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local hrp = char:FindFirstChild("HumanoidRootPart")
-                            if hrp then
-                                local pos = hrp.Position
-                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
-                                local nearestPrompt = nil
-                                local nearestDist = math.huge
-
-                                for _, part in ipairs(parts) do
-                                    if not part:IsDescendantOf(char) then
-                                        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
-                                        if not prompt and part.Parent then
-                                            prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
-                                        end
-                                        if prompt and prompt.Enabled then
-                                            local parent = prompt.Parent
-                                            if parent and not isInteractBlacklisted(prompt, parent) then
-                                                local promptPos = part.Position
-                                                local dist = (pos - promptPos).Magnitude
-                                                if dist <= autoInteractRange and dist < nearestDist then
-                                                    nearestDist = dist
-                                                    nearestPrompt = prompt
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-
-                                if nearestPrompt then
-                                    preparePrompt(nearestPrompt)
-                                    local now = tick()
-                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
-                                        autoInteractCooldown[nearestPrompt] = now
-                                        pcall(function()
-                                            fireproximityprompt(nearestPrompt, 0)
-                                        end)
-                                    end
-                                end
-                            end
-                        end
-                    end)
-                    task.wait(0.12)
-                end
-            end)
-        end
-    else
-        if autoInteractThread then
-            task.cancel(autoInteractThread)
-            autoInteractThread = nil
-        end
-        autoInteractCooldown = setmetatable({}, {__mode = "k"})
-    end
-end)
-
-autoInteractToggle:OnChanged(function(Value)
-    autoInteractActive = Value
-    if Value then
-        if not autoInteractThread then
-            autoInteractThread = task.spawn(function()
-                while autoInteractActive do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local hrp = char:FindFirstChild("HumanoidRootPart")
-                            if hrp then
-                                local pos = hrp.Position
-                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
-                                local nearestPrompt = nil
-                                local nearestDist = math.huge
-
-                                for _, part in ipairs(parts) do
-                                    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
-                                    if not prompt and part.Parent then
-                                        prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
-                                    end
-                                    if prompt and prompt.Enabled then
-                                        local parent = prompt.Parent
-                                        if parent and not isInteractBlacklisted(prompt, parent) then
-                                            local promptPos = part.Position
-                                            local dist = (pos - promptPos).Magnitude
-                                            if dist <= autoInteractRange and dist < nearestDist then
-                                                nearestDist = dist
-                                                nearestPrompt = prompt
-                                            end
-                                        end
-                                    end
-                                end
-
-                                if nearestPrompt then
                                     local now = tick()
                                     if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
                                         autoInteractCooldown[nearestPrompt] = now
