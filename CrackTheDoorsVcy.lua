@@ -288,8 +288,6 @@ AntiRight:AddToggle("AntiDupeVacuumToggle", {
 end)
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
 local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
-local DoorEspGroup = Tabs.Display:AddLeftGroupbox("Door ESP")
-local KeyEspGroup = Tabs.Display:AddRightGroupbox("Key & Entity")
 task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
@@ -308,7 +306,7 @@ task.spawn(function()
         local thumb = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
         InfoGroup:AddImage("Avatar", {
             Image = thumb,
-            Height = 100,
+            Height = 110,
             Tooltip = "Your Avatar"
         })
     end)
