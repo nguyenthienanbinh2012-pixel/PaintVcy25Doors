@@ -172,7 +172,7 @@ task.spawn(function()
     pcall(function()
         local sound = Instance.new("Sound")
         sound.SoundId = "rbxassetid://1548304764"
-        sound.Volume = 3.5
+        sound.Volume = 4
         sound.Parent = game:GetService("SoundService")
         sound:Play()
         task.delay(1.5, function()
@@ -880,25 +880,29 @@ local function startFly()
 
         local forward, strafe = getCameraRelativeInput()
         local look = cam.CFrame.LookVector
-        local right = cam.CFrame.RightVector
-        local up = Vector3.new(0, 1, 0)
+local right = cam.CFrame.RightVector
 
-        local moveDir = (look * forward + right * strafe)
-        if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
-
-        local vertical = 0
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-            or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-            vertical = vertical - 1
-        end
-
-        local finalDir = (moveDir + up * vertical)
-        if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
-        flyVelocity.VectorVelocity = finalDir * flySpeed
-    end)
+local moveDir = Vector3.zero
+if forward \~= 0 or strafe \~= 0 then
+    moveDir = (look * forward + right * strafe)
+    if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
 end
 
+local vertical = 0
+if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
+if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+    or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+    vertical = vertical - 1
+end
+
+-- Khi đang di chuyển và nhìn xuống/lên → bay theo hướng cam
+local finalDir = moveDir
+if vertical \~= 0 then
+    finalDir = finalDir + Vector3.new(0, vertical, 0)
+end
+
+if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
+flyVelocity.VectorVelocity = finalDir * flySpeed
 local flyToggle = FuncLeft:AddToggle("FlyToggle", {
     Text = "Fly", Default = false,
     Tooltip = "Giup Nhan Vat Bay"
@@ -1878,7 +1882,7 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 1.2
+local autoInteractRange = 4
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
 local INTERACT_BLACKLIST = {
@@ -1937,10 +1941,10 @@ autoInteractToggle:OnChanged(function(Value)
 
                                 for _, part in ipairs(parts) do
                                     if not part:IsDescendantOf(char) then
-                                        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
-                                        if not prompt and part.Parent then
-                                            prompt = part.Parent:FindFirstChildOfClass("ProximityPrompt")
-                                        end
+                                                        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+if not prompt and part.Parent then
+    prompt = part.Parent:FindFirstChildWhichIsA("ProximityPrompt", true)
+                                                        end
                                         if prompt and prompt.Enabled then
                                             local parent = prompt.Parent
                                             if parent and not isInteractBlacklisted(prompt, parent) then
