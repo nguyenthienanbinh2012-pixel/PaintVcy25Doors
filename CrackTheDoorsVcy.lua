@@ -56,8 +56,6 @@ local Tabs = {
     Anti = Window:AddTab("Anti", "skull"),
     Settings = Window:AddTab("Settings", "cog"),
 }
-local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity")
-local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap")
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
