@@ -283,7 +283,6 @@ AntiRight:AddToggle("AntiDupeVacuumToggle", {
             end
         end)
     end
-end)
 
     pcall(function()
         local sound = Instance.new("Sound")
