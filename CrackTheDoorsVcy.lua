@@ -39,14 +39,6 @@ local Window = Obsidian:CreateWindow({
     AutoShow = true,
     MenuFadeTime = 0.10
 })
-pcall(function()
-    if Obsidian.ThemeManager then
-        Obsidian.ThemeManager:SetTheme("Default")
-    end
-    if type(Obsidian.SetAccentColor) == "function" then
-        Obsidian:SetAccentColor(Color3.fromRGB(96, 205, 255))
-    end
-end)
 
 local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
