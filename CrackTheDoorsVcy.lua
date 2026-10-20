@@ -284,9 +284,7 @@ AntiRight:AddToggle("AntiDupeVacuumToggle", {
         end)
     end
 end)
-local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Configuration")
-local SettingsRight = Tabs.Settings:AddRightGroupbox("Themes")
-task.spawn(function()
+
     pcall(function()
         local sound = Instance.new("Sound")
         sound.SoundId = "rbxassetid://1548304764"
