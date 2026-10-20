@@ -999,28 +999,26 @@ local function startFly()
         local forward, strafe = getCameraRelativeInput()
         local look = cam.CFrame.LookVector
 local right = cam.CFrame.RightVector
+        local moveDir = Vector3.zero
+        if forward \~= 0 or strafe \~= 0 then
+            moveDir = (look * forward + right * strafe)
+            if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
+        end
+        local vertical = 0
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+            or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+            vertical = vertical - 1
+        end
+        local finalDir = moveDir
+        if vertical \~= 0 then
+            finalDir = finalDir + Vector3.new(0, vertical, 0)
+        end
+        if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
+        flyVelocity.VectorVelocity = finalDir * flySpeed
+        end)
+    end
 
-local moveDir = Vector3.zero
-if forward \~= 0 or strafe \~= 0 then
-    moveDir = (look * forward + right * strafe)
-    if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
-end
-
-local vertical = 0
-if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
-if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-    or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-    vertical = vertical - 1
-end
-
--- Khi đang di chuyển và nhìn xuống/lên → bay theo hướng cam
-local finalDir = moveDir
-if vertical \~= 0 then
-    finalDir = finalDir + Vector3.new(0, vertical, 0)
-end
-
-if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
-flyVelocity.VectorVelocity = finalDir * flySpeed
 local flyToggle = FuncLeft:AddToggle("FlyToggle", {
     Text = "Fly", Default = false,
     Tooltip = "Giup Nhan Vat Bay"
@@ -2349,14 +2347,6 @@ Obsidian:OnUnload(function()
     if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
     if remoteThreadVel then task.cancel(remoteThreadVel) end
     if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
-    if doorEspConn then doorEspConn:Disconnect() end
-if keyEspConn then keyEspConn:Disconnect() end
-if entityEspConn then entityEspConn:Disconnect() end
-for _, hl in pairs(doorHighlights) do if hl then hl:Destroy() end end
-for _, bb in pairs(doorBillboards) do if bb then bb:Destroy() end end
-for _, data in pairs(keyCache) do if data.hl then data.hl:Destroy() end if data.bb then data.bb:Destroy() end end
-for _, data in pairs(entityCache) do if data.hl then data.hl:Destroy() end if data.bb then data.bb:Destroy() end end
-    table.clear(notifiedSet)
     table.clear(velocitySavedCanCollide)
     table.clear(noClipSavedCanCollide)
     table.clear(weirdSaved)
