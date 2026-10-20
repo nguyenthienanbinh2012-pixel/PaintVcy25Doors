@@ -1000,7 +1000,7 @@ local function startFly()
         local look = cam.CFrame.LookVector
 local right = cam.CFrame.RightVector
         local moveDir = Vector3.zero
-        if forward \\~= 0 or strafe \\~= 0 then
+        if forward \~= 0 or strafe \~= 0 then
             moveDir = (look * forward + right * strafe)
             if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
         end
