@@ -852,7 +852,7 @@ local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
 axialSlider:OnChanged(function(v) axialSpeed = v end)
 
 axialToggle:OnChanged(function(Value)
-    if Value then startAxial() else stopAxial() end
+if axialToggle and axialToggle.Value then startAxial() end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -977,50 +977,41 @@ local function startFly()
         return forward, strafe
     end
 
-    flyUpdateConn = RunService.RenderStepped:Connect(function()
-        if not flyActive or not flyVelocity or not flyVelocity.Parent then
-            stopFly()
-            return
+flyUpdateConn = RunService.RenderStepped:Connect(function()
+    if not flyActive or not flyVelocity or not flyVelocity.Parent then
+        stopFly()
+        return
+    end
+    local cam = Workspace.CurrentCamera
+    if not cam then return end
+    local forward, strafe = getCameraRelativeInput()
+    local look = cam.CFrame.LookVector
+    local right = cam.CFrame.RightVector
+    local moveDir = Vector3.zero
+    if forward ~= 0 or strafe ~= 0 then
+        moveDir = look * forward + right * strafe
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit
         end
-        local cam = Workspace.CurrentCamera
-        if not cam then return end
-
-        local forward, strafe = getCameraRelativeInput()
-local look = cam.CFrame.LookVector
-local right = cam.CFrame.RightVector
-local moveDir = Vector3.zero
-
-        if forward ~= 0 or strafe ~= 0 then
-            moveDir = look * forward + right * strafe
-
-            if moveDir.Magnitude > 0 then
-                moveDir = moveDir.Unit
-            end
-        end
-
-        local vertical = 0
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            vertical = vertical + 1
-        end
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-            or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-            vertical = vertical - 1
-        end
-
-        local finalDir = moveDir
-
-        if vertical ~= 0 then
-            finalDir = finalDir + Vector3.new(0, vertical, 0)
-        end
-
-        if finalDir.Magnitude > 0 then
-            finalDir = finalDir.Unit
-                end
-end
-
-flyVelocity.VectorVelocity = finalDir * flySpeed
+    end
+    local vertical = 0
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        vertical = vertical + 1
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+        or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+        vertical = vertical - 1
+    end
+    local finalDir = moveDir
+    if vertical ~= 0 then
+        finalDir = finalDir + Vector3.new(0, vertical, 0)
+    end
+    if finalDir.Magnitude > 0 then
+        finalDir = finalDir.Unit
+    end
+    flyVelocity.VectorVelocity = finalDir * flySpeed
+end)
+    end
 
 local flyToggle = FuncLeft:AddToggle("FlyToggle", {
     Text = "Fly", Default = false,
@@ -1038,7 +1029,7 @@ end)
 LocalPlayer.CharacterAdded:Connect(function()
     if flyActive then
         task.wait(1)
-        if flyToggle.Value then startFly() end
+if flyToggle and flyToggle.Value then startFly() end
     end
 end)
 
@@ -1479,17 +1470,18 @@ local originalPartProps = setmetatable({}, {__mode = "k"})
 local antiLagProcessed = setmetatable({}, {__mode = "k"})
 
 local function applyAntiLagToPart(part)
-local model = part:FindFirstAncestorOfClass("Model")
-if model then
-    local n = model.Name:lower()
-    if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
-        or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("lookman")
-        or n:find("dread") or n:find("timothy") or n:find("jack") or n:find("dupe")
-        or n:find("a-90") or n:find("a90") or n:find("glitch") or n:find("vacuum") then
-        return
-    end
-                    end
     if not part or not part.Parent then return end
+    local model = part:FindFirstAncestorOfClass("Model")
+    if model then
+        local n = model.Name:lower()
+        if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
+            or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("lookman")
+            or n:find("dread") or n:find("timothy") or n:find("jack") or n:find("dupe")
+            or n:find("a-90") or n:find("a90") or n:find("glitch") or n:find("vacuum") then
+            return
+        end
+    end
+    
     if antiLagProcessed[part] then return end
     if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
     local char = LocalPlayer.Character
