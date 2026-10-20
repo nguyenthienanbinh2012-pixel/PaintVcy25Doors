@@ -986,27 +986,38 @@ local function startFly()
         if not cam then return end
 
         local forward, strafe = getCameraRelativeInput()
-        local look = cam.CFrame.LookVector
+local look = cam.CFrame.LookVector
 local right = cam.CFrame.RightVector
-        local moveDir = Vector3.zero
-        if forward \~= 0 or strafe \~= 0 then
-            moveDir = (look * forward + right * strafe)
-            if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
-        end
-        local vertical = 0
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical = vertical + 1 end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-            or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-            vertical = vertical - 1
-        end
-        local finalDir = moveDir
-        if vertical \~= 0 then
-            finalDir = finalDir + Vector3.new(0, vertical, 0)
-        end
-        if finalDir.Magnitude > 0 then finalDir = finalDir.Unit end
-        flyVelocity.VectorVelocity = finalDir * flySpeed
-        end)
+local moveDir = Vector3.zero
+
+if forward ~= 0 or strafe ~= 0 then
+    moveDir = look * forward + right * strafe
+    if moveDir.Magnitude > 0 then
+        moveDir = moveDir.Unit
     end
+                end
+        local vertical = 0
+
+if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+    vertical = vertical + 1
+end
+
+if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+    or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+    vertical = vertical - 1
+end
+
+local finalDir = moveDir
+
+if vertical ~= 0 then
+    finalDir = finalDir + Vector3.new(0, vertical, 0)
+end
+
+if finalDir.Magnitude > 0 then
+    finalDir = finalDir.Unit
+end
+
+flyVelocity.VectorVelocity = finalDir * flySpeed
 
 local flyToggle = FuncLeft:AddToggle("FlyToggle", {
     Text = "Fly", Default = false,
