@@ -1563,7 +1563,7 @@ local function applyAntiLagToPart(part)
     part.Material = Enum.Material.SmoothPlastic
     part.CastShadow = false
     part.Reflectance = 0
-    if part:IsA("MeshPart") and part.TextureID \~= "" then
+    if part:IsA("MeshPart") and part.TextureID ~= "" then
         part.TextureID = ""
     end
 end
