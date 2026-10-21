@@ -29,13 +29,12 @@ local ContextActionService = game:GetService("ContextActionService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
--- Theme xanh than + viền rõ (Obsidian)
 Obsidian.Scheme = {
-    BackgroundColor = Color3.fromRGB(12, 14, 20),   -- nền tối
-    MainColor       = Color3.fromRGB(18, 22, 32),   -- khung chính
-    AccentColor     = Color3.fromRGB(30, 80, 140),  -- xanh than (icon, highlight, nút)
-    OutlineColor    = Color3.fromRGB(40, 70, 110),  -- viền menu
-    FontColor       = Color3.fromRGB(230, 235, 245),
+    BackgroundColor = Color3.fromRGB(10, 14, 12),
+    MainColor       = Color3.fromRGB(16, 22, 18),
+    AccentColor     = Color3.fromRGB(57, 255, 20),   -- neon green
+    OutlineColor    = Color3.fromRGB(57, 255, 20),   -- viền neon
+    FontColor       = Color3.fromRGB(255, 255, 255), -- chữ trắng
     Font            = Font.fromEnum(Enum.Font.Code),
     RedColor        = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -46,7 +45,7 @@ Obsidian.Scheme = {
 local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
     SubTitle = "PaintVcyCrack",
-    TabWidth = 150,
+    TabWidth = 160,
     Size = UDim2.new(0, 700, 0, 390),
     Center = true,
     AutoShow = false,
@@ -54,6 +53,7 @@ local Window = Obsidian:CreateWindow({
 })
 -- Khoá menu 6 giây + thông báo + âm thanh
 local menuUnlocked = false
+local _obsidianToggle = Obsidian.Toggle
 
 pcall(function()
     if Window and Window.SetVisible then
@@ -61,11 +61,18 @@ pcall(function()
     end
 end)
 
--- Âm thanh khi load
+-- Chặn mọi cách mở menu trong 6s
+Obsidian.Toggle = function(...)
+    if not menuUnlocked then
+        return
+    end
+    return _obsidianToggle(Obsidian, ...)
+end
+
 pcall(function()
     local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://4590657391" -- tiếng notify (đổi id nếu muốn)
-    sound.Volume = 2
+    sound.SoundId = "rbxassetid://4590657391"
+    sound.Volume = 5
     sound.Parent = game:GetService("SoundService")
     sound:Play()
     task.delay(3, function()
@@ -73,7 +80,6 @@ pcall(function()
     end)
 end)
 
--- Thông báo bên phải 6 giây
 pcall(function()
     Obsidian:Notify({
         Title = "PaintCrack",
@@ -82,7 +88,6 @@ pcall(function()
     })
 end)
 
--- Chặn toggle mở menu trong 6s
 task.spawn(function()
     local t0 = tick()
     while tick() - t0 < 6 do
@@ -90,15 +95,20 @@ task.spawn(function()
             if Window and Window.SetVisible then
                 Window:SetVisible(false)
             end
+            -- một số bản Obsidian
+            if Window and Window.Visible \~= nil then
+                Window.Visible = false
+            end
         end)
-        task.wait(0.15)
+        task.wait(0.1)
     end
     menuUnlocked = true
+    Obsidian.Toggle = _obsidianToggle
     pcall(function()
         Obsidian:Notify({
             Title = "PaintCrack",
-            Description = "Menu đã sẵn sàng — bấm Toggle để mở!",
-            Time = 3
+            Description = "Menu Đã Hooking Thành công Hãy Bấm toggle để Mở và sử dụng!",
+            Time = 5
         })
     end)
 end)
@@ -818,51 +828,51 @@ LocalPlayer.CharacterAdded:Connect(function()
     task.delay(1, loadPositionSpoof)
 end)
 
-local velocityConn = nil
-local speedConn = nil
-local remoteThreadSpeed = nil
-local remoteThreadVel = nil
-local isSpeedActive = false
-local isVelocityActive = false
-local velocitySpeedVal = 6.5
-local targetWalkSpeed = 16
-local velocitySavedCanCollide = {}
-
 local axialActive = false
 local axialSpeed = 6.0
 local axialConn = nil
 local axialSaved = setmetatable({}, {__mode = "k"})
+local axialLastDir = Vector3.new(0, 0, -1)
 
 local function stopAxial()
     axialActive = false
-    if axialConn then axialConn:Disconnect() axialConn = nil end
+    if axialConn then
+        axialConn:Disconnect()
+        axialConn = nil
+    end
     for part, data in pairs(axialSaved) do
         if part and part.Parent then
             pcall(function()
                 part.CanCollide = data.CanCollide
                 part.CanQuery = data.CanQuery
                 part.CanTouch = data.CanTouch
-                part.Transparency = data.Transparency
             end)
         end
     end
     axialSaved = setmetatable({}, {__mode = "k"})
-    safeUnlockCharacter()
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+    end
+    pcall(safeUnlockCharacter)
 end
 
 local function startAxial()
     stopAxial()
     axialActive = true
-    local cam = Workspace.CurrentCamera
-    axialConn = RunService.Heartbeat:Connect(function()
+    axialConn = RunService.Heartbeat:Connect(function(dt)
         if not axialActive then return end
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
+        local cam = Workspace.CurrentCamera
+        if not hrp or not hum or not cam then return end
 
-        -- Tắt collision TẤT CẢ part cơ thể (không đụng Transparency)
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
                 if axialSaved[p] == nil then
@@ -877,38 +887,49 @@ local function startAxial()
                 p.CanTouch = false
             end
         end
-        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
-            local sp = char:FindFirstChild(n)
-            if sp and sp:IsA("BasePart") then
-                if axialSaved[sp] == nil then
-                    axialSaved[sp] = {
-                        CanCollide = sp.CanCollide,
-                        CanQuery = sp.CanQuery,
-                        CanTouch = sp.CanTouch,
-                    }
-                end
-                sp.CanCollide = false
-                sp.CanQuery = false
-                sp.CanTouch = false
-            end
-        end
 
-        -- Giữ WalkSpeed bình thường + đẩy theo hướng cam (xuyên tường)
+        -- Hướng ngang theo camera (nhìn trời/đất vẫn đi ngang)
         local look = cam.CFrame.LookVector
         local dir = Vector3.new(look.X, 0, look.Z)
-        if dir.Magnitude > 0.01 then dir = dir.Unit else dir = Vector3.new(0,0,-1) end
-        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed)
+        if dir.Magnitude > 0.05 then
+            dir = dir.Unit
+            axialLastDir = dir
+        else
+            dir = axialLastDir
+        end
+
+        -- CFrame + velocity nhẹ: giảm bị server kéo lại
+        local step = math.clamp(dt or 0.016, 0.008, 0.05)
+        local move = dir * (axialSpeed * 12) * step
+        hrp.CFrame = hrp.CFrame + Vector3.new(move.X, 0, move.Z)
+        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed * 2, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed * 2)
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-        end
+end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
-    Tooltip = "Di chuyen 6.0 theo huong cam, xuyen vat can tranh keo lui"
+    Tooltip = "Xuyen tuong theo huong cam (ngang), tat la dung ngay"
 })
 local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
-    Text = "Axial Speed", Default = 6.0, Min = 6.0, Max = 8.0, Rounding = 1, Compact = true
+    Text = "Axial Speed", Default = 6.0, Min = 4.0, Max = 10.0, Rounding = 1, Compact = true
 })
+axialSlider:OnChanged(function(v) axialSpeed = v end)
+
+axialToggle:OnChanged(function(Value)
+    if Value then
+        startAxial()
+    else
+        stopAxial()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if axialToggle and axialToggle.Value then
+        task.wait(0.8)
+        if axialToggle.Value then startAxial() end
+    end
+end)
 axialSlider:OnChanged(function(v) axialSpeed = v end)
 
 axialToggle:OnChanged(function(Value)
@@ -994,7 +1015,7 @@ local function stopFly()
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then
             hum.PlatformStand = false
-            hum.WalkSpeed = 16
+            hum.WalkSpeed = 30
         end
     end
 end
@@ -1093,15 +1114,16 @@ if flyToggle and flyToggle.Value then startFly() end
     end
 end)
 
-local speedMethod = "Boost"
-local speedMethodDropdown = FuncRight:AddDropdown("SpeedMethodDropdown", {
-    Text = "Speed Method",
-    Values = {"Boost", "Instant"},
-    Default = 1,
-    Tooltip = "Boost: tang toc tu tu | Instant: chay nhanh ngay"
-})
-speedMethodDropdown:OnChanged(function(Value) speedMethod = Value end)
-
+local finalSpeed = targetWalkSpeed * 1.6
+                if speedMethod == "Instant" then
+                    hum.WalkSpeed = finalSpeed
+                else
+                    if hum.WalkSpeed < finalSpeed then
+                        hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
+                    elseif hum.WalkSpeed > finalSpeed then
+                        hum.WalkSpeed = finalSpeed
+                    end
+    end
 local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
     Text = "Speed", Default = false,
     Tooltip = "Doi WalkSpeed tuy chinh tang toc tu tu hoac tuc thi"
@@ -1207,7 +1229,7 @@ UserInputService.InputChanged:Connect(function(input, gp)
 end)
 
 FuncRight:AddSlider("SpeedBypassSlider", {
-    Text = "Speed Val", Default = 16, Min = 0, Max = 80, Rounding = 1, Compact = true
+    Text = "Speed Val", Default = 30, Min = 1, Max = 125, Rounding = 1, Compact = true
 }):OnChanged(function(Value) targetWalkSpeed = Value end)
 
 local paintEspToggle = VisualLeft:AddToggle("PaintEspToggle", {
@@ -2109,57 +2131,70 @@ local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
 local escapeTimerConn = nil
-local hideStartTime = 0
-local HIDE_LIMIT = 15.5
+local ESCAPE_MAX = 18
+local hideStartTime = nil
+
+local function isPlayerHiding()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    -- Doors: thường Sit / PlatformStand / animation hide khi trong tủ
+    if hum.Sit then return true end
+    if hum.PlatformStand then return true end
+    local ok, tracks = pcall(function() return hum:GetPlayingAnimationTracks() end)
+    if ok and tracks then
+        for _, t in ipairs(tracks) do
+            local n = string.lower(tostring(t.Name or "") .. tostring(t.Animation and t.Animation.Name or ""))
+            if n:find("hide") or n:find("closet") or n:find("wardrobe") or n:find("enter") then
+                return true
+            end
+        end
+    end
+    return false
+end
 
 local function createEscapeTimerUI()
     if escapeTimerGui then return end
     local gui = Instance.new("ScreenGui")
-    gui.Name = "EscapeTimerGui"
+    gui.Name = "PaintEscapeTimer"
     gui.ResetOnSpawn = false
-    gui.DisplayOrder = 300
+    gui.IgnoreGuiInset = true
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    pcall(function() gui.Parent = CoreGui end)
+    if not gui.Parent then gui.Parent = PlayerGui end
+
     local frame = Instance.new("Frame")
-    frame.Name = "TimerFrame"
-    frame.Size = UDim2.new(0, 70, 0, 90)
-    frame.Position = UDim2.new(0.92, 0, 0.35, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    frame.BackgroundTransparency = 0.2
+    frame.Name = "Box"
+    frame.AnchorPoint = Vector2.new(0.5, 0)
+    frame.Position = UDim2.new(0.5, 0, 0, 12)
+    frame.Size = UDim2.fromOffset(120, 36)
+    frame.BackgroundColor3 = Color3.fromRGB(16, 22, 18)
+    frame.BackgroundTransparency = 0.15
     frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    frame.ZIndex = 400
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = frame
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 1.5
-    stroke.Color = Color3.fromRGB(80, 180, 255)
-    stroke.Parent = frame
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 22)
-    title.Position = UDim2.new(0, 0, 0, 4)
-    title.BackgroundTransparency = 1
-    title.Text = "HIDE"
-    title.TextColor3 = Color3.fromRGB(200, 220, 255)
-    title.TextSize = 12
-    title.Font = Enum.Font.GothamBold
-    title.ZIndex = 401
-    title.Parent = frame
-    local label = Instance.new("TextLabel")
-    label.Name = "TimerLabel"
-    label.Size = UDim2.new(1, 0, 0, 40)
-    label.Position = UDim2.new(0, 0, 0, 28)
-    label.BackgroundTransparency = 1
-    label.Text = "00:00"
-    label.TextColor3 = Color3.fromRGB(100, 255, 150)
-    label.TextSize = 22
-    label.Font = Enum.Font.Code
-    label.ZIndex = 401
-    label.Parent = frame
-    gui.Parent = PlayerGui
     frame.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(57, 255, 20)
+    stroke.Thickness = 1.5
+    stroke.Parent = frame
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.fromScale(1, 1)
+    label.Font = Enum.Font.Code
+    label.TextSize = 20
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Text = "18"
+    label.Parent = frame
+
     escapeTimerGui = gui
     escapeTimerLabel = label
+    gui.Enabled = false
 end
 
 local function destroyEscapeTimerUI()
@@ -2168,12 +2203,50 @@ local function destroyEscapeTimerUI()
         escapeTimerGui = nil
         escapeTimerLabel = nil
     end
+    hideStartTime = nil
 end
 
 local escapeTimerToggle = MiscLeft:AddToggle("EscapeTimerToggle", {
     Text = "Escape Timer", Default = false,
-    Tooltip = "Hien thi dem nguoc thoi gian tron tu, keo tha duoc"
+    Tooltip = "Chi hien khi dang tron, dem 18s"
 })
+
+escapeTimerToggle:OnChanged(function(Value)
+    escapeTimerActive = Value
+    if Value then
+        createEscapeTimerUI()
+        if not escapeTimerConn then
+            escapeTimerConn = RunService.Heartbeat:Connect(function()
+                if not escapeTimerActive then return end
+                local hiding = isPlayerHiding()
+                if hiding then
+                    if not hideStartTime then hideStartTime = tick() end
+                    local left = math.max(0, ESCAPE_MAX - (tick() - hideStartTime))
+                    if escapeTimerGui then escapeTimerGui.Enabled = true end
+                    if escapeTimerLabel then
+                        escapeTimerLabel.Text = string.format("%.0f", left)
+                        if left <= 5 then
+                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
+                        elseif left <= 10 then
+                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+                        else
+                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        end
+                    end
+                else
+                    hideStartTime = nil
+                    if escapeTimerGui then escapeTimerGui.Enabled = false end
+                end
+            end)
+        end
+    else
+        if escapeTimerConn then
+            escapeTimerConn:Disconnect()
+            escapeTimerConn = nil
+        end
+        destroyEscapeTimerUI()
+    end
+end)
 escapeTimerToggle:OnChanged(function(Value)
     escapeTimerActive = Value
     if Value then
@@ -2229,7 +2302,13 @@ escapeTimerToggle:OnChanged(function(Value)
         hideStartTime = 0
     end
 end)
-
+local weirdMode = "Ghost Green"
+local weirdModeDrop = FuncRight:AddDropdown("WeirdModeDrop", {
+    Text = "Weird Style",
+    Values = {"Ghost Green", "Normal"},
+    Default = 1,
+})
+weirdModeDrop:OnChanged(function(v) weirdMode = v end)
 local weirdToggle = FuncRight:AddToggle("MakeWeirdToggle", {
     Text = "Make yourself weird", Default = false,
     Tooltip = "Lam Nhan vat khong hoat anh,vao tu nhanh"
@@ -2369,6 +2448,23 @@ footMusicToggle:OnChanged(function(Value)
             footMusicConn = nil
         end
     end
+end)
+-- Settings: Theme + Save (Obsidian)
+pcall(function()
+    local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+    local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+    local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+    ThemeManager:SetLibrary(Obsidian)
+    SaveManager:SetLibrary(Obsidian)
+    SaveManager:IgnoreThemeSettings()
+    SaveManager:SetFolder("PaintCrackDoors")
+
+    ThemeManager:ApplyToTab(Tabs.Settings)
+    SaveManager:ApplyToTab(Tabs.Settings)
+
+    SaveManager:BuildConfigSection(Tabs.Settings)
+    ThemeManager:ApplyToGroupbox(Tabs.Settings:AddLeftGroupbox("Menu"))
 end)
 
 Obsidian:OnUnload(function()
