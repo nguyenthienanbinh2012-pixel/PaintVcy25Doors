@@ -30,11 +30,11 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 Obsidian.Scheme = {
-    BackgroundColor  = Color3.fromRGB(14, 14, 18),
-    MainColor        = Color3.fromRGB(22, 20, 26),
-    AccentColor      = Color3.fromRGB(255, 140, 175), -- hong: icon + toggle + slider
-    OutlineColor     = Color3.fromRGB(45, 45, 55),    -- vien KHUNG xam, khong hong
-    FontColor        = Color3.fromRGB(235, 235, 240),
+    BackgroundColor  = Color3.fromRGB(255, 236, 242), -- nền hong nhat
+    MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
+    AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
+    OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
+    FontColor        = Color3.fromRGB(40, 30, 40),    -- chu toi de doc tren nen hong
     Font             = Font.fromEnum(Enum.Font.Code),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -88,7 +88,7 @@ end)
 pcall(function()
     Obsidian:Notify({
         Title = "PaintCrack",
-        Description = "Nên dùng Executor Như delta hay Arcuse X hỗ trợ các hook để chơi tốt nhất! và chờ 5-6s để load các hooking giúp Crack Game!",
+        Description = "Nên dùng Executor Như delta hay Arcuse X hỗ trợ các hook để chơi tốt nhất! và chờ 5-6s để load các hooking giúp Crack Game! lưu ý Đang Update Fix các lỗi sớm nhất",
         Time = 6
     })
 end)
@@ -124,6 +124,7 @@ local Tabs = {
     Misc = Window:AddTab("Misc", "door-open"),
     Anti = Window:AddTab("Anti", "skull"),
     Settings = Window:AddTab("Settings", "cog"),
+    Path = Window:AddTab("Room Path", "footprints"),
     }
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
@@ -834,7 +835,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 local axialActive = false
-local axialSpeed = 6.0
+local axialSpeed = 2.0
 local axialConn = nil
 local axialSaved = setmetatable({}, {__mode = "k"})
 local axialLastDir = Vector3.new(0, 0, -1)
@@ -845,6 +846,7 @@ local function stopAxial()
         axialConn:Disconnect()
         axialConn = nil
     end
+    -- Khôi phục ĐÚNG giá trị đã lưu (true/false gốc)
     for part, data in pairs(axialSaved) do
         if part and part.Parent then
             pcall(function()
@@ -854,7 +856,7 @@ local function stopAxial()
             end)
         end
     end
-    axialSaved = setmetatable({}, {__mode = "k"})
+    table.clear(axialSaved)
     local char = LocalPlayer.Character
     if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -863,20 +865,21 @@ local function stopAxial()
             hrp.AssemblyAngularVelocity = Vector3.zero
         end
     end
-    pcall(safeUnlockCharacter)
 end
 
 local function startAxial()
-    stopAxial()
+    if axialConn then
+        axialConn:Disconnect()
+        axialConn = nil
+    end
     axialActive = true
     axialConn = RunService.Heartbeat:Connect(function(dt)
         if not axialActive then return end
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
         local cam = Workspace.CurrentCamera
-        if not hrp or not hum or not cam then return end
+        if not hrp or not cam then return end
 
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
@@ -893,7 +896,6 @@ local function startAxial()
             end
         end
 
-        -- Hướng ngang theo camera (nhìn trời/đất vẫn đi ngang)
         local look = cam.CFrame.LookVector
         local dir = Vector3.new(look.X, 0, look.Z)
         if dir.Magnitude > 0.05 then
@@ -903,40 +905,26 @@ local function startAxial()
             dir = axialLastDir
         end
 
--- Hướng ĐÚNG theo camera (có cả lên/xuống)
-        local look = cam.CFrame.LookVector
-        local dir = look
-        if dir.Magnitude < 0.05 then
-            dir = axialLastDir
-        else
-            dir = dir.Unit
-            axialLastDir = dir
-        end
-
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        -- chậm gấp 2 so với bản *3.5 → *1.75
-        local move = dir * (axialSpeed * 1.75) * step
-        hrp.CFrame = hrp.CFrame + move
-        hrp.AssemblyLinearVelocity = dir * axialSpeed * 0.85
+        -- chậm: hệ số 0.55 (trước 1.75)
+        local move = dir * (axialSpeed * 0.55) * step
+        hrp.CFrame = hrp.CFrame + Vector3.new(move.X, 0, move.Z)
+        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed * 0.4, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed * 0.4)
         hrp.AssemblyAngularVelocity = Vector3.zero
-        end)
-    end
+    end)
+end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
-    Tooltip = "Xuyen tuong theo huong cam (ngang), tat la dung ngay"
+    Tooltip = "Xuyen tuong Velocity Manipulation v2 Bypass Anti XuyenTuong"
 })
 local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
-    Text = "Axial Speed", Default = 6.0, Min = 4.0, Max = 10.0, Rounding = 1, Compact = true
+    Text = "Axial Speed", Default = 2.0, Min = 1.0, Max = 6.0, Rounding = 1, Compact = true
 })
 axialSlider:OnChanged(function(v) axialSpeed = v end)
 
 axialToggle:OnChanged(function(Value)
-    if Value then
-        startAxial()
-    else
-        stopAxial()
-    end
+    if Value then startAxial() else stopAxial() end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -2527,6 +2515,167 @@ do
         end
     end)
     end
+-- ========== ROOM PATH ==========
+local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
+local PathRight = Tabs.Path:AddRightGroupbox("Auto")
+
+local showPathActive = false
+local autoPathActive = false
+local pathColor = Color3.fromRGB(255, 140, 200)
+local pathDelay = 0.0
+local pathFolder = nil
+local pathConn = nil
+local autoPathConn = nil
+local currentPathTarget = nil
+
+local function getNextDoor()
+    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
+    local best, bestDist = nil, math.huge
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and (obj.Name == "Door" or obj.Name:lower():find("door")) then
+            local roomAttr = obj:GetAttribute("Room") or obj:GetAttribute("Index")
+            local pn = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
+            if pn then
+                local d = (pn.Position - hrp.Position).Magnitude
+                if d < bestDist and d > 2 and d < 200 then
+                    -- uu tien cua phia truoc / gan
+                    bestDist = d
+                    best = pn
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function clearPathDraw()
+    if pathFolder then
+        pathFolder:Destroy()
+        pathFolder = nil
+    end
+end
+
+local function drawPathTo(target)
+    clearPathDraw()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp or not target then return end
+    pathFolder = Instance.new("Folder")
+    pathFolder.Name = "PaintRoomPath"
+    pathFolder.Parent = Workspace
+
+    local from = hrp.Position
+    local to = target.Position
+    local dist = (to - from).Magnitude
+    local steps = math.clamp(math.floor(dist / 2), 4, 40)
+    for i = 0, steps do
+        local t = i / steps
+        local pos = from:Lerp(to, t)
+        pos = Vector3.new(pos.X, from.Y - 2.8, pos.Z) -- day duoi dat
+        local p = Instance.new("Part")
+        p.Anchored = true
+        p.CanCollide = false
+        p.CanQuery = false
+        p.Size = Vector3.new(0.35, 0.08, 0.35)
+        p.Material = Enum.Material.Neon
+        p.Color = pathColor
+        p.Transparency = 0.25
+        p.CFrame = CFrame.new(pos)
+        p.Parent = pathFolder
+    end
+    -- beam hologram
+    local a0 = Instance.new("Attachment")
+    a0.Parent = hrp
+    local a1 = Instance.new("Attachment")
+    a1.Parent = target
+    local beam = Instance.new("Beam")
+    beam.Attachment0 = a0
+    beam.Attachment1 = a1
+    beam.Width0 = 0.4
+    beam.Width1 = 0.4
+    beam.Color = ColorSequence.new(pathColor)
+    beam.FaceCamera = true
+    beam.Transparency = NumberSequence.new(0.3)
+    beam.Parent = pathFolder
+end
+
+PathLeft:AddToggle("ShowPathToggle", {
+    Text = "Show Path", Default = false,
+    Tooltip = "Ve duong toi duong di tiep theo"
+}):OnChanged(function(v)
+    showPathActive = v
+    if not v then
+        clearPathDraw()
+        if pathConn then pathConn:Disconnect() pathConn = nil end
+        return
+    end
+    if pathConn then pathConn:Disconnect() end
+    pathConn = RunService.Heartbeat:Connect(function()
+        if not showPathActive then return end
+        local door = getNextDoor()
+        currentPathTarget = door
+        if door then drawPathTo(door) end
+    end)
+end)
+
+PathLeft:AddLabel("Path Color"):AddColorPicker("PathColorPick", {
+    Default = Color3.fromRGB(255, 140, 200),
+    Title = "Mau Path",
+    Callback = function(v) pathColor = v end
+})
+
+PathRight:AddToggle("AutoStartPathToggle", {
+    Text = "Auto Start Path", Default = false,
+    Tooltip = "Tự Động Di chuyển theo path"
+}):OnChanged(function(v)
+    autoPathActive = v
+    if not v then
+        if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:Move(Vector3.zero) end
+        return
+    end
+    if autoPathConn then autoPathConn:Disconnect() end
+    autoPathConn = RunService.Heartbeat:Connect(function()
+        if not autoPathActive then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        local door = currentPathTarget or getNextDoor()
+        if not door then return end
+        local flat = Vector3.new(door.Position.X - hrp.Position.X, 0, door.Position.Z - hrp.Position.Z)
+        local dist = flat.Magnitude
+        if dist < 2.5 then
+            -- den dich: dung theo delay
+            if pathDelay > 0 then
+                task.wait(pathDelay)
+            end
+            hum:Move(Vector3.zero)
+            return
+        end
+        -- Instant: doi huong ngay, khong delay
+        local dir = flat.Unit
+        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or hum.WalkSpeed
+        if spd < 16 then spd = 16 end
+        hum.WalkSpeed = spd
+        hum:Move(dir, false)
+        -- ho tro cua: xoay nhan vat theo huong
+        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
+    end)
+end)
+
+PathRight:AddSlider("PathDelaySlider", {
+    Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
+    Tooltip = "0 = Độ Delay Dừng đi"
+}):OnChanged(function(v) pathDelay = v end)
+
 Obsidian:OnUnload(function()
     safeUnlockCharacter()
     togglePositionSpoof(false)
