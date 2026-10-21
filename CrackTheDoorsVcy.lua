@@ -50,7 +50,6 @@ local Window = Obsidian:CreateWindow({
     Size = UDim2.new(0, 700, 0, 390),
     Center = true,
     AutoShow = false,
-,
     MenuFadeTime = 0.10
 })
 -- Khoá menu 6 giây + thông báo + âm thanh
@@ -851,7 +850,6 @@ local function stopAxial()
     safeUnlockCharacter()
 end
 
-local function startAxial()
 local function startAxial()
     stopAxial()
     axialActive = true
