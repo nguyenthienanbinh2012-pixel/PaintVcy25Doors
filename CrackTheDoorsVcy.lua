@@ -51,6 +51,15 @@ local Window = Obsidian:CreateWindow({
     AutoShow = false,
     MenuFadeTime = 0.10
 })
+-- Ap dung theme neon lai sau khi tao window
+pcall(function()
+    Obsidian.Scheme.AccentColor  = Color3.fromRGB(57, 255, 20)
+    Obsidian.Scheme.OutlineColor = Color3.fromRGB(57, 255, 20)
+    Obsidian.Scheme.FontColor    = Color3.fromRGB(255, 255, 255)
+    if Obsidian.UpdateColors then
+        Obsidian:UpdateColors()
+    end
+end)
 -- Khoá menu 6 giây + thông báo + âm thanh
 local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
@@ -900,9 +909,10 @@ local function startAxial()
 
         -- CFrame + velocity nhẹ: giảm bị server kéo lại
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        local move = dir * (axialSpeed * 12) * step
+        -- tốc độ vừa, ít bị server kéo
+        local move = dir * (axialSpeed * 3.5) * step
         hrp.CFrame = hrp.CFrame + Vector3.new(move.X, 0, move.Z)
-        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed * 2, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed * 2)
+        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed)
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
 end
@@ -927,18 +937,6 @@ end)
 LocalPlayer.CharacterAdded:Connect(function()
     if axialToggle and axialToggle.Value then
         task.wait(0.8)
-        if axialToggle.Value then startAxial() end
-    end
-end)
-axialSlider:OnChanged(function(v) axialSpeed = v end)
-
-axialToggle:OnChanged(function(Value)
-if axialToggle and axialToggle.Value then startAxial() end
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-    if axialActive then
-        task.wait(1)
         if axialToggle.Value then startAxial() end
     end
 end)
@@ -2451,24 +2449,59 @@ footMusicToggle:OnChanged(function(Value)
         end
     end
 end)
--- Settings: Theme + Save (Obsidian)
-pcall(function()
-    local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-    local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-    local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+-- Settings: Menu + Config (không phụ thuộc addon dễ fail)
+do
+    local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
+    local setRight = Tabs.Settings:AddRightGroupbox("Config")
 
-    ThemeManager:SetLibrary(Obsidian)
-    SaveManager:SetLibrary(Obsidian)
-    SaveManager:IgnoreThemeSettings()
-    SaveManager:SetFolder("PaintCrackDoors")
+    setLeft:AddLabel("UI Scale / Theme dung Scheme neon o dau file")
+    setLeft:AddButton("Dong Menu", function()
+        pcall(function()
+            if Obsidian.Toggle then Obsidian:Toggle() end
+        end)
+    end)
+    setLeft:AddButton("Unload Script", function()
+        pcall(function()
+            if Obsidian.Unload then Obsidian:Unload() end
+        end)
+    end)
 
-    ThemeManager:ApplyToTab(Tabs.Settings)
-    SaveManager:ApplyToTab(Tabs.Settings)
+    setRight:AddLabel("Luu/Load: dung executor hoac them SaveManager sau")
+    setRight:AddButton("Re-notify Tips", function()
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = "Nen dung Delta / Arceus X de hook on dinh",
+                Time = 4
+            })
+        end)
+    end)
 
-    SaveManager:BuildConfigSection(Tabs.Settings)
-    ThemeManager:ApplyToGroupbox(Tabs.Settings:AddLeftGroupbox("Menu"))
-end)
-
+    -- Thu load addon (neu executor ho tro se co them muc)
+    task.spawn(function()
+        local ok1, ThemeManager = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
+        end)
+        local ok2, SaveManager = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
+        end)
+        if ok1 and ThemeManager and ThemeManager.SetLibrary then
+            pcall(function()
+                ThemeManager:SetLibrary(Obsidian)
+                ThemeManager:SetFolder("PaintCrackDoors")
+                ThemeManager:ApplyToTab(Tabs.Settings)
+            end)
+        end
+        if ok2 and SaveManager and SaveManager.SetLibrary then
+            pcall(function()
+                SaveManager:SetLibrary(Obsidian)
+                SaveManager:IgnoreThemeSettings()
+                SaveManager:SetFolder("PaintCrackDoors")
+                SaveManager:ApplyToTab(Tabs.Settings)
+            end)
+        end
+    end)
+    end
 Obsidian:OnUnload(function()
     safeUnlockCharacter()
     togglePositionSpoof(false)
