@@ -49,10 +49,60 @@ local Window = Obsidian:CreateWindow({
     TabWidth = 150,
     Size = UDim2.new(0, 700, 0, 390),
     Center = true,
-    AutoShow = true,
+    AutoShow = false,
+,
     MenuFadeTime = 0.10
 })
+-- Khoá menu 6 giây + thông báo + âm thanh
+local menuUnlocked = false
 
+pcall(function()
+    if Window and Window.SetVisible then
+        Window:SetVisible(false)
+    end
+end)
+
+-- Âm thanh khi load
+pcall(function()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://4590657391" -- tiếng notify (đổi id nếu muốn)
+    sound.Volume = 2
+    sound.Parent = game:GetService("SoundService")
+    sound:Play()
+    task.delay(3, function()
+        if sound then sound:Destroy() end
+    end)
+end)
+
+-- Thông báo bên phải 6 giây
+pcall(function()
+    Obsidian:Notify({
+        Title = "PaintCrack",
+        Description = "Nên dùng Executor Như delta hay Arcuse X hỗ trợ các hook để chơi tốt nhất! và chờ 5-6s để load các hooking giúp Crack Game!",
+        Time = 6
+    })
+end)
+
+-- Chặn toggle mở menu trong 6s
+task.spawn(function()
+    local t0 = tick()
+    while tick() - t0 < 6 do
+        pcall(function()
+            if Window and Window.SetVisible then
+                Window:SetVisible(false)
+            end
+        end)
+        task.wait(0.15)
+    end
+    menuUnlocked = true
+    pcall(function()
+        Obsidian:Notify({
+            Title = "PaintCrack",
+            Description = "Menu đã sẵn sàng — bấm Toggle để mở!",
+            Time = 3
+        })
+    end)
+end)
 local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
