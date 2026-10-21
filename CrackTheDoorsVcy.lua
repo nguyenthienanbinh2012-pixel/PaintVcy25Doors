@@ -919,6 +919,8 @@ local function startAxial()
         hrp.CFrame = hrp.CFrame + move
         hrp.AssemblyLinearVelocity = dir * axialSpeed * 0.85
         hrp.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
@@ -1137,19 +1139,25 @@ local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
 speedToggle:OnChanged(function(Value)
     isSpeedActive = Value
     if Value then
-local finalSpeed = targetWalkSpeed * 1.6
-                if speedMethod == "Instant" then
+        speedConn = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            local finalSpeed = targetWalkSpeed * 1.6
+            if speedMethod == "Instant" then
+                hum.WalkSpeed = finalSpeed
+            else
+                if hum.WalkSpeed < finalSpeed then
+                    hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
+                elseif hum.WalkSpeed > finalSpeed then
                     hum.WalkSpeed = finalSpeed
-                else
-                    if hum.WalkSpeed < finalSpeed then
-                        hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
-                    elseif hum.WalkSpeed > finalSpeed then
-                        hum.WalkSpeed = finalSpeed
-                    end
-                            end
+                end
+            end
+        end)
         remoteThreadSpeed = task.spawn(function()
             while isSpeedActive do
-                if not S.enabled then
+                if S and not S.enabled then
                     local cr = getCrouchRemote()
                     if cr then pcall(function() cr:FireServer(false, true) end) end
                 end
@@ -1159,7 +1167,7 @@ local finalSpeed = targetWalkSpeed * 1.6
     else
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
-        safeUnlockCharacter()
+        pcall(safeUnlockCharacter)
     end
 end)
 local thirdPersonActive = false
