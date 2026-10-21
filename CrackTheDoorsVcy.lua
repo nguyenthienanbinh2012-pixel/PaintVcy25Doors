@@ -30,17 +30,17 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 Obsidian.Scheme = {
-    BackgroundColor = Color3.fromRGB(10, 14, 12),
-    MainColor       = Color3.fromRGB(16, 22, 18),
-    AccentColor     = Color3.fromRGB(57, 255, 20),   -- neon green
-    OutlineColor    = Color3.fromRGB(57, 255, 20),   -- viền neon
-    FontColor       = Color3.fromRGB(255, 255, 255), -- chữ trắng
-    Font            = Font.fromEnum(Enum.Font.Code),
-    RedColor        = Color3.fromRGB(255, 50, 50),
+    BackgroundColor  = Color3.fromRGB(14, 14, 18),
+    MainColor        = Color3.fromRGB(22, 20, 26),
+    AccentColor      = Color3.fromRGB(255, 140, 175), -- hong: icon + toggle + slider
+    OutlineColor     = Color3.fromRGB(45, 45, 55),    -- vien KHUNG xam, khong hong
+    FontColor        = Color3.fromRGB(235, 235, 240),
+    Font             = Font.fromEnum(Enum.Font.Code),
+    RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
-    DarkColor       = Color3.new(0, 0, 0),
-    WhiteColor      = Color3.new(1, 1, 1),
-    BackgroundImage = ""
+    DarkColor        = Color3.new(0, 0, 0),
+    WhiteColor       = Color3.new(1, 1, 1),
+    BackgroundImage  = ""
 }
 local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
@@ -51,14 +51,10 @@ local Window = Obsidian:CreateWindow({
     AutoShow = false,
     MenuFadeTime = 0.10
 })
--- Ap dung theme neon lai sau khi tao window
 pcall(function()
-    Obsidian.Scheme.AccentColor  = Color3.fromRGB(57, 255, 20)
-    Obsidian.Scheme.OutlineColor = Color3.fromRGB(57, 255, 20)
-    Obsidian.Scheme.FontColor    = Color3.fromRGB(255, 255, 255)
-    if Obsidian.UpdateColors then
-        Obsidian:UpdateColors()
-    end
+    Obsidian.Scheme.AccentColor  = Color3.fromRGB(255, 140, 175)
+    Obsidian.Scheme.OutlineColor = Color3.fromRGB(45, 45, 55)
+    if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 end)
 -- Khoá menu 6 giây + thông báo + âm thanh
 local menuUnlocked = false
@@ -81,7 +77,7 @@ end
 pcall(function()
     local sound = Instance.new("Sound")
     sound.SoundId = "rbxassetid://4590657391"
-    sound.Volume = 5
+    sound.Volume = 8
     sound.Parent = game:GetService("SoundService")
     sound:Play()
     task.delay(3, function()
@@ -907,15 +903,22 @@ local function startAxial()
             dir = axialLastDir
         end
 
-        -- CFrame + velocity nhẹ: giảm bị server kéo lại
+-- Hướng ĐÚNG theo camera (có cả lên/xuống)
+        local look = cam.CFrame.LookVector
+        local dir = look
+        if dir.Magnitude < 0.05 then
+            dir = axialLastDir
+        else
+            dir = dir.Unit
+            axialLastDir = dir
+        end
+
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        -- tốc độ vừa, ít bị server kéo
-        local move = dir * (axialSpeed * 3.5) * step
-        hrp.CFrame = hrp.CFrame + Vector3.new(move.X, 0, move.Z)
-        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed)
+        -- chậm gấp 2 so với bản *3.5 → *1.75
+        local move = dir * (axialSpeed * 1.75) * step
+        hrp.CFrame = hrp.CFrame + move
+        hrp.AssemblyLinearVelocity = dir * axialSpeed * 0.85
         hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
@@ -1112,6 +1115,28 @@ if flyToggle and flyToggle.Value then startFly() end
     end
 end)
 
+local targetWalkSpeed = 30
+local isSpeedActive = false
+local speedMethod = "Instant"
+local speedConn = nil
+local remoteThreadSpeed = nil
+
+local speedMethodDropdown = FuncRight:AddDropdown("SpeedMethodDropdown", {
+    Text = "Speed Method",
+    Values = {"Boost", "Instant"},
+    Default = 2,
+    Tooltip = "Boost: tang dan | Instant: set ngay"
+})
+speedMethodDropdown:OnChanged(function(Value)
+    speedMethod = Value
+end)
+local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
+    Text = "Speed", Default = false,
+    Tooltip = "Doi WalkSpeed tuy chinh tang toc tu tu hoac tuc thi"
+})
+speedToggle:OnChanged(function(Value)
+    isSpeedActive = Value
+    if Value then
 local finalSpeed = targetWalkSpeed * 1.6
                 if speedMethod == "Instant" then
                     hum.WalkSpeed = finalSpeed
@@ -1121,30 +1146,7 @@ local finalSpeed = targetWalkSpeed * 1.6
                     elseif hum.WalkSpeed > finalSpeed then
                         hum.WalkSpeed = finalSpeed
                     end
-    end
-local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
-    Text = "Speed", Default = false,
-    Tooltip = "Doi WalkSpeed tuy chinh tang toc tu tu hoac tuc thi"
-})
-speedToggle:OnChanged(function(Value)
-    isSpeedActive = Value
-    if Value then
-        speedConn = RunService.PreRender:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                if speedMethod == "Instant" then
-                    hum.WalkSpeed = targetWalkSpeed
-                else
-                    if hum.WalkSpeed < targetWalkSpeed then
-                        hum.WalkSpeed = math.min(hum.WalkSpeed + 1.5, targetWalkSpeed)
-                    elseif hum.WalkSpeed > targetWalkSpeed then
-                        hum.WalkSpeed = targetWalkSpeed
-                    end
-                end
-            end
-        end)
+                            end
         remoteThreadSpeed = task.spawn(function()
             while isSpeedActive do
                 if not S.enabled then
@@ -2449,15 +2451,19 @@ footMusicToggle:OnChanged(function(Value)
         end
     end
 end)
--- Settings: Menu + Config (không phụ thuộc addon dễ fail)
+
 do
     local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
     local setRight = Tabs.Settings:AddRightGroupbox("Config")
 
-    setLeft:AddLabel("UI Scale / Theme dung Scheme neon o dau file")
-    setLeft:AddButton("Dong Menu", function()
+    setLeft:AddLabel("Toggle menu: nut Mobile / Keybind executor")
+    setLeft:AddButton("Dong / Mo Menu", function()
         pcall(function()
-            if Obsidian.Toggle then Obsidian:Toggle() end
+            if type(Obsidian.Toggle) == "function" then
+                Obsidian:Toggle()
+            elseif Window and Window.SetVisible then
+                Window:SetVisible(not (Window.Visible == true))
+            end
         end)
     end)
     setLeft:AddButton("Unload Script", function()
@@ -2465,39 +2471,50 @@ do
             if Obsidian.Unload then Obsidian:Unload() end
         end)
     end)
+    setLeft:AddButton("Rejoin", function()
+        pcall(function()
+            game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+        end)
+    end)
 
-    setRight:AddLabel("Luu/Load: dung executor hoac them SaveManager sau")
-    setRight:AddButton("Re-notify Tips", function()
+    setRight:AddLabel("Theme: Accent hong / Outline xam (Scheme dau file)")
+    setRight:AddButton("Ap dung Accent Hong", function()
+        pcall(function()
+            Obsidian.Scheme.AccentColor = Color3.fromRGB(255, 140, 175)
+            Obsidian.Scheme.OutlineColor = Color3.fromRGB(45, 45, 55)
+            if Obsidian.UpdateColors then Obsidian:UpdateColors() end
+        end)
+    end)
+    setRight:AddButton("Notify Tips", function()
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
-                Description = "Nen dung Delta / Arceus X de hook on dinh",
+                Description = "Nen dung Delta / Arceus X",
                 Time = 4
             })
         end)
     end)
 
-    -- Thu load addon (neu executor ho tro se co them muc)
     task.spawn(function()
-        local ok1, ThemeManager = pcall(function()
+        local okT, ThemeManager = pcall(function()
             return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
         end)
-        local ok2, SaveManager = pcall(function()
+        local okS, SaveManager = pcall(function()
             return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
         end)
-        if ok1 and ThemeManager and ThemeManager.SetLibrary then
+        if okT and type(ThemeManager) == "table" then
             pcall(function()
                 ThemeManager:SetLibrary(Obsidian)
                 ThemeManager:SetFolder("PaintCrackDoors")
-                ThemeManager:ApplyToTab(Tabs.Settings)
+                if ThemeManager.ApplyToTab then ThemeManager:ApplyToTab(Tabs.Settings) end
             end)
         end
-        if ok2 and SaveManager and SaveManager.SetLibrary then
+        if okS and type(SaveManager) == "table" then
             pcall(function()
                 SaveManager:SetLibrary(Obsidian)
-                SaveManager:IgnoreThemeSettings()
+                pcall(function() SaveManager:IgnoreThemeSettings() end)
                 SaveManager:SetFolder("PaintCrackDoors")
-                SaveManager:ApplyToTab(Tabs.Settings)
+                if SaveManager.ApplyToTab then SaveManager:ApplyToTab(Tabs.Settings) end
             end)
         end
     end)
