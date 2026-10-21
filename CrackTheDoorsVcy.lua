@@ -1538,7 +1538,6 @@ local function applyAntiLagToPart(part)
     local char = LocalPlayer.Character
     if char and part:IsDescendantOf(char) then return end
 
-    -- Bỏ qua toàn bộ entity
     local model = part:FindFirstAncestorOfClass("Model")
     if model then
         local n = model.Name:lower()
@@ -1566,6 +1565,28 @@ local function applyAntiLagToPart(part)
     part.Reflectance = 0
     if part:IsA("MeshPart") and part.TextureID \~= "" then
         part.TextureID = ""
+    end
+end
+
+local function applyAntiLagToEffect(effect)
+    if not effect or not effect.Parent then return end
+    if antiLagProcessed[effect] then return end
+    local model = effect:FindFirstAncestorOfClass("Model")
+    if model then
+        local n = model.Name:lower()
+        if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
+            or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("a-90")
+            or n:find("a90") or n:find("glitch") then
+            return
+        end
+    end
+    antiLagProcessed[effect] = true
+    if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
+        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
+        if originalPartProps[effect] == nil then
+            originalPartProps[effect] = {Enabled = effect.Enabled}
+        end
+        effect.Enabled = false
     end
         end
 
@@ -1966,75 +1987,7 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 4
-local autoInteractCooldown = setmetatable({}, {__mode = "k"})
-
-local INTERACT_BLACKLIST = {
-    bed = true, seat = true, chair = true, armchair = true,
-    couch = true, sofa = true,
-    photo = true, picture = true, painting = true, frame = true,
-    art = true, canvas = true, portrait = true, poster = true,
-}
-
-local function isInteractBlacklisted(prompt, parent)
-    local pName = tostring(parent and parent.Name or ""):lower()
-    local aText = tostring(prompt.ActionText or ""):lower()
-    local oText = tostring(prompt.ObjectText or ""):lower()
-    for key, _ in pairs(INTERACT_BLACKLIST) do
-        if pName:find(key, 1, true) or aText:find(key, 1, true) or oText:find(key, 1, true) then
-            return true
-        end
-    end
-    return false
-end
-
-local function preparePrompt(prompt)
-    pcall(function()
-        if prompt.HoldDuration and prompt.HoldDuration > 0 then
-            prompt.HoldDuration = 0
-        end
-        if prompt.RequiresLineOfSight then
-            prompt.RequiresLineOfSight = false
-        end
-        if prompt.MaxActivationDistance and prompt.MaxActivationDistance < 10 then
-            prompt.MaxActivationDistance = 10
-        end
-    end)
-end
-
-local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
-    Text = "Auto Interact", Default = false,
-    Tooltip = "Tu Dong Tuong Tac"
-})
-
-autoInteractToggle:OnChanged(function(Value)
-    autoInteractActive = Value
-    if Value then
-        if not autoInteractThread then
-            autoInteractThread = task.spawn(function()
-                while autoInteractActive do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local hrp = char:FindFirstChild("HumanoidRootPart")
-                            if hrp then
-                                local pos = hrp.Position
-                                local parts = Workspace:GetPartBoundsInRadius(pos, autoInteractRange)
-                                local nearestPrompt = nil
-                                local nearestDist = math.huge
-
-                                for _, part in ipairs(parts) do
-                                    if not part:IsDescendantOf(char) then
-                                                        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt", true)
-if not prompt and part.Parent then
-    prompt = part.Parent:FindFirstChildWhichIsA("ProximityPrompt", true)
-                                                        end
-                                        if prompt and prompt.Enabled then
-                                            local parent = prompt.Parent
-                                            if parent and not isInteractBlacklisted(prompt, parent) then
-       local autoInteractActive = false
-local autoInteractThread = nil
-local autoInteractRange = 12
+local autoInteractRange = 5
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
 local INTERACT_BLACKLIST = {
@@ -2059,15 +2012,15 @@ local function preparePrompt(prompt)
     pcall(function()
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
-        if prompt.MaxActivationDistance < 15 then
-            prompt.MaxActivationDistance = 15
+        if prompt.MaxActivationDistance < 5 then
+            prompt.MaxActivationDistance = 5
         end
     end)
 end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact", Default = false,
-    Tooltip = "Tu dong lay item + tuong tac xung quanh (loc ghe/tu/giuong)"
+    Tooltip = "Tu dong tuong tac"
 })
 
 autoInteractToggle:OnChanged(function(Value)
@@ -2098,7 +2051,9 @@ autoInteractToggle:OnChanged(function(Value)
                                         local now = tick()
                                         if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.25) then
                                             autoInteractCooldown[desc] = now
-                                            pcall(function() fireproximityprompt(desc, 0) end)
+                                            pcall(function()
+                                                fireproximityprompt(desc, 0)
+                                            end)
                                         end
                                     end
                                 end
