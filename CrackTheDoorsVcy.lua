@@ -29,7 +29,20 @@ local ContextActionService = game:GetService("ContextActionService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
+-- Theme xanh than + viền rõ (Obsidian)
+Obsidian.Scheme = {
+    BackgroundColor = Color3.fromRGB(12, 14, 20),   -- nền tối
+    MainColor       = Color3.fromRGB(18, 22, 32),   -- khung chính
+    AccentColor     = Color3.fromRGB(30, 80, 140),  -- xanh than (icon, highlight, nút)
+    OutlineColor    = Color3.fromRGB(40, 70, 110),  -- viền menu
+    FontColor       = Color3.fromRGB(230, 235, 245),
+    Font            = Font.fromEnum(Enum.Font.Code),
+    RedColor        = Color3.fromRGB(255, 50, 50),
+    DestructiveColor = Color3.fromRGB(220, 38, 38),
+    DarkColor       = Color3.new(0, 0, 0),
+    WhiteColor      = Color3.new(1, 1, 1),
+    BackgroundImage = ""
+}
 local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
     SubTitle = "PaintVcyCrack",
@@ -44,7 +57,7 @@ local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
     Visual = Window:AddTab("Visual", "eye"),
-    Misc = Window:AddTab("Misc", "door"),
+    Misc = Window:AddTab("Misc", "door-open"),
     Anti = Window:AddTab("Anti", "skull"),
     Settings = Window:AddTab("Settings", "cog"),
     }
@@ -789,6 +802,7 @@ local function stopAxial()
 end
 
 local function startAxial()
+local function startAxial()
     stopAxial()
     axialActive = true
     local cam = Workspace.CurrentCamera
@@ -800,6 +814,7 @@ local function startAxial()
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then return end
 
+        -- Tắt collision TẤT CẢ part cơ thể (không đụng Transparency)
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
                 if axialSaved[p] == nil then
@@ -807,13 +822,11 @@ local function startAxial()
                         CanCollide = p.CanCollide,
                         CanQuery = p.CanQuery,
                         CanTouch = p.CanTouch,
-                        Transparency = p.Transparency,
                     }
                 end
                 p.CanCollide = false
                 p.CanQuery = false
                 p.CanTouch = false
-                p.Transparency = 1
             end
         end
         for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
@@ -824,23 +837,22 @@ local function startAxial()
                         CanCollide = sp.CanCollide,
                         CanQuery = sp.CanQuery,
                         CanTouch = sp.CanTouch,
-                        Transparency = sp.Transparency,
                     }
                 end
                 sp.CanCollide = false
                 sp.CanQuery = false
                 sp.CanTouch = false
-                sp.Transparency = 1
             end
         end
 
-        hum.WalkSpeed = 0
+        -- Giữ WalkSpeed bình thường + đẩy theo hướng cam (xuyên tường)
         local look = cam.CFrame.LookVector
-        hrp.CFrame = hrp.CFrame + look * (axialSpeed * (1/60))
-        hrp.AssemblyLinearVelocity = Vector3.zero
+        local dir = Vector3.new(look.X, 0, look.Z)
+        if dir.Magnitude > 0.01 then dir = dir.Unit else dir = Vector3.new(0,0,-1) end
+        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed)
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
-end
+        end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
@@ -1095,7 +1107,7 @@ FuncRight:AddSlider("ThirdPersonZSlider", {
     Text = "Z offset Cam", Default = 8, Min = 1, Max = 20, Rounding = 1, Compact = true
 }):OnChanged(function(v) thirdPersonZ = v end)
 FuncRight:AddSlider("ThirdPersonSensSlider", {
-    Text = "Do Nhay Cua Camera", Default = 3, Min = 1.0, Max = 3.75, Rounding = 2, Compact = true
+    Text = "Do Nhay Cua Camera", Default = 4.5, Min = 1.0, Max = 6, Rounding = 2, Compact = true
 }):OnChanged(function(v) thirdPersonSens = v end)
 
 thirdPersonToggle:OnChanged(function(Value)
@@ -1471,21 +1483,25 @@ local antiLagProcessed = setmetatable({}, {__mode = "k"})
 
 local function applyAntiLagToPart(part)
     if not part or not part.Parent then return end
+    if antiLagProcessed[part] then return end
+    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
+    local char = LocalPlayer.Character
+    if char and part:IsDescendantOf(char) then return end
+
+    -- Bỏ qua toàn bộ entity
     local model = part:FindFirstAncestorOfClass("Model")
     if model then
         local n = model.Name:lower()
         if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
             or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("lookman")
             or n:find("dread") or n:find("timothy") or n:find("jack") or n:find("dupe")
-            or n:find("a-90") or n:find("a90") or n:find("glitch") or n:find("vacuum") then
+            or n:find("a-90") or n:find("a90") or n:find("a-60") or n:find("a60")
+            or n:find("a-120") or n:find("a120") or n:find("glitch") or n:find("vacuum")
+            or n:find("giggle") or n:find("snare") or n:find("shadow") or n:find("sally") then
             return
         end
     end
-    
-    if antiLagProcessed[part] then return end
-    if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
-    local char = LocalPlayer.Character
-    if char and part:IsDescendantOf(char) then return end
+
     antiLagProcessed[part] = true
     if originalPartProps[part] == nil then
         originalPartProps[part] = {
@@ -1498,22 +1514,10 @@ local function applyAntiLagToPart(part)
     part.Material = Enum.Material.SmoothPlastic
     part.CastShadow = false
     part.Reflectance = 0
-    if part:IsA("MeshPart") and part.TextureID ~= "" then
+    if part:IsA("MeshPart") and part.TextureID \~= "" then
         part.TextureID = ""
     end
-    end
-local function applyAntiLagToEffect(effect)
-    if not effect or not effect.Parent then return end
-    if antiLagProcessed[effect] then return end
-    antiLagProcessed[effect] = true
-    if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
-        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
-        if originalPartProps[effect] == nil then
-            originalPartProps[effect] = {Enabled = effect.Enabled}
         end
-        effect.Enabled = false
-    end
-end
 
 local function restoreAntiLag()
     for obj, data in pairs(originalPartProps) do
@@ -1978,31 +1982,80 @@ if not prompt and part.Parent then
                                         if prompt and prompt.Enabled then
                                             local parent = prompt.Parent
                                             if parent and not isInteractBlacklisted(prompt, parent) then
-                                                local promptPos = part.Position
-                                                local dist = (pos - promptPos).Magnitude
-                                                if dist <= autoInteractRange and dist < nearestDist then
-                                                    nearestDist = dist
-                                                    nearestPrompt = prompt
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
+       local autoInteractActive = false
+local autoInteractThread = nil
+local autoInteractRange = 12
+local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
-                                if nearestPrompt then
-                                    preparePrompt(nearestPrompt)
-                                    local now = tick()
-                                    if not autoInteractCooldown[nearestPrompt] or (now - autoInteractCooldown[nearestPrompt] > 0.15) then
-                                        autoInteractCooldown[nearestPrompt] = now
-                                        pcall(function()
-                                            fireproximityprompt(nearestPrompt, 0)
-                                        end)
+local INTERACT_BLACKLIST = {
+    bed = true, seat = true, chair = true, armchair = true,
+    couch = true, sofa = true, closet = true, wardrobe = true,
+    locker = true, hide = true, stool = true, bench = true,
+}
+
+local function isInteractBlacklisted(prompt, parent)
+    local pName = tostring(parent and parent.Name or ""):lower()
+    local aText = tostring(prompt.ActionText or ""):lower()
+    local oText = tostring(prompt.ObjectText or ""):lower()
+    for key, _ in pairs(INTERACT_BLACKLIST) do
+        if pName:find(key, 1, true) or aText:find(key, 1, true) or oText:find(key, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function preparePrompt(prompt)
+    pcall(function()
+        prompt.HoldDuration = 0
+        prompt.RequiresLineOfSight = false
+        if prompt.MaxActivationDistance < 15 then
+            prompt.MaxActivationDistance = 15
+        end
+    end)
+end
+
+local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
+    Text = "Auto Interact", Default = false,
+    Tooltip = "Tu dong lay item + tuong tac xung quanh (loc ghe/tu/giuong)"
+})
+
+autoInteractToggle:OnChanged(function(Value)
+    autoInteractActive = Value
+    if Value then
+        if not autoInteractThread then
+            autoInteractThread = task.spawn(function()
+                while autoInteractActive do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if not char then return end
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        if not hrp then return end
+                        local pos = hrp.Position
+                        for _, desc in ipairs(Workspace:GetDescendants()) do
+                            if desc:IsA("ProximityPrompt") and desc.Enabled then
+                                local parent = desc.Parent
+                                if parent and not isInteractBlacklisted(desc, parent) then
+                                    local pPos = nil
+                                    if parent:IsA("BasePart") then
+                                        pPos = parent.Position
+                                    elseif parent:IsA("Model") then
+                                        local pp = parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart")
+                                        if pp then pPos = pp.Position end
+                                    end
+                                    if pPos and (pos - pPos).Magnitude <= autoInteractRange then
+                                        preparePrompt(desc)
+                                        local now = tick()
+                                        if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.25) then
+                                            autoInteractCooldown[desc] = now
+                                            pcall(function() fireproximityprompt(desc, 0) end)
+                                        end
                                     end
                                 end
                             end
                         end
                     end)
-                    task.wait(0.12)
+                    task.wait(0.3)
                 end
             end)
         end
