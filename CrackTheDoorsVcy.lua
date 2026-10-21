@@ -96,7 +96,7 @@ task.spawn(function()
                 Window:SetVisible(false)
             end
             -- một số bản Obsidian
-            if Window and Window.Visible \~= nil then
+            if Window and Window.Visible ~= nil then
                 Window.Visible = false
             end
         end)
@@ -2361,10 +2361,12 @@ weirdToggle:OnChanged(function(Value)
                     if p.Name ~= "HumanoidRootPart" and p.Name ~= "CollisionPart"
                         and p.Name ~= "Collision" and p.Name ~= "CollisionClone"
                         and p.Name ~= "CollisionPartClone" then
-                        p.Transparency = 0.5
-                        p.Material = Enum.Material.ForceField
-                        p.Color = Color3.fromRGB(50, 255, 150)
-                        p.Reflectance = 0.3
+                        if weirdMode == "Ghost Green" then
+                            p.Transparency = 0.5
+                            p.Material = Enum.Material.ForceField
+                            p.Color = Color3.fromRGB(50, 255, 150)
+                            p.Reflectance = 0.3
+                                end
                     end
                 end
             end
