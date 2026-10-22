@@ -2651,7 +2651,7 @@ local function computePath(fromPos, toPos)
     local ok = pcall(function()
         path:ComputeAsync(fromPos, toPos)
     end)
-    if not ok or path.Status \~= Enum.PathStatus.Success then
+    if not ok or path.Status ~= Enum.PathStatus.Success then
         return nil
     end
     local wps = {}
