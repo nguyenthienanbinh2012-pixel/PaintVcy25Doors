@@ -34,7 +34,7 @@ Obsidian.Scheme = {
     MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
-    FontColor        = Color3.fromRGB(70, 45, 60),    -- chu toi de doc tren nen hong
+    FontColor        = Color3.fromRGB(70, 60, 60),    -- chu toi de doc tren nen hong
     Font             = Font.fromEnum(Enum.Font.Code),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -79,7 +79,7 @@ end
 pcall(function()
     local sound = Instance.new("Sound")
     sound.SoundId = "rbxassetid://4590657391"
-    sound.Volume = 8
+    sound.Volume = 10
     sound.Parent = game:GetService("SoundService")
     sound:Play()
     task.delay(3, function()
@@ -140,12 +140,13 @@ noteGroup:AddLabel("<font color='#FF3232'>+ Add Axial Velocity</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
-noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 18/10/2026</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Auto Start Path</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix Remove Dame,Lag</font>", true)
+noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 22/10/2026</font>", true)
 local checkGroup = Tabs.Info:AddRightGroupbox("Check System")
 
 local checkPlayerLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Player: Đang quét...</font>", true)
 local checkRoomLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Room: Đang quét...</font>", true)
-local checkEntityLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Entity: Không có Entity</font>", true)
 local checkAntiCheatLabel = checkGroup:AddLabel("<font color='#32FF64'><b>Check Anti Cheat: 0% (Ping: 0ms)</b></font>", true)
 
 checkGroup:AddButton("Check Player", function()
@@ -164,37 +165,6 @@ checkGroup:AddButton("Check Room", function()
     local currentRoom = LocalPlayer:GetAttribute("CurrentRoom")
     local inGame = LocalPlayer:GetAttribute("InGame")
     checkRoomLabel:SetText(string.format("<font color='#32FF64'>Check Room: Room %s | Status: %s</font>", tostring(currentRoom or "Lobby"), tostring(inGame or "Sảnh")))
-end)
-
-local activeEntityName = nil
-local entityTimeout = 0
-
-local function onEntityDetected(inst)
-    if not inst or not inst.Parent then return end
-    local char = LocalPlayer.Character
-    if char and inst:IsDescendantOf(char) then return end
-    
-    local hum = inst:FindFirstChildOfClass("Humanoid")
-    local isEntity = false
-    
-    if hum and inst.Name ~= LocalPlayer.Name then
-        isEntity = true
-    elseif inst:FindFirstChild("Hitbox") or inst:FindFirstChild("EntityHitbox") then
-        isEntity = true
-    end
-
-    if isEntity then
-        activeEntityName = inst.Name
-        entityTimeout = tick() + 4
-        checkEntityLabel:SetText("<font color='#FF3232'><b>Check Entity: " .. tostring(inst.Name):upper() .. " ĐANG XUẤT HIỆN!</b></font>")
-    end
-end
-
-Workspace.ChildAdded:Connect(function(inst) task.defer(function() onEntityDetected(inst) end) end)
-Workspace.DescendantAdded:Connect(function(inst)
-    if inst:IsA("Model") or inst:IsA("BasePart") then
-        task.defer(function() onEntityDetected(inst) end)
-    end
 end)
 
 task.spawn(function()
@@ -1890,10 +1860,6 @@ local function matchEntity(name)
     return false
 end
 
-local removeEntityToggle = AntiLeft:AddToggle("RemoveEntityDameToggle", {
-    Text = "Remove Entity & Dame", Default = false,
-    Tooltip = "Xoa entity + No Dame Chúng"
-})
 
 -- Obsidian: multi dropdown neu co; neu khong dung tung toggle
 pcall(function()
@@ -2194,6 +2160,7 @@ skipProximityToggle:OnChanged(function(Value)
     end
 end)
 
+.new(0.88, 0, 0, 6)
 local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
@@ -2214,103 +2181,125 @@ local function isPlayerHiding()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
         if hum.Sit or hum.PlatformStand then return true end
+        local st = hum:GetState()
+        if st == Enum.HumanoidStateType.Seated then return true end
         local ok, tracks = pcall(function() return hum:GetPlayingAnimationTracks() end)
         if ok and tracks then
             for _, t in ipairs(tracks) do
                 local n = string.lower(tostring(t.Name or ""))
                 if n:find("hide") or n:find("closet") or n:find("wardrobe")
-                    or n:find("locker") or n:find("bed") then
+                    or n:find("locker") or n:find("bed") or n:find("enter") then
                     return true
                 end
             end
         end
     end
     return false
-    end
+end
+
+local function destroyEscapeTimerUI()
+    if escapeTimerGui then escapeTimerGui:Destroy() end
+    escapeTimerGui = nil
+    escapeTimerLabel = nil
+    escapeTimerBar = nil
+    hideStartTime = nil
+end
 
 local function createEscapeTimerUI()
     if escapeTimerGui and escapeTimerGui.Parent then return end
     destroyEscapeTimerUI()
 
+    local accent = (Obsidian.Scheme and Obsidian.Scheme.AccentColor)
+        or Color3.fromRGB(255, 140, 175)
+    local bg = (Obsidian.Scheme and Obsidian.Scheme.MainColor)
+        or Color3.fromRGB(22, 20, 26)
+    local outline = (Obsidian.Scheme and Obsidian.Scheme.OutlineColor)
+        or Color3.fromRGB(45, 45, 55)
+
     local gui = Instance.new("ScreenGui")
     gui.Name = "PaintEscapeTimer"
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 100
+    gui.DisplayOrder = 999
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    -- Mobile executor: uu tien PlayerGui
     gui.Parent = PlayerGui
-    pcall(function()
-        if CoreGui then gui.Parent = CoreGui end
-    end)
 
-    -- Khung nho kieu Obsidian
+    -- Panel ngang top (style Obsidian)
     local frame = Instance.new("Frame")
     frame.Name = "Box"
     frame.AnchorPoint = Vector2.new(0.5, 0)
-    frame.Position = UDim2.new(0.5, 0, 0, 18)
-    frame.Size = UDim2.fromOffset(160, 52)
-    frame.BackgroundColor3 = Color3.fromRGB(22, 20, 26)
-    frame.BackgroundTransparency = 0.12
+    frame.Position = UDim2.new(0.5, 0, 0, 14)
+    frame.Size = UDim2.fromOffset(220, 40)
+    frame.BackgroundColor3 = bg
+    frame.BackgroundTransparency = 0.08
     frame.BorderSizePixel = 0
+    frame.Active = true -- de keo
     frame.Parent = gui
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 140, 175) -- accent hong
+    stroke.Color = accent
     stroke.Thickness = 1.5
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = frame
 
-    local title = Instance.new("TextLabel")
-    title.BackgroundTransparency = 1
-    title.Position = UDim2.fromOffset(0, 2)
-    title.Size = UDim2.new(1, 0, 0, 16)
-    title.Font = Enum.Font.Code
-    title.TextSize = 11
-    title.TextColor3 = Color3.fromRGB(255, 180, 200)
-    title.Text = "ESCAPE"
-    title.Parent = frame
-
+    -- Chu thoi gian ben trai
     local label = Instance.new("TextLabel")
-    label.Name = "Time"
     label.BackgroundTransparency = 1
-    label.Position = UDim2.fromOffset(0, 14)
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.fromOffset(10, 0)
+    label.Size = UDim2.new(0, 56, 1, 0)
     label.Font = Enum.Font.Code
     label.TextSize = 18
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Text = string.format("%.0f", ESCAPE_MAX)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = string.format("%02d", ESCAPE_MAX)
     label.Parent = frame
 
-    -- Nen thanh
+    -- Thanh chay ben phai
     local barBg = Instance.new("Frame")
     barBg.Name = "BarBg"
-    barBg.AnchorPoint = Vector2.new(0.5, 1)
-    barBg.Position = UDim2.new(0.5, 0, 1, -6)
-    barBg.Size = UDim2.new(0.88, 0, 0, 6)
-    barBg.BackgroundColor3 = Color3.fromRGB(40, 35, 45)
+    barBg.AnchorPoint = Vector2.new(1, 0.5)
+    barBg.Position = UDim2.new(1, -10, 0.5, 0)
+    barBg.Size = UDim2.new(0, 140, 0, 10)
+    barBg.BackgroundColor3 = outline
     barBg.BorderSizePixel = 0
     barBg.Parent = frame
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
 
-    local barCorner = Instance.new("UICorner")
-    barCorner.CornerRadius = UDim.new(1, 0)
-    barCorner.Parent = barBg
-
-    -- Thanh chay thoi gian (full → rong)
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
     bar.Size = UDim2.fromScale(1, 1)
-    bar.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
+    bar.BackgroundColor3 = accent
     bar.BorderSizePixel = 0
     bar.Parent = barBg
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
 
-    local barFillCorner = Instance.new("UICorner")
-    barFillCorner.CornerRadius = UDim.new(1, 0)
-    barFillCorner.Parent = bar
+    -- Keo tha panel
+    local dragging, dragStart, startPos = false, nil, nil
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+            local d = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + d.X,
+                startPos.Y.Scale, startPos.Y.Offset + d.Y
+            )
+        end
+    end)
 
     escapeTimerGui = gui
     escapeTimerLabel = label
@@ -2318,20 +2307,49 @@ local function createEscapeTimerUI()
     gui.Enabled = false
 end
 
-local function destroyEscapeTimerUI()
-    if escapeTimerGui then
-        escapeTimerGui:Destroy()
-    end
-    escapeTimerGui = nil
-    escapeTimerLabel = nil
-    escapeTimerBar = nil
-    hideStartTime = nil
-end
-
 local escapeTimerToggle = MiscLeft:AddToggle("EscapeTimerToggle", {
     Text = "Escape Timer", Default = false,
-    Tooltip = "Tao Bo dem khi tron"
+    Tooltip = "Hiển thị Khi trốn có bộ đếm"
 })
+
+escapeTimerToggle:OnChanged(function(Value)
+    escapeTimerActive = Value
+    if Value then
+        createEscapeTimerUI()
+        if escapeTimerConn then escapeTimerConn:Disconnect() end
+        escapeTimerConn = RunService.Heartbeat:Connect(function()
+            if not escapeTimerActive then return end
+            if not escapeTimerGui then createEscapeTimerUI() end
+
+            local hiding = isPlayerHiding()
+            if hiding then
+                if not hideStartTime then hideStartTime = tick() end
+                local left = math.max(0, ESCAPE_MAX - (tick() - hideStartTime))
+                local ratio = left / ESCAPE_MAX
+                escapeTimerGui.Enabled = true
+                if escapeTimerLabel then
+                    escapeTimerLabel.Text = string.format("%02d", math.floor(left))
+                    escapeTimerLabel.TextColor3 = left <= 5 and Color3.fromRGB(255, 70, 70)
+                        or left <= 10 and Color3.fromRGB(255, 200, 80)
+                        or Color3.fromRGB(255, 255, 255)
+                end
+                if escapeTimerBar then
+                    escapeTimerBar.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
+                    escapeTimerBar.BackgroundColor3 = left <= 5 and Color3.fromRGB(255, 70, 70)
+                        or left <= 10 and Color3.fromRGB(255, 200, 80)
+                        or ((Obsidian.Scheme and Obsidian.Scheme.AccentColor) or Color3.fromRGB(255, 140, 175))
+                end
+            else
+                hideStartTime = nil
+                if escapeTimerGui then escapeTimerGui.Enabled = false end
+            end
+        end)
+    else
+        if escapeTimerConn then escapeTimerConn:Disconnect() escapeTimerConn = nil end
+        destroyEscapeTimerUI()
+    end
+end)
+
 
 escapeTimerToggle:OnChanged(function(Value)
     escapeTimerActive = Value
@@ -2638,43 +2656,39 @@ local function getNextDoor()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
+    local rooms = Workspace:FindFirstChild("CurrentRooms")
+    if not rooms then return nil end
+
+    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
+    local best, bestScore = nil, -1e9
     local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
     if look.Magnitude > 0 then look = look.Unit end
-    local best, bestScore = nil, -1e9
 
-    local function consider(part)
-        if not part or not part:IsA("BasePart") then return end
-        local off = part.Position - hrp.Position
-        local dist = off.Magnitude
-        if dist < 3 or dist > 200 then return end
-        local flat = Vector3.new(off.X, 0, off.Z)
-        if flat.Magnitude < 0.05 then return end
-        local score = -dist + flat.Unit:Dot(look) * 30
-        if score > bestScore then bestScore = score best = part end
-    end
-
-    local rooms = Workspace:FindFirstChild("CurrentRooms")
-    if rooms then
-        for _, room in ipairs(rooms:GetChildren()) do
-            local door = room:FindFirstChild("Door", true)
-            if door then
-                if door:IsA("BasePart") then consider(door)
-                else consider(door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart", true)) end
-            end
-        end
-    end
-    if not best then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj.Name == "Door" then
-                if obj:IsA("BasePart") then consider(obj)
-                elseif obj:IsA("Model") then
-                    consider(obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true))
+    for _, room in ipairs(rooms:GetChildren()) do
+        local doorModel = room:FindFirstChild("Door") or room:FindFirstChild("Door", true)
+        if doorModel then
+            local part = doorModel:IsA("BasePart") and doorModel
+                or doorModel.PrimaryPart
+                or doorModel:FindFirstChild("Door")
+                or doorModel:FindFirstChildWhichIsA("BasePart", true)
+            if part then
+                local off = part.Position - hrp.Position
+                local dist = off.Magnitude
+                if dist > 2 and dist < 250 then
+                    local flat = Vector3.new(off.X, 0, off.Z)
+                    if flat.Magnitude > 0.1 then
+                        local score = -dist + flat.Unit:Dot(look) * 40
+                        -- uu tien room >= current
+                        local rn = tonumber(room.Name)
+                        if rn and rn >= myRoom then score = score + 50 end
+                        if score > bestScore then bestScore = score best = part end
+                    end
                 end
             end
         end
     end
     return best
-end
+            end
 
 local function clearPathDraw()
     if pathFolder then
@@ -2737,10 +2751,10 @@ local function drawWaypoints(wps)
         beam.Attachment0 = pathAtts[i]
         beam.Attachment1 = pathAtts[i + 1]
         beam.FaceCamera = false
-        beam.LightEmission = 0.7
+        beam.LightEmission = 0.9
         beam.LightInfluence = 0
-        beam.Width0 = 1.0
-        beam.Width1 = 1.0
+        beam.Width0 = 2.2
+        beam.Width1 = 2.0
         beam.Segments = 10
         beam.Texture = "rbxassetid://446111271"
         beam.TextureSpeed = 0.35
@@ -2860,8 +2874,7 @@ PathRight:AddToggle("AutoStartPathToggle", {
         local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 16
         if spd < 16 then spd = 16 end
         hum.WalkSpeed = spd
-        hum:Move(dir, false)
-        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
+        hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
     end)
 end)
 
