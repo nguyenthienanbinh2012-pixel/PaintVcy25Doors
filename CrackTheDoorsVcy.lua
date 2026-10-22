@@ -142,6 +142,7 @@ noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Auto Start Path</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Remove Dame,Lag</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Add Remove Chaos visual effects</font>", true)
 noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 22/10/2026</font>", true)
 local checkGroup = Tabs.Info:AddRightGroupbox("Check System")
 
@@ -1953,11 +1954,7 @@ local function startRemoveEntity()
         end
     end)
 end
-if anySelected() then
-            startRemoveEntity()
-        else
-            stopRemoveEntity()
-end
+
 local function anySelected()
     for _, on in pairs(selectedRemove) do
         if on then return true end
