@@ -1885,18 +1885,6 @@ pcall(function()
     end)
 end)
 
--- Fallback neu Dropdown Multi khong chay: 7 toggle nho
-for _, name in ipairs({"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"}) do
-    AntiLeft:AddToggle("Remove_" .. name:gsub("%W", "_"), {
-        Text = "Remove " .. name,
-        Default = true,
-    }):OnChanged(function(on)
-        selectedRemove[name] = on
-    end)
-    end
-
-local function matchEntity(name)
-    local n = tostring(name or ""):lower()
     for _, k in ipairs(TargetEntities) do
         if n:find(k, 1, true) then return true end
     end
@@ -1921,49 +1909,73 @@ local function tryHookDamageFuncs()
         end
     end)
 end
-removeEntityToggle:OnChanged(function(Value)
-    removeEntityActive = Value
-    if Value then
-        tryHookDamageFuncs()
-        removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
-            if not removeEntityActive then return end
-            if matchEntity(desc.Name) then
-                task.defer(function()
-                    pcall(function()
-                        for _, p in ipairs(desc:GetDescendants()) do
-                            if p:IsA("BasePart") then
-                                p.CanTouch = false
-                                p.CanQuery = false
-                                p.Transparency = 1
-                            elseif p:IsA("Sound") or p:IsA("ParticleEmitter") or p:IsA("Light") or p:IsA("BillboardGui") then
-                                p:Destroy()
-                            end
-                        end
-                        desc:Destroy()
-                    end)
-                end)
-            end
-        end)
-        removeEntityConn = task.spawn(function()
-            while removeEntityActive do
+local function stopRemoveEntity()
+    removeEntityActive = false
+    if removeEntityConn then
+        task.cancel(removeEntityConn)
+        removeEntityConn = nil
+    end
+    if removeEntityDescConn then
+        removeEntityDescConn:Disconnect()
+        removeEntityDescConn = nil
+    end
+end
+
+local function startRemoveEntity()
+    stopRemoveEntity()
+    removeEntityActive = true
+    tryHookDamageFuncs()
+    removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
+        if not removeEntityActive then return end
+        if matchEntity(desc.Name) then
+            task.defer(function()
                 pcall(function()
-                    for _, obj in ipairs(Workspace:GetChildren()) do
-                        if matchEntity(obj.Name) then
-                            for _, p in ipairs(obj:GetDescendants()) do
-                                if p:IsA("BasePart") then p.CanTouch = false
-                                elseif p:IsA("Sound") or p:IsA("ParticleEmitter") then p:Destroy() end
-                            end
-                            obj:Destroy()
+                    for _, p in ipairs(desc:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                            p.CanTouch = false
+                            p.CanQuery = false
+                            p.Transparency = 1
+                        elseif p:IsA("Sound") or p:IsA("ParticleEmitter")
+                            or p:IsA("Light") or p:IsA("BillboardGui") then
+                            p:Destroy()
                         end
                     end
+                    desc:Destroy()
                 end)
-                task.wait(0.25)
-            end
-        end)
-    else
-        if removeEntityConn then task.cancel(removeEntityConn) removeEntityConn = nil end
-        if removeEntityDescConn then removeEntityDescConn:Disconnect() removeEntityDescConn = nil end
+            end)
+        end
+    end)
+    removeEntityConn = task.spawn(function()
+        while removeEntityActive do
+            pcall(function()
+                local rooms = Workspace:FindFirstChild("CurrentRooms")
+                local roots = rooms and rooms:GetChildren() or Workspace:GetChildren()
+                for _, obj in ipairs(roots) do
+                    if matchEntity(obj.Name) then
+                        pcall(function() obj:Destroy() end)
+                    end
+                end
+            end)
+            task.wait(0.35)
+        end
+    end)
+end
+if anySelected() then
+            startRemoveEntity()
+        else
+            stopRemoveEntity()
+end
+local function anySelected()
+    for _, on in pairs(selectedRemove) do
+        if on then return true end
     end
+    return false
+end
+
+-- Gắn lại dropdown: chon entity = bat remove, bo het = tat
+pcall(function()
+    -- neu da AddDropdown o tren, chi can goi start khi load
+    if anySelected() then startRemoveEntity() end
 end)
 
 local autoPadlockActive = false
@@ -2040,7 +2052,7 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 5
+local autoInteractRange = 3
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
 local INTERACT_BLACKLIST = {
@@ -2065,8 +2077,8 @@ local function preparePrompt(prompt)
     pcall(function()
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
-        if prompt.MaxActivationDistance < 5 then
-            prompt.MaxActivationDistance = 5
+        if prompt.MaxActivationDistance < 3 then
+            prompt.MaxActivationDistance = 3
         end
     end)
 end
