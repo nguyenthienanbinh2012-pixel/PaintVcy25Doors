@@ -273,8 +273,6 @@ pcall(function()
         Time = 8
     })
 end)
-
-end)
 local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
     Function = Window:AddTab("Function", "user"),
