@@ -2516,7 +2516,7 @@ do
     end)
     end
 -- ========== ROOM PATH ==========
-    do
+(function()
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
 local PathRight = Tabs.Path:AddRightGroupbox("Auto")
 
@@ -2676,7 +2676,7 @@ PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
     Tooltip = "0 = Độ Delay Dừng đi"
 }):OnChanged(function(v) pathDelay = v end)
-    end
+    end)()
 
 Obsidian:OnUnload(function()
     pcall(function()
