@@ -2160,7 +2160,6 @@ skipProximityToggle:OnChanged(function(Value)
     end
 end)
 
-.new(0.88, 0, 0, 6)
 local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
