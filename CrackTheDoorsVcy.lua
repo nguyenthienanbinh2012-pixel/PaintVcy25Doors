@@ -2128,6 +2128,7 @@ end)
 local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
+local escapeTimerBar = nil
 local escapeTimerConn = nil
 local ESCAPE_MAX = 18
 local hideStartTime = nil
@@ -2135,17 +2136,48 @@ local hideStartTime = nil
 local function isPlayerHiding()
     local char = LocalPlayer.Character
     if not char then return false end
+
+    -- Attribute Doors / script game
+    local attrs = {"Hiding", "IsHiding", "Hide", "InCloset", "Crouching"}
+    for _, a in ipairs(attrs) do
+        local v = char:GetAttribute(a)
+        if v == true or v == 1 then return true end
+    end
+
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-    -- Doors: thường Sit / PlatformStand / animation hide khi trong tủ
-    if hum.Sit then return true end
-    if hum.PlatformStand then return true end
-    local ok, tracks = pcall(function() return hum:GetPlayingAnimationTracks() end)
-    if ok and tracks then
-        for _, t in ipairs(tracks) do
-            local n = string.lower(tostring(t.Name or "") .. tostring(t.Animation and t.Animation.Name or ""))
-            if n:find("hide") or n:find("closet") or n:find("wardrobe") or n:find("enter") then
-                return true
+    if hum then
+        if hum.Sit or hum.PlatformStand then return true end
+        pcall(function()
+            for _, t in ipairs(hum:GetPlayingAnimationTracks()) do
+                local n = string.lower(
+                    tostring(t.Name or "") .. " " ..
+                    tostring(t.Animation and t.Animation.AnimationId or "")
+                )
+                if n:find("hide") or n:find("closet") or n:find("wardrobe")
+                    or n:find("locker") or n:find("enter") or n:find("crawl") then
+                    return true
+                end
+            end
+        end)
+    end
+
+    -- Gan tu / wardrobe / closet
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") or obj:IsA("BasePart") then
+                local n = string.lower(obj.Name)
+                if n:find("wardrobe") or n:find("closet") or n:find("locker")
+                    or n:find("cabinet") or n == "hide" then
+                    local part = obj:IsA("BasePart") and obj
+                        or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if part and (part.Position - hrp.Position).Magnitude < 6 then
+                        -- dang dung trong vung tu + co the dang "trong" (velocity thap)
+                        if hrp.AssemblyLinearVelocity.Magnitude < 2 then
+                            return true
+                        end
+                    end
+                end
             end
         end
     end
@@ -2153,22 +2185,29 @@ local function isPlayerHiding()
 end
 
 local function createEscapeTimerUI()
-    if escapeTimerGui then return end
+    if escapeTimerGui and escapeTimerGui.Parent then return end
+    destroyEscapeTimerUI()
+
     local gui = Instance.new("ScreenGui")
     gui.Name = "PaintEscapeTimer"
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 100
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    pcall(function() gui.Parent = CoreGui end)
-    if not gui.Parent then gui.Parent = PlayerGui end
+    -- Mobile executor: uu tien PlayerGui
+    gui.Parent = PlayerGui
+    pcall(function()
+        if CoreGui then gui.Parent = CoreGui end
+    end)
 
+    -- Khung nho kieu Obsidian
     local frame = Instance.new("Frame")
     frame.Name = "Box"
     frame.AnchorPoint = Vector2.new(0.5, 0)
-    frame.Position = UDim2.new(0.5, 0, 0, 12)
-    frame.Size = UDim2.fromOffset(120, 36)
-    frame.BackgroundColor3 = Color3.fromRGB(16, 22, 18)
-    frame.BackgroundTransparency = 0.15
+    frame.Position = UDim2.new(0.5, 0, 0, 18)
+    frame.Size = UDim2.fromOffset(160, 52)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 20, 26)
+    frame.BackgroundTransparency = 0.12
     frame.BorderSizePixel = 0
     frame.Parent = gui
 
@@ -2177,66 +2216,120 @@ local function createEscapeTimerUI()
     corner.Parent = frame
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(57, 255, 20)
+    stroke.Color = Color3.fromRGB(255, 140, 175) -- accent hong
     stroke.Thickness = 1.5
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = frame
 
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(0, 2)
+    title.Size = UDim2.new(1, 0, 0, 16)
+    title.Font = Enum.Font.Code
+    title.TextSize = 11
+    title.TextColor3 = Color3.fromRGB(255, 180, 200)
+    title.Text = "ESCAPE"
+    title.Parent = frame
+
     local label = Instance.new("TextLabel")
+    label.Name = "Time"
     label.BackgroundTransparency = 1
-    label.Size = UDim2.fromScale(1, 1)
+    label.Position = UDim2.fromOffset(0, 14)
+    label.Size = UDim2.new(1, 0, 0, 20)
     label.Font = Enum.Font.Code
-    label.TextSize = 20
+    label.TextSize = 18
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Text = "18"
+    label.Text = string.format("%.0f", ESCAPE_MAX)
     label.Parent = frame
+
+    -- Nen thanh
+    local barBg = Instance.new("Frame")
+    barBg.Name = "BarBg"
+    barBg.AnchorPoint = Vector2.new(0.5, 1)
+    barBg.Position = UDim2.new(0.5, 0, 1, -6)
+    barBg.Size = UDim2.new(0.88, 0, 0, 6)
+    barBg.BackgroundColor3 = Color3.fromRGB(40, 35, 45)
+    barBg.BorderSizePixel = 0
+    barBg.Parent = frame
+
+    local barCorner = Instance.new("UICorner")
+    barCorner.CornerRadius = UDim.new(1, 0)
+    barCorner.Parent = barBg
+
+    -- Thanh chay thoi gian (full → rong)
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.Size = UDim2.fromScale(1, 1)
+    bar.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
+    bar.BorderSizePixel = 0
+    bar.Parent = barBg
+
+    local barFillCorner = Instance.new("UICorner")
+    barFillCorner.CornerRadius = UDim.new(1, 0)
+    barFillCorner.Parent = bar
 
     escapeTimerGui = gui
     escapeTimerLabel = label
+    escapeTimerBar = bar
     gui.Enabled = false
 end
 
 local function destroyEscapeTimerUI()
     if escapeTimerGui then
         escapeTimerGui:Destroy()
-        escapeTimerGui = nil
-        escapeTimerLabel = nil
     end
+    escapeTimerGui = nil
+    escapeTimerLabel = nil
+    escapeTimerBar = nil
     hideStartTime = nil
 end
 
 local escapeTimerToggle = MiscLeft:AddToggle("EscapeTimerToggle", {
     Text = "Escape Timer", Default = false,
-    Tooltip = "Chi hien khi dang tron, dem 18s"
+    Tooltip = "Tao Bo dem khi tron"
 })
 
 escapeTimerToggle:OnChanged(function(Value)
     escapeTimerActive = Value
     if Value then
         createEscapeTimerUI()
-        if not escapeTimerConn then
-            escapeTimerConn = RunService.Heartbeat:Connect(function()
-                if not escapeTimerActive then return end
-                local hiding = isPlayerHiding()
-                if hiding then
-                    if not hideStartTime then hideStartTime = tick() end
-                    local left = math.max(0, ESCAPE_MAX - (tick() - hideStartTime))
-                    if escapeTimerGui then escapeTimerGui.Enabled = true end
-                    if escapeTimerLabel then
-                        escapeTimerLabel.Text = string.format("%.0f", left)
-                        if left <= 5 then
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
-                        elseif left <= 10 then
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-                        else
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        end
+        if escapeTimerConn then escapeTimerConn:Disconnect() end
+        escapeTimerConn = RunService.Heartbeat:Connect(function()
+            if not escapeTimerActive then return end
+            if not escapeTimerGui then createEscapeTimerUI() end
+
+            local hiding = isPlayerHiding()
+            if hiding then
+                if not hideStartTime then hideStartTime = tick() end
+                local left = math.max(0, ESCAPE_MAX - (tick() - hideStartTime))
+                local ratio = left / ESCAPE_MAX
+
+                escapeTimerGui.Enabled = true
+                if escapeTimerLabel then
+                    escapeTimerLabel.Text = string.format("%.0f", left)
+                    if left <= 5 then
+                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 70, 70)
+                    elseif left <= 10 then
+                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 200, 80)
+                    else
+                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                     end
-                else
-                    hideStartTime = nil
-                    if escapeTimerGui then escapeTimerGui.Enabled = false end
                 end
-            end)
-        end
+                if escapeTimerBar then
+                    escapeTimerBar.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
+                    if left <= 5 then
+                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+                    elseif left <= 10 then
+                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 200, 80)
+                    else
+                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
+                    end
+                end
+            else
+                hideStartTime = nil
+                if escapeTimerGui then escapeTimerGui.Enabled = false end
+            end
+        end)
     else
         if escapeTimerConn then
             escapeTimerConn:Disconnect()
@@ -2245,61 +2338,7 @@ escapeTimerToggle:OnChanged(function(Value)
         destroyEscapeTimerUI()
     end
 end)
-escapeTimerToggle:OnChanged(function(Value)
-    escapeTimerActive = Value
-    if Value then
-        createEscapeTimerUI()
-        if not escapeTimerConn then
-            escapeTimerConn = RunService.Heartbeat:Connect(function()
-                if not escapeTimerActive then return end
-                local char = LocalPlayer.Character
-                if not char then return end
-                local isHiding = false
-                pcall(function()
-                    if char:GetAttribute("Hiding") or char:GetAttribute("IsHiding") then
-                        isHiding = true
-                    end
-                end)
-                if not isHiding then
-                    local hum = char:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Sit then isHiding = true end
-                end
-                if isHiding then
-                    if hideStartTime == 0 then
-                        hideStartTime = tick()
-                    end
-                    local elapsed = tick() - hideStartTime
-                    local remain = math.max(0, HIDE_LIMIT - elapsed)
-                    local mins = math.floor(remain / 60)
-                    local secs = math.floor(remain % 60)
-                    if escapeTimerLabel then
-                        escapeTimerLabel.Text = string.format("%02d:%02d", mins, secs)
-                        if remain <= 5 then
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
-                        elseif remain <= 10 then
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-                        else
-                            escapeTimerLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-                        end
-                    end
-                else
-                    hideStartTime = 0
-                    if escapeTimerLabel then
-                        escapeTimerLabel.Text = "00:00"
-                        escapeTimerLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-                    end
-                end
-            end)
-        end
-    else
-        if escapeTimerConn then
-            escapeTimerConn:Disconnect()
-            escapeTimerConn = nil
-        end
-        destroyEscapeTimerUI()
-        hideStartTime = 0
-    end
-end)
+
 local weirdMode = "Ghost Green"
 local weirdModeDrop = FuncRight:AddDropdown("WeirdModeDrop", {
     Text = "Weird Style",
