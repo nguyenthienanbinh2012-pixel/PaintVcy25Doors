@@ -34,7 +34,7 @@ Obsidian.Scheme = {
     MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
-    FontColor        = Color3.fromRGB(70, 60, 60),    -- chu toi de doc tren nen hong
+    FontColor        = Color3.fromRGB(95, 85, 95),    -- chu toi de doc tren nen hong
     Font             = Font.fromEnum(Enum.Font.Code),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -58,66 +58,222 @@ pcall(function()
 if Obsidian.UpdateColors then Obsidian:UpdateColors() end
     if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 end)
--- Khoá menu 6 giây + thông báo + âm thanh
+Obsidian.Scheme.FontColor = Color3.fromRGB(95, 85, 95)
+if Obsidian.UpdateColors then Obsidian:UpdateColors() end
+
 local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
+local VALID_KEY = "FREEKEYDOORS"
 
 pcall(function()
-    if Window and Window.SetVisible then
-        Window:SetVisible(false)
-    end
+    if Window and Window.SetVisible then Window:SetVisible(false) end
 end)
 
--- Chặn mọi cách mở menu trong 6s
 Obsidian.Toggle = function(...)
-    if not menuUnlocked then
-        return
-    end
+    if not menuUnlocked then return end
     return _obsidianToggle(Obsidian, ...)
 end
 
-pcall(function()
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://4590657391"
-    sound.Volume = 10
-    sound.Parent = game:GetService("SoundService")
-    sound:Play()
-    task.delay(3, function()
-        if sound then sound:Destroy() end
+-- ---- Key UI (vo han den khi dung key) ----
+local function unlockMenu()
+    menuUnlocked = true
+    Obsidian.Toggle = _obsidianToggle
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://4590657391"
+        s.Volume = 6
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(4, function() if s then s:Destroy() end end)
     end)
-end)
+    pcall(function()
+        Obsidian:Notify({
+            Title = "PaintCrack",
+            Description = "Key hop le! Menu da mo — bam Toggle de dung.",
+            Time = 5
+        })
+    end)
+end
+
+local function buildKeyGate()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "PaintKeyGate"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 9999
+    gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = Color3.fromRGB(10, 8, 12)
+    overlay.BackgroundTransparency = 0.25
+    overlay.BorderSizePixel = 0
+    overlay.Parent = gui
+
+    local panel = Instance.new("Frame")
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
+    panel.Position = UDim2.fromScale(0.5, 0.5)
+    panel.Size = UDim2.fromOffset(520, 340)
+    panel.BackgroundColor3 = Color3.fromRGB(22, 20, 26)
+    panel.BorderSizePixel = 0
+    panel.Parent = overlay
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
+    local st = Instance.new("UIStroke")
+    st.Color = Color3.fromRGB(255, 140, 175)
+    st.Thickness = 1.5
+    st.Parent = panel
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, -20, 0, 36)
+    title.Position = UDim2.fromOffset(10, 8)
+    title.Font = Enum.Font.Code
+    title.TextSize = 18
+    title.TextColor3 = Color3.fromRGB(255, 180, 200)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Text = "PaintCrack — Key Gate"
+    title.Parent = panel
+
+    -- Trai: checklist methods (scroll)
+    local left = Instance.new("ScrollingFrame")
+    left.Position = UDim2.fromOffset(12, 48)
+    left.Size = UDim2.fromOffset(240, 270)
+    left.BackgroundColor3 = Color3.fromRGB(16, 14, 20)
+    left.BorderSizePixel = 0
+    left.ScrollBarThickness = 4
+    left.CanvasSize = UDim2.fromOffset(0, 0)
+    left.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    left.Parent = panel
+    Instance.new("UICorner", left).CornerRadius = UDim.new(0, 6)
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 4)
+    list.Parent = left
+
+    local function addRow(name, ok)
+        local row = Instance.new("TextLabel")
+        row.Size = UDim2.new(1, -8, 0, 22)
+        row.BackgroundTransparency = 1
+        row.Font = Enum.Font.Code
+        row.TextSize = 13
+        row.TextXAlignment = Enum.TextXAlignment.Left
+        row.TextColor3 = ok and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 80)
+        row.Text = string.format("  %s  %s", ok and "✅" or "❌", name)
+        row.Parent = left
+    end
+
+    task.spawn(function()
+        local tests = {
+            {"Drawing", function()
+                return typeof(Drawing) == "table" or typeof(Drawing) == "userdata"
+                    or pcall(function() return Drawing.new("Line") end)
+            end},
+            {"getgc", function() return type(getgc) == "function" end},
+            {"getrawmetatable", function() return type(getrawmetatable) == "function" end},
+            {"hookfunction", function() return type(hookfunction) == "function" or type(hookfunc) == "function" end},
+            {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
+            {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
+            {"getconnections", function() return type(getconnections) == "function" end},
+            {"setclipboard", function() return type(setclipboard) == "function" end},
+            {"checkcaller", function() return type(checkcaller) == "function" end},
+            {"newcclosure", function() return type(newcclosure) == "function" end},
+            {"islclosure", function() return type(islclosure) == "function" end},
+            {"getnamecallmethod", function() return type(getnamecallmethod) == "function" end},
+            {"HttpGet", function()
+                return pcall(function() return game:HttpGet("https://example.com", true) end)
+            end},
+        }
+        for _, t in ipairs(tests) do
+            local ok = false
+            pcall(function() ok = t[2]() and true or false end)
+            addRow(t[1], ok)
+            task.wait(0.05)
+        end
+    end)
+
+    -- Phai: nhap key
+    local right = Instance.new("Frame")
+    right.Position = UDim2.fromOffset(268, 48)
+    right.Size = UDim2.fromOffset(236, 270)
+    right.BackgroundColor3 = Color3.fromRGB(16, 14, 20)
+    right.BorderSizePixel = 0
+    right.Parent = panel
+    Instance.new("UICorner", right).CornerRadius = UDim.new(0, 6)
+
+    local hint = Instance.new("TextLabel")
+    hint.BackgroundTransparency = 1
+    hint.Position = UDim2.fromOffset(10, 12)
+    hint.Size = UDim2.new(1, -20, 0, 40)
+    hint.Font = Enum.Font.Code
+    hint.TextSize = 13
+    hint.TextColor3 = Color3.fromRGB(200, 200, 210)
+    hint.TextWrapped = true
+    hint.TextXAlignment = Enum.TextXAlignment.Left
+    hint.Text = "Nhap Key de mo menu\n(dung tung ky tu)"
+    hint.Parent = right
+
+    local box = Instance.new("TextBox")
+    box.Position = UDim2.fromOffset(10, 70)
+    box.Size = UDim2.new(1, -20, 0, 36)
+    box.BackgroundColor3 = Color3.fromRGB(30, 28, 36)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.PlaceholderText = "Key..."
+    box.Font = Enum.Font.Code
+    box.TextSize = 15
+    box.ClearTextOnFocus = false
+    box.Text = ""
+    box.Parent = right
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+
+    local errLbl = Instance.new("TextLabel")
+    errLbl.BackgroundTransparency = 1
+    errLbl.Position = UDim2.fromOffset(10, 115)
+    errLbl.Size = UDim2.new(1, -20, 0, 40)
+    errLbl.Font = Enum.Font.Code
+    errLbl.TextSize = 13
+    errLbl.TextColor3 = Color3.fromRGB(255, 60, 60)
+    errLbl.TextWrapped = true
+    errLbl.Text = ""
+    errLbl.Parent = right
+
+    local btn = Instance.new("TextButton")
+    btn.Position = UDim2.fromOffset(10, 170)
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
+    btn.TextColor3 = Color3.fromRGB(30, 20, 30)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 16
+    btn.Text = "XAC NHAN KEY"
+    btn.Parent = right
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+    local function tryKey()
+        local input = box.Text or ""
+        -- dung tung ky tu (co the trim chi space 2 dau)
+        if input == VALID_KEY then
+            errLbl.Text = ""
+            gui:Destroy()
+            unlockMenu()
+        else
+            errLbl.Text = "KEY ĐÃ HẾT HẠN HOẶC SAI!"
+            errLbl.TextColor3 = Color3.fromRGB(255, 50, 50)
+        end
+    end
+    btn.MouseButton1Click:Connect(tryKey)
+    box.FocusLost:Connect(function(enter)
+        if enter then tryKey() end
+    end)
+end
+
+pcall(buildKeyGate)
 
 pcall(function()
     Obsidian:Notify({
         Title = "PaintCrack",
-        Description = "Nên dùng Executor Như delta hay Arcuse X hỗ trợ các hook để chơi tốt nhất! và chờ 5-6s để load các hooking giúp Crack Game! lưu ý Đang Update Fix các lỗi sớm nhất",
-        Time = 6
+        Description = "Nhap key de mo menu. Nen dung Delta / Arceus X de ho tro day du cac hooking!.",
+        Time = 8
     })
 end)
 
-task.spawn(function()
-    local t0 = tick()
-    while tick() - t0 < 6 do
-        pcall(function()
-            if Window and Window.SetVisible then
-                Window:SetVisible(false)
-            end
-            -- một số bản Obsidian
-            if Window and Window.Visible ~= nil then
-                Window.Visible = false
-            end
-        end)
-        task.wait(0.1)
-    end
-    menuUnlocked = true
-    Obsidian.Toggle = _obsidianToggle
-    pcall(function()
-        Obsidian:Notify({
-            Title = "PaintCrack",
-            Description = "Menu Đã Hooking Thành công Hãy Bấm toggle để Mở và sử dụng!",
-            Time = 5
-        })
-    end)
 end)
 local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
@@ -2691,156 +2847,118 @@ local function getNextDoor()
     return best
             end
 
+local pathP0, pathP1, pathBeam = nil, nil, nil
+
 local function clearPathDraw()
     if pathFolder then
         pathFolder:Destroy()
         pathFolder = nil
     end
-    pathAtts = {}
-    pathBeams = {}
+    pathP0, pathP1, pathBeam = nil, nil, nil
+    pathWaypoints = {}
+    currentPathTarget = nil
 end
 
-local function computePath(fromPos, toPos)
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 1.5,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        WaypointSpacing = 4,
-    })
-    local ok = pcall(function()
-        path:ComputeAsync(fromPos, toPos)
-    end)
-    if not ok or path.Status ~= Enum.PathStatus.Success then
-        return nil
-    end
-    local wps = {}
-    for _, wp in ipairs(path:GetWaypoints()) do
-        table.insert(wps, wp.Position)
-    end
-    return wps
-end
-
-local function drawWaypoints(wps)
+local function ensureLine()
+    if pathFolder and pathBeam and pathBeam.Parent then return end
     clearPathDraw()
-    if not wps or #wps < 2 then return end
-
     pathFolder = Instance.new("Folder")
     pathFolder.Name = "PaintRoomPath"
     pathFolder.Parent = Workspace
 
-    local parts = {}
-    for i, pos in ipairs(wps) do
-        local y = getGroundY(pos)
+    local function ghost()
         local p = Instance.new("Part")
-        p.Name = "WP"..i
         p.Anchored = true
         p.CanCollide = false
         p.CanQuery = false
         p.CanTouch = false
-        p.Size = Vector3.new(0.15, 0.15, 0.15)
+        p.Size = Vector3.new(0.25, 0.25, 0.25)
         p.Transparency = 1
-        p.CFrame = CFrame.new(pos.X, y, pos.Z)
         p.Parent = pathFolder
-        local att = Instance.new("Attachment")
-        att.Parent = p
-        parts[i] = p
-        pathAtts[i] = att
+        local a = Instance.new("Attachment")
+        a.Parent = p
+        return p, a
     end
 
-    for i = 1, #parts - 1 do
-        local beam = Instance.new("Beam")
-        beam.Attachment0 = pathAtts[i]
-        beam.Attachment1 = pathAtts[i + 1]
-        beam.FaceCamera = false
-        beam.LightEmission = 0.9
-        beam.LightInfluence = 0
-        beam.Width0 = 2.2
-        beam.Width1 = 2.0
-        beam.Segments = 10
-        beam.Texture = "rbxassetid://446111271"
-        beam.TextureSpeed = 0.35
-        beam.TextureLength = 3
-        beam.Color = ColorSequence.new(pathColor)
-        beam.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.3),
-            NumberSequenceKeypoint.new(1, 0.5),
-        })
-        beam.Parent = pathFolder
-        pathBeams[i] = beam
-    end
+    local a0, a1
+    pathP0, a0 = ghost()
+    pathP1, a1 = ghost()
+
+    pathBeam = Instance.new("Beam")
+    pathBeam.Attachment0 = a0
+    pathBeam.Attachment1 = a1
+    pathBeam.Width0 = 2.8
+    pathBeam.Width1 = 2.8
+    pathBeam.FaceCamera = true
+    pathBeam.LightEmission = 1
+    pathBeam.LightInfluence = 0
+    pathBeam.Texture = "rbxassetid://446111271"
+    pathBeam.TextureSpeed = 0.45
+    pathBeam.Color = ColorSequence.new(pathColor)
+    pathBeam.Transparency = NumberSequence.new(0.15)
+    pathBeam.Parent = pathFolder
 end
 
-local function refreshPath()
+local function updateLineTo(doorPart)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local door = getNextDoor()
-    currentPathTarget = door
-    if not door then
-        clearPathDraw()
-        pathWaypoints = {}
-        return
+    if not hrp or not doorPart then return end
+    ensureLine()
+
+    local y0, y1 = hrp.Position.Y - 2.6, doorPart.Position.Y - 2
+    pcall(function()
+        local pr = RaycastParams.new()
+        pr.FilterDescendantsInstances = {char, pathFolder}
+        pr.FilterType = Enum.RaycastFilterType.Exclude
+        local h0 = Workspace:Raycast(hrp.Position, Vector3.new(0, -15, 0), pr)
+        local h1 = Workspace:Raycast(doorPart.Position + Vector3.new(0, 6, 0), Vector3.new(0, -25, 0), pr)
+        if h0 then y0 = h0.Position.Y + 0.12 end
+        if h1 then y1 = h1.Position.Y + 0.12 end
+    end)
+
+    pathP0.CFrame = CFrame.new(hrp.Position.X, y0, hrp.Position.Z)
+    pathP1.CFrame = CFrame.new(doorPart.Position.X, y1, doorPart.Position.Z)
+    if pathBeam then
+        pathBeam.Color = ColorSequence.new(pathColor)
+        pathBeam.Enabled = true
     end
-    local wps = computePath(hrp.Position, door.Position)
-    if not wps then
-        -- fallback thang neu pathfinding fail
-        wps = {hrp.Position, door.Position}
-    end
-    pathWaypoints = wps
-    drawWaypoints(wps)
+    currentPathTarget = doorPart
+    pathWaypoints = {hrp.Position, doorPart.Position}
 end
 
 PathLeft:AddToggle("ShowPathToggle", {
     Text = "Show Path", Default = false,
-    Tooltip = "Pathfinding ne vat can, glass line mat dat"
+    Tooltip = "Hien thi duong di dung",
 }):OnChanged(function(v)
     showPathActive = v
     if not v then
         clearPathDraw()
-        pathWaypoints = {}
         if pathConn then pathConn:Disconnect() pathConn = nil end
         return
     end
     if pathConn then pathConn:Disconnect() end
-    pathComputeTick = 0
-    refreshPath()
-    pathConn = RunService.Heartbeat:Connect(function()
+    pathConn = RunService.RenderStepped:Connect(function()
         if not showPathActive then return end
-        pathComputeTick = pathComputeTick + 1
-        -- chi tinh lai path \~0.5s/lan (khong lag)
-        if pathComputeTick % 30 == 0 then
-            refreshPath()
-        end
+        local door = getNextDoor()
+        if door then updateLineTo(door) end
     end)
 end)
 
-PathLeft:AddLabel("Path Color"):AddColorPicker("PathColorPick", {
-    Default = Color3.fromRGB(255, 140, 200),
-    Title = "Mau Path",
-    Callback = function(v)
-        pathColor = v
-        for _, b in pairs(pathBeams) do
-            if b and b.Parent then
-                b.Color = ColorSequence.new(pathColor)
-            end
-        end
-    end
-})
+-- Path Color picker GIU nguyen neu da co; neu da xoa thi dan lai o day
 
 PathRight:AddToggle("AutoStartPathToggle", {
     Text = "Auto Start Path", Default = false,
-    Tooltip = "Di theo waypoint pathfinding (ne tuong)"
+    Tooltip = "Tu Dong Di theo Path",
 }):OnChanged(function(v)
     autoPathActive = v
     if not v then
         if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:Move(Vector3.zero) end
+        if hum then hum:MoveTo(char.HumanoidRootPart and char.HumanoidRootPart.Position or Vector3.zero) end
         return
     end
     if autoPathConn then autoPathConn:Disconnect() end
-    local wpIndex = 2
     autoPathConn = RunService.Heartbeat:Connect(function()
         if not autoPathActive then return end
         local char = LocalPlayer.Character
@@ -2849,37 +2967,20 @@ PathRight:AddToggle("AutoStartPathToggle", {
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then return end
 
-        if #pathWaypoints < 2 then
-            refreshPath()
-            wpIndex = 2
-        end
-        if #pathWaypoints < 2 then return end
+        local door = currentPathTarget or getNextDoor()
+        if not door then return end
+        currentPathTarget = door
 
-        if wpIndex > #pathWaypoints then
-            if pathDelay > 0 then task.wait(pathDelay) end
-            hum:Move(Vector3.zero)
-            refreshPath()
-            wpIndex = 2
+        local pos = door.Position
+        local flat = Vector3.new(pos.X - hrp.Position.X, 0, pos.Z - hrp.Position.Z)
+        if flat.Magnitude < 3.5 then
             return
         end
-
-        local goal = pathWaypoints[wpIndex]
-        local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
-        local dist = flat.Magnitude
-        if dist < 2.2 then
-            wpIndex = wpIndex + 1
-            return
-        end
-
-        local dir = flat.Unit
-        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 16
-        if spd < 16 then spd = 16 end
-        hum.WalkSpeed = spd
-        hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
+        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 20
+        hum.WalkSpeed = math.max(spd, 16)
+        hum:MoveTo(Vector3.new(pos.X, hrp.Position.Y, pos.Z))
     end)
 end)
-
-
 
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
