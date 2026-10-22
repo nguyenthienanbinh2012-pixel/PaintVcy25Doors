@@ -34,7 +34,7 @@ Obsidian.Scheme = {
     MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
-    FontColor        = Color3.fromRGB(40, 30, 40),    -- chu toi de doc tren nen hong
+    FontColor        = Color3.fromRGB(60, 45, 45),    -- chu toi de doc tren nen hong
     Font             = Font.fromEnum(Enum.Font.Code),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -54,6 +54,8 @@ local Window = Obsidian:CreateWindow({
 pcall(function()
     Obsidian.Scheme.AccentColor  = Color3.fromRGB(255, 140, 175)
     Obsidian.Scheme.OutlineColor = Color3.fromRGB(45, 45, 55)
+    Obsidian.Scheme.FontColor = Color3.fromRGB(55, 45, 55)
+if Obsidian.UpdateColors then Obsidian:UpdateColors() end
     if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 end)
 -- Khoá menu 6 giây + thông báo + âm thanh
@@ -2529,22 +2531,61 @@ local pathConn = nil
 local autoPathConn = nil
 local currentPathTarget = nil
 
+
+local pathAtts = {}
+local pathBeams = {}
+local pathWaypoints = {}
+local pathComputeTick = 0
+local PathfindingService = game:GetService("PathfindingService")
+
+local function getGroundY(pos, extraIgnore)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local ignore = {LocalPlayer.Character, pathFolder}
+    if extraIgnore then
+        for _, x in ipairs(extraIgnore) do table.insert(ignore, x) end
+    end
+    params.FilterDescendantsInstances = ignore
+    local hit = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -40, 0), params)
+    if hit then return hit.Position.Y + 0.15 end
+    return pos.Y - 2.2
+end
+
 local function getNextDoor()
-    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
-    local best, bestDist = nil, math.huge
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and (obj.Name == "Door" or obj.Name:lower():find("door")) then
-            local roomAttr = obj:GetAttribute("Room") or obj:GetAttribute("Index")
-            local pn = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
-            if pn then
-                local d = (pn.Position - hrp.Position).Magnitude
-                if d < bestDist and d > 2 and d < 200 then
-                    -- uu tien cua phia truoc / gan
-                    bestDist = d
-                    best = pn
+    local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+    if look.Magnitude > 0 then look = look.Unit end
+    local best, bestScore = nil, -1e9
+
+    local function consider(part)
+        if not part or not part:IsA("BasePart") then return end
+        local off = part.Position - hrp.Position
+        local dist = off.Magnitude
+        if dist < 3 or dist > 200 then return end
+        local flat = Vector3.new(off.X, 0, off.Z)
+        if flat.Magnitude < 0.05 then return end
+        local score = -dist + flat.Unit:Dot(look) * 30
+        if score > bestScore then bestScore = score best = part end
+    end
+
+    local rooms = Workspace:FindFirstChild("CurrentRooms")
+    if rooms then
+        for _, room in ipairs(rooms:GetChildren()) do
+            local door = room:FindFirstChild("Door", true)
+            if door then
+                if door:IsA("BasePart") then consider(door)
+                else consider(door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart", true)) end
+            end
+        end
+    end
+    if not best then
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj.Name == "Door" then
+                if obj:IsA("BasePart") then consider(obj)
+                elseif obj:IsA("Model") then
+                    consider(obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true))
                 end
             end
         end
@@ -2557,51 +2598,189 @@ local function clearPathDraw()
         pathFolder:Destroy()
         pathFolder = nil
     end
+    pathAtts = {}
+    pathBeams = {}
 end
 
-local function drawPathTo(target)
+local function computePath(fromPos, toPos)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 1.5,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 4,
+    })
+    local ok = pcall(function()
+        path:ComputeAsync(fromPos, toPos)
+    end)
+    if not ok or path.Status \~= Enum.PathStatus.Success then
+        return nil
+    end
+    local wps = {}
+    for _, wp in ipairs(path:GetWaypoints()) do
+        table.insert(wps, wp.Position)
+    end
+    return wps
+end
+
+local function drawWaypoints(wps)
     clearPathDraw()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp or not target then return end
+    if not wps or #wps < 2 then return end
+
     pathFolder = Instance.new("Folder")
     pathFolder.Name = "PaintRoomPath"
     pathFolder.Parent = Workspace
 
-    local from = hrp.Position
-    local to = target.Position
-    local dist = (to - from).Magnitude
-    local steps = math.clamp(math.floor(dist / 2), 4, 40)
-    for i = 0, steps do
-        local t = i / steps
-        local pos = from:Lerp(to, t)
-        pos = Vector3.new(pos.X, from.Y - 2.8, pos.Z) -- day duoi dat
+    local parts = {}
+    for i, pos in ipairs(wps) do
+        local y = getGroundY(pos)
         local p = Instance.new("Part")
+        p.Name = "WP"..i
         p.Anchored = true
         p.CanCollide = false
         p.CanQuery = false
-        p.Size = Vector3.new(0.35, 0.08, 0.35)
-        p.Material = Enum.Material.Neon
-        p.Color = pathColor
-        p.Transparency = 0.25
-        p.CFrame = CFrame.new(pos)
+        p.CanTouch = false
+        p.Size = Vector3.new(0.15, 0.15, 0.15)
+        p.Transparency = 1
+        p.CFrame = CFrame.new(pos.X, y, pos.Z)
         p.Parent = pathFolder
+        local att = Instance.new("Attachment")
+        att.Parent = p
+        parts[i] = p
+        pathAtts[i] = att
     end
-    -- beam hologram
-    local a0 = Instance.new("Attachment")
-    a0.Parent = hrp
-    local a1 = Instance.new("Attachment")
-    a1.Parent = target
-    local beam = Instance.new("Beam")
-    beam.Attachment0 = a0
-    beam.Attachment1 = a1
-    beam.Width0 = 0.4
-    beam.Width1 = 0.4
-    beam.Color = ColorSequence.new(pathColor)
-    beam.FaceCamera = true
-    beam.Transparency = NumberSequence.new(0.3)
-    beam.Parent = pathFolder
+
+    for i = 1, #parts - 1 do
+        local beam = Instance.new("Beam")
+        beam.Attachment0 = pathAtts[i]
+        beam.Attachment1 = pathAtts[i + 1]
+        beam.FaceCamera = false
+        beam.LightEmission = 0.7
+        beam.LightInfluence = 0
+        beam.Width0 = 1.0
+        beam.Width1 = 1.0
+        beam.Segments = 10
+        beam.Texture = "rbxassetid://446111271"
+        beam.TextureSpeed = 0.35
+        beam.TextureLength = 3
+        beam.Color = ColorSequence.new(pathColor)
+        beam.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 0.5),
+        })
+        beam.Parent = pathFolder
+        pathBeams[i] = beam
+    end
 end
+
+local function refreshPath()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local door = getNextDoor()
+    currentPathTarget = door
+    if not door then
+        clearPathDraw()
+        pathWaypoints = {}
+        return
+    end
+    local wps = computePath(hrp.Position, door.Position)
+    if not wps then
+        -- fallback thang neu pathfinding fail
+        wps = {hrp.Position, door.Position}
+    end
+    pathWaypoints = wps
+    drawWaypoints(wps)
+end
+
+PathLeft:AddToggle("ShowPathToggle", {
+    Text = "Show Path", Default = false,
+    Tooltip = "Pathfinding ne vat can, glass line mat dat"
+}):OnChanged(function(v)
+    showPathActive = v
+    if not v then
+        clearPathDraw()
+        pathWaypoints = {}
+        if pathConn then pathConn:Disconnect() pathConn = nil end
+        return
+    end
+    if pathConn then pathConn:Disconnect() end
+    pathComputeTick = 0
+    refreshPath()
+    pathConn = RunService.Heartbeat:Connect(function()
+        if not showPathActive then return end
+        pathComputeTick = pathComputeTick + 1
+        -- chi tinh lai path \~0.5s/lan (khong lag)
+        if pathComputeTick % 30 == 0 then
+            refreshPath()
+        end
+    end)
+end)
+
+PathLeft:AddLabel("Path Color"):AddColorPicker("PathColorPick", {
+    Default = Color3.fromRGB(255, 140, 200),
+    Title = "Mau Path",
+    Callback = function(v)
+        pathColor = v
+        for _, b in pairs(pathBeams) do
+            if b and b.Parent then
+                b.Color = ColorSequence.new(pathColor)
+            end
+        end
+    end
+})
+
+PathRight:AddToggle("AutoStartPathToggle", {
+    Text = "Auto Start Path", Default = false,
+    Tooltip = "Di theo waypoint pathfinding (ne tuong)"
+}):OnChanged(function(v)
+    autoPathActive = v
+    if not v then
+        if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:Move(Vector3.zero) end
+        return
+    end
+    if autoPathConn then autoPathConn:Disconnect() end
+    local wpIndex = 2
+    autoPathConn = RunService.Heartbeat:Connect(function()
+        if not autoPathActive then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        if #pathWaypoints < 2 then
+            refreshPath()
+            wpIndex = 2
+        end
+        if #pathWaypoints < 2 then return end
+
+        if wpIndex > #pathWaypoints then
+            if pathDelay > 0 then task.wait(pathDelay) end
+            hum:Move(Vector3.zero)
+            refreshPath()
+            wpIndex = 2
+            return
+        end
+
+        local goal = pathWaypoints[wpIndex]
+        local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
+        local dist = flat.Magnitude
+        if dist < 2.2 then
+            wpIndex = wpIndex + 1
+            return
+        end
+
+        local dir = flat.Unit
+        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 16
+        if spd < 16 then spd = 16 end
+        hum.WalkSpeed = spd
+        hum:Move(dir, false)
+        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
+    end)
+end)
 
 PathLeft:AddToggle("ShowPathToggle", {
     Text = "Show Path", Default = false,
