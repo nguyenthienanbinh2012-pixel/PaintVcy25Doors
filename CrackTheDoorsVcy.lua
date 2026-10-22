@@ -1854,7 +1854,80 @@ end)
 local removeEntityActive = false
 local removeEntityConn = nil
 local removeEntityDescConn = nil
-local TargetEntities = {"dread", "screech", "timothy", "halt", "a-90", "a90"}
+
+-- key match trong ten model (lower)
+local ENTITY_KEYS = {
+    ["Screech"] = {"screech"},
+    ["Timothy"] = {"timothy"},
+    ["A-90"] = {"a-90", "a90", "a_90"},
+    ["Glitch Errors"] = {"glitch", "error", "glitcherror"},
+    ["Haste"] = {"haste"},
+    ["Halt"] = {"halt"},
+    ["Dread"] = {"dread"},
+}
+
+local selectedRemove = {
+    Screech = true,
+    Timothy = true,
+    ["A-90"] = true,
+    ["Glitch Errors"] = true,
+    Haste = true,
+    Halt = true,
+    Dread = true,
+}
+
+local function matchEntity(name)
+    local n = tostring(name or ""):lower()
+    for label, keys in pairs(ENTITY_KEYS) do
+        if selectedRemove[label] then
+            for _, k in ipairs(keys) do
+                if n:find(k, 1, true) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local removeEntityToggle = AntiLeft:AddToggle("RemoveEntityDameToggle", {
+    Text = "Remove Entity & Dame", Default = false,
+    Tooltip = "Xoa entity + No Dame Chúng"
+})
+
+-- Obsidian: multi dropdown neu co; neu khong dung tung toggle
+pcall(function()
+    AntiLeft:AddDropdown("RemoveEntityList", {
+        Text = "Entities to Remove",
+        Values = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
+        Multi = true,
+        Default = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
+    }):OnChanged(function(val)
+        -- val: table { [name]=true } hoac array tuy ban Obsidian
+        for k in pairs(selectedRemove) do
+            selectedRemove[k] = false
+        end
+        if type(val) == "table" then
+            for k, v in pairs(val) do
+                if v == true and ENTITY_KEYS[k] then
+                    selectedRemove[k] = true
+                elseif type(k) == "number" and type(v) == "string" and ENTITY_KEYS[v] then
+                    selectedRemove[v] = true
+                end
+            end
+        end
+    end)
+end)
+
+-- Fallback neu Dropdown Multi khong chay: 7 toggle nho
+for _, name in ipairs({"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"}) do
+    AntiLeft:AddToggle("Remove_" .. name:gsub("%W", "_"), {
+        Text = "Remove " .. name,
+        Default = true,
+    }):OnChanged(function(on)
+        selectedRemove[name] = on
+    end)
+    end
 
 local function matchEntity(name)
     local n = tostring(name or ""):lower()
@@ -1864,10 +1937,6 @@ local function matchEntity(name)
     return false
 end
 
-local removeEntityToggle = MiscLeft:AddToggle("RemoveEntityDameToggle", {
-    Text = "Remove Entity & Dame", Default = false,
-    Tooltip = "Xoa Entity va damage cua entity duoc chon"
-})
 
 local removedFunctions = {}
 local function tryHookDamageFuncs()
@@ -2796,58 +2865,7 @@ PathRight:AddToggle("AutoStartPathToggle", {
     end)
 end)
 
-PathLeft:AddToggle("ShowPathToggle", {
-    Text = "Show Path", Default = false,
-    Tooltip = "Ve duong toi duong di tiep theo"
-}):OnChanged(function(v)
-    showPathActive = v
-    if not v then
-        clearPathDraw()
-        if pathConn then pathConn:Disconnect() pathConn = nil end
-        return
-    end
-    if pathConn then pathConn:Disconnect() end
-    pathConn = RunService.Heartbeat:Connect(function()
-        if not showPathActive then return end
-        local door = getNextDoor()
-        currentPathTarget = door
-        if door then drawPathTo(door) end
-    end)
-end)
 
-PathLeft:AddLabel("Path Color"):AddColorPicker("PathColorPick", {
-    Default = Color3.fromRGB(255, 140, 200),
-    Title = "Mau Path",
-    Callback = function(v) pathColor = v end
-})
-
-PathRight:AddToggle("AutoStartPathToggle", {
-    Text = "Auto Start Path", Default = false,
-    Tooltip = "Tự Động Di chuyển theo path"
-}):OnChanged(function(v)
-    autoPathActive = v
-    if not v then
-        if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:Move(Vector3.zero) end
-        return
-    end
-    if autoPathConn then autoPathConn:Disconnect() end
-    autoPathConn = RunService.Heartbeat:Connect(function()
-        if not autoPathActive then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
-
-        local door = currentPathTarget or getNextDoor()
-        if not door then return end
-        local flat = Vector3.new(door.Position.X - hrp.Position.X, 0, door.Position.Z - hrp.Position.Z)
-        local dist = flat.Magnitude
-        if dist < 2.5 then
-            -- den dich: dung theo delay
 
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
