@@ -1885,13 +1885,6 @@ pcall(function()
     end)
 end)
 
-    for _, k in ipairs(TargetEntities) do
-        if n:find(k, 1, true) then return true end
-    end
-    return false
-end
-
-
 local removedFunctions = {}
 local function tryHookDamageFuncs()
     if next(removedFunctions) then return end
@@ -2896,6 +2889,100 @@ PathRight:AddSlider("PathDelaySlider", {
     Tooltip = "0 = Độ Delay Dừng đi"
 }):OnChanged(function(v) pathDelay = v end)
     end)()
+local chaosRemoveActive = false
+local chaosConn = nil
+
+local CHAOS_NAME = {
+    chaos=true, glitch=true, distort=true, static=true, noise=true,
+    vignette=true, blur=true, shake=true, horror=true, effect=true,
+    overexpose=true, chromatic=true, blood=true, redvignette=true,
+}
+
+local function stripChaosObject(obj)
+    if not obj or not obj.Parent then return end
+    local n = string.lower(obj.Name)
+    for key in pairs(CHAOS_NAME) do
+        if n:find(key, 1, true) then
+            pcall(function()
+                if obj:IsA("PostEffect") or obj:IsA("BlurEffect")
+                    or obj:IsA("ColorCorrectionEffect") or obj:IsA("BloomEffect")
+                    or obj:IsA("SunRaysEffect") or obj:IsA("DepthOfFieldEffect") then
+                    obj.Enabled = false
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Beam")
+                    or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                    obj.Enabled = false
+                elseif obj:IsA("Sound") then
+                    obj.Volume = 0
+                    obj:Stop()
+                elseif obj:IsA("BillboardGui") or obj:IsA("ScreenGui") then
+                    obj.Enabled = false
+                elseif obj:IsA("BasePart") and (n:find("effect") or n:find("chaos") or n:find("glitch")) then
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                end
+            end)
+            return
+        end
+    end
+    -- PostEffect khong can dung ten
+    if obj:IsA("BlurEffect") or obj:IsA("ColorCorrectionEffect") then
+        pcall(function()
+            if obj.Parent == game:GetService("Lighting") then
+                -- chi tat neu co ve "chaos" (Saturation cuc, Contrast cao)
+                if obj:IsA("ColorCorrectionEffect") then
+                    if math.abs(obj.Saturation or 0) > 0.5 or math.abs(obj.Contrast or 0) > 0.4 then
+                        obj.Enabled = false
+                    end
+                end
+            end
+        end)
+    end
+end
+
+local chaosToggle = MiscLeft:AddToggle("RemoveChaosEffectsToggle", {
+    Text = "Remove Chaos Effects",
+    Default = false,
+    Tooltip = "An / tat hieu ung hon loan quanh nguoi & man hinh",
+})
+
+chaosToggle:OnChanged(function(on)
+    chaosRemoveActive = on
+    if chaosConn then chaosConn:Disconnect() chaosConn = nil end
+    if not on then return end
+
+    -- quet 1 lan
+    pcall(function()
+        for _, o in ipairs(game:GetService("Lighting"):GetChildren()) do
+            stripChaosObject(o)
+        end
+        local char = LocalPlayer.Character
+        if char then
+            for _, o in ipairs(char:GetDescendants()) do
+                stripChaosObject(o)
+            end
+        end
+        local cam = Workspace.CurrentCamera
+        if cam then
+            for _, o in ipairs(cam:GetDescendants()) do
+                stripChaosObject(o)
+            end
+        end
+        for _, o in ipairs(PlayerGui:GetChildren()) do
+            stripChaosObject(o)
+        end
+    end)
+
+    chaosConn = Workspace.DescendantAdded:Connect(function(obj)
+        if not chaosRemoveActive then return end
+        task.defer(function() stripChaosObject(obj) end)
+    end)
+    -- Lighting / PlayerGui
+    pcall(function()
+        game:GetService("Lighting").ChildAdded:Connect(function(obj)
+            if chaosRemoveActive then task.defer(function() stripChaosObject(obj) end) end
+        end)
+    end)
+end)
 
 Obsidian:OnUnload(function()
     pcall(function()
@@ -2921,6 +3008,7 @@ end)
     if skipProximityConn then skipProximityConn:Disconnect() end
     if escapeTimerConn then escapeTimerConn:Disconnect() end
     destroyEscapeTimerUI()
+    if chaosConn then chaosConn:Disconnect() end
     if weirdConn then weirdConn:Disconnect() end
     if weirdAnimConn then weirdAnimConn:Disconnect() end
     if fullBrightConn then fullBrightConn:Disconnect() end
