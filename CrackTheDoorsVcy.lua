@@ -34,7 +34,7 @@ Obsidian.Scheme = {
     MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
-    FontColor        = Color3.fromRGB(60, 45, 45),    -- chu toi de doc tren nen hong
+    FontColor        = Color3.fromRGB(70, 45, 60),    -- chu toi de doc tren nen hong
     Font             = Font.fromEnum(Enum.Font.Code),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -2137,9 +2137,7 @@ local function isPlayerHiding()
     local char = LocalPlayer.Character
     if not char then return false end
 
-    -- Attribute Doors / script game
-    local attrs = {"Hiding", "IsHiding", "Hide", "InCloset", "Crouching"}
-    for _, a in ipairs(attrs) do
+    for _, a in ipairs({"Hiding", "IsHiding", "Hide", "InCloset", "Crouching", "HidingSpot"}) do
         local v = char:GetAttribute(a)
         if v == true or v == 1 then return true end
     end
@@ -2147,42 +2145,19 @@ local function isPlayerHiding()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
         if hum.Sit or hum.PlatformStand then return true end
-        pcall(function()
-            for _, t in ipairs(hum:GetPlayingAnimationTracks()) do
-                local n = string.lower(
-                    tostring(t.Name or "") .. " " ..
-                    tostring(t.Animation and t.Animation.AnimationId or "")
-                )
+        local ok, tracks = pcall(function() return hum:GetPlayingAnimationTracks() end)
+        if ok and tracks then
+            for _, t in ipairs(tracks) do
+                local n = string.lower(tostring(t.Name or ""))
                 if n:find("hide") or n:find("closet") or n:find("wardrobe")
-                    or n:find("locker") or n:find("enter") or n:find("crawl") then
+                    or n:find("locker") or n:find("bed") then
                     return true
-                end
-            end
-        end)
-    end
-
-    -- Gan tu / wardrobe / closet
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") or obj:IsA("BasePart") then
-                local n = string.lower(obj.Name)
-                if n:find("wardrobe") or n:find("closet") or n:find("locker")
-                    or n:find("cabinet") or n == "hide" then
-                    local part = obj:IsA("BasePart") and obj
-                        or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                    if part and (part.Position - hrp.Position).Magnitude < 6 then
-                        -- dang dung trong vung tu + co the dang "trong" (velocity thap)
-                        if hrp.AssemblyLinearVelocity.Magnitude < 2 then
-                            return true
-                        end
-                    end
                 end
             end
         end
     end
     return false
-end
+    end
 
 local function createEscapeTimerUI()
     if escapeTimerGui and escapeTimerGui.Parent then return end
@@ -2873,22 +2848,6 @@ PathRight:AddToggle("AutoStartPathToggle", {
         local dist = flat.Magnitude
         if dist < 2.5 then
             -- den dich: dung theo delay
-            if pathDelay > 0 then
-                task.wait(pathDelay)
-            end
-            hum:Move(Vector3.zero)
-            return
-        end
-        -- Instant: doi huong ngay, khong delay
-        local dir = flat.Unit
-        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or hum.WalkSpeed
-        if spd < 16 then spd = 16 end
-        hum.WalkSpeed = spd
-        hum:Move(dir, false)
-        -- ho tro cua: xoay nhan vat theo huong
-        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
-    end)
-end)
 
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
