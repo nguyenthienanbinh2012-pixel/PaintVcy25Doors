@@ -2921,7 +2921,7 @@ PathLeft:AddToggle("ShowPathToggle", {
         if not door then return end
         currentPathTarget = door
         local now = tick()
-        if door \~= lastDoorPart or now - lastCompute > 0.6 then
+        if door ~= lastDoorPart or now - lastCompute > 0.6 then
             lastDoorPart, lastCompute = door, now
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
