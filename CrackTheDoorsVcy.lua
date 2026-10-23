@@ -2519,7 +2519,8 @@ MiscLeft:AddToggle("AutoAvoidHideToggle", {
         end)
     end)
 end)
-(function()
+
+;(function()
 local weirdMode = "Ghost Green"
 local weirdModeDrop = FuncRight:AddDropdown("WeirdModeDrop", {
     Text = "Weird Style",
