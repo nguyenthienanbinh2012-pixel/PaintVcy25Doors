@@ -64,7 +64,6 @@ if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
 local VALID_KEY = "FREEKEYDOORS"
-local function unlockMenu()
 
 local function unlockMenu()
     menuUnlocked = true
