@@ -74,204 +74,65 @@ Obsidian.Toggle = function(...)
     return _obsidianToggle(Obsidian, ...)
 end
 
--- ---- Key UI (vo han den khi dung key) ----
-local function unlockMenu()
-    menuUnlocked = true
-    Obsidian.Toggle = _obsidianToggle
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://4590657391"
-        s.Volume = 6
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        task.delay(4, function() if s then s:Destroy() end end)
-    end)
-    pcall(function()
-        Obsidian:Notify({
-            Title = "PaintCrack",
-            Description = "Key hop le! Menu da mo — bam Toggle de dung.",
-            Time = 5
-        })
-    end)
+local KeyWindow = Obsidian:CreateWindow({
+    Title = "PaintCrack Key",
+    SubTitle = "Nhap key de mo menu",
+    TabWidth = 140,
+    Size = UDim2.fromOffset(480, 320),
+    Center = true,
+    AutoShow = true,
+})
+local KeyTab = KeyWindow:AddTab("License", "key")
+local KeyLeft = KeyTab:AddLeftGroupbox("Executor Check")
+local KeyRight = KeyTab:AddRightGroupbox("Key")
+
+local checks = {
+    {"Drawing", function() return typeof(Drawing) == "table" end},
+    {"getgc", function() return type(getgc) == "function" end},
+    {"hookfunction", function() return type(hookfunction) == "function" or type(hookfunc) == "function" end},
+    {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
+    {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
+}
+for _, c in ipairs(checks) do
+    local ok = false
+    pcall(function() ok = c[2]() and true or false end)
+    KeyLeft:AddLabel((ok and "✅ " or "❌ ") .. c[1])
 end
 
-local function buildKeyGate()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "PaintKeyGate"
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 9999
-    gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+KeyRight:AddLabel("Key (dung tung ky tu)")
+local keyInput = KeyRight:AddInput("PaintKeyInput", {
+    Default = "",
+    Numeric = false,
+    Finished = false,
+    Text = "Nhap key",
+    Placeholder = "FREEKEYDOORS",
+    Callback = function() end,
+})
 
-    local overlay = Instance.new("Frame")
-    overlay.Size = UDim2.fromScale(1, 1)
-    overlay.BackgroundColor3 = Color3.fromRGB(10, 8, 12)
-    overlay.BackgroundTransparency = 0.25
-    overlay.BorderSizePixel = 0
-    overlay.Parent = gui
-
-    local panel = Instance.new("Frame")
-    panel.AnchorPoint = Vector2.new(0.5, 0.5)
-    panel.Position = UDim2.fromScale(0.5, 0.5)
-    panel.Size = UDim2.fromOffset(520, 340)
-    panel.BackgroundColor3 = Color3.fromRGB(22, 20, 26)
-    panel.BorderSizePixel = 0
-    panel.Parent = overlay
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
-    local st = Instance.new("UIStroke")
-    st.Color = Color3.fromRGB(255, 140, 175)
-    st.Thickness = 1.5
-    st.Parent = panel
-
-    local title = Instance.new("TextLabel")
-    title.BackgroundTransparency = 1
-    title.Size = UDim2.new(1, -20, 0, 36)
-    title.Position = UDim2.fromOffset(10, 8)
-    title.Font = Enum.Font.Code
-    title.TextSize = 18
-    title.TextColor3 = Color3.fromRGB(255, 180, 200)
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Text = "PaintCrack — Key Gate"
-    title.Parent = panel
-
-    -- Trai: checklist methods (scroll)
-    local left = Instance.new("ScrollingFrame")
-    left.Position = UDim2.fromOffset(12, 48)
-    left.Size = UDim2.fromOffset(240, 270)
-    left.BackgroundColor3 = Color3.fromRGB(16, 14, 20)
-    left.BorderSizePixel = 0
-    left.ScrollBarThickness = 4
-    left.CanvasSize = UDim2.fromOffset(0, 0)
-    left.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    left.Parent = panel
-    Instance.new("UICorner", left).CornerRadius = UDim.new(0, 6)
-    local list = Instance.new("UIListLayout")
-    list.Padding = UDim.new(0, 4)
-    list.Parent = left
-
-    local function addRow(name, ok)
-        local row = Instance.new("TextLabel")
-        row.Size = UDim2.new(1, -8, 0, 22)
-        row.BackgroundTransparency = 1
-        row.Font = Enum.Font.Code
-        row.TextSize = 13
-        row.TextXAlignment = Enum.TextXAlignment.Left
-        row.TextColor3 = ok and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 80)
-        row.Text = string.format("  %s  %s", ok and "✅" or "❌", name)
-        row.Parent = left
-    end
-
-    task.spawn(function()
-        local tests = {
-            {"Drawing", function()
-                return typeof(Drawing) == "table" or typeof(Drawing) == "userdata"
-                    or pcall(function() return Drawing.new("Line") end)
-            end},
-            {"getgc", function() return type(getgc) == "function" end},
-            {"getrawmetatable", function() return type(getrawmetatable) == "function" end},
-            {"hookfunction", function() return type(hookfunction) == "function" or type(hookfunc) == "function" end},
-            {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
-            {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
-            {"getconnections", function() return type(getconnections) == "function" end},
-            {"setclipboard", function() return type(setclipboard) == "function" end},
-            {"checkcaller", function() return type(checkcaller) == "function" end},
-            {"newcclosure", function() return type(newcclosure) == "function" end},
-            {"islclosure", function() return type(islclosure) == "function" end},
-            {"getnamecallmethod", function() return type(getnamecallmethod) == "function" end},
-            {"HttpGet", function()
-                return pcall(function() return game:HttpGet("https://example.com", true) end)
-            end},
-        }
-        for _, t in ipairs(tests) do
-            local ok = false
-            pcall(function() ok = t[2]() and true or false end)
-            addRow(t[1], ok)
-            task.wait(0.05)
+KeyRight:AddButton("Xac nhan Key", function()
+    local input = ""
+    pcall(function()
+        if type(keyInput) == "table" then
+            input = tostring(keyInput.Value or keyInput.Text or "")
         end
     end)
-
-    -- Phai: nhap key
-    local right = Instance.new("Frame")
-    right.Position = UDim2.fromOffset(268, 48)
-    right.Size = UDim2.fromOffset(236, 270)
-    right.BackgroundColor3 = Color3.fromRGB(16, 14, 20)
-    right.BorderSizePixel = 0
-    right.Parent = panel
-    Instance.new("UICorner", right).CornerRadius = UDim.new(0, 6)
-
-    local hint = Instance.new("TextLabel")
-    hint.BackgroundTransparency = 1
-    hint.Position = UDim2.fromOffset(10, 12)
-    hint.Size = UDim2.new(1, -20, 0, 40)
-    hint.Font = Enum.Font.Code
-    hint.TextSize = 13
-    hint.TextColor3 = Color3.fromRGB(200, 200, 210)
-    hint.TextWrapped = true
-    hint.TextXAlignment = Enum.TextXAlignment.Left
-    hint.Text = "Nhap Key de mo menu\n(dung tung ky tu)"
-    hint.Parent = right
-
-    local box = Instance.new("TextBox")
-    box.Position = UDim2.fromOffset(10, 70)
-    box.Size = UDim2.new(1, -20, 0, 36)
-    box.BackgroundColor3 = Color3.fromRGB(30, 28, 36)
-    box.TextColor3 = Color3.fromRGB(255, 255, 255)
-    box.PlaceholderText = "Key..."
-    box.Font = Enum.Font.Code
-    box.TextSize = 15
-    box.ClearTextOnFocus = false
-    box.Text = ""
-    box.Parent = right
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-
-    local errLbl = Instance.new("TextLabel")
-    errLbl.BackgroundTransparency = 1
-    errLbl.Position = UDim2.fromOffset(10, 115)
-    errLbl.Size = UDim2.new(1, -20, 0, 40)
-    errLbl.Font = Enum.Font.Code
-    errLbl.TextSize = 13
-    errLbl.TextColor3 = Color3.fromRGB(255, 60, 60)
-    errLbl.TextWrapped = true
-    errLbl.Text = ""
-    errLbl.Parent = right
-
-    local btn = Instance.new("TextButton")
-    btn.Position = UDim2.fromOffset(10, 170)
-    btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
-    btn.TextColor3 = Color3.fromRGB(30, 20, 30)
-    btn.Font = Enum.Font.Code
-    btn.TextSize = 16
-    btn.Text = "XAC NHAN KEY"
-    btn.Parent = right
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
-    local function tryKey()
-        local input = box.Text or ""
-        -- dung tung ky tu (co the trim chi space 2 dau)
-        if input == VALID_KEY then
-            errLbl.Text = ""
-            gui:Destroy()
-            unlockMenu()
-        else
-            errLbl.Text = "KEY ĐÃ HẾT HẠN HOẶC SAI!"
-            errLbl.TextColor3 = Color3.fromRGB(255, 50, 50)
-        end
+    if input == VALID_KEY then
+        unlockMenu()
+        pcall(function()
+            if KeyWindow.SetVisible then KeyWindow:SetVisible(false) end
+        end)
+        pcall(function()
+            Obsidian:Notify({ Title = "PaintCrack", Description = "Key hop le!", Time = 4 })
+        end)
+    else
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = "KEY ĐÃ HẾT HẠN HOẶC SAI!",
+                Time = 4,
+            })
+        end)
     end
-    btn.MouseButton1Click:Connect(tryKey)
-    box.FocusLost:Connect(function(enter)
-        if enter then tryKey() end
-    end)
-end
-
-pcall(buildKeyGate)
-
-pcall(function()
-    Obsidian:Notify({
-        Title = "PaintCrack",
-        Description = "Nhap key de mo menu. Nen dung Delta / Arceus X de ho tro day du cac hooking!.",
-        Time = 8
-    })
 end)
 local Tabs = {
     Info = Window:AddTab("Info", "user-check"),
@@ -2321,36 +2182,31 @@ local escapeTimerGui = nil
 local escapeTimerLabel = nil
 local escapeTimerBar = nil
 local escapeTimerConn = nil
-local ESCAPE_MAX = 18
+local ESCAPE_MAX = 19.5
 local hideStartTime = nil
 
 local function isPlayerHiding()
     local char = LocalPlayer.Character
     if not char then return false end
-
-    for _, a in ipairs({"Hiding", "IsHiding", "Hide", "InCloset", "Crouching", "HidingSpot"}) do
+    for _, a in ipairs({"Hiding", "IsHiding", "HidingSpot"}) do
         local v = char:GetAttribute(a)
         if v == true or v == 1 then return true end
     end
-
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
-        if hum.Sit or hum.PlatformStand then return true end
-        local st = hum:GetState()
-        if st == Enum.HumanoidStateType.Seated then return true end
         local ok, tracks = pcall(function() return hum:GetPlayingAnimationTracks() end)
         if ok and tracks then
             for _, t in ipairs(tracks) do
                 local n = string.lower(tostring(t.Name or ""))
                 if n:find("hide") or n:find("closet") or n:find("wardrobe")
-                    or n:find("locker") or n:find("bed") or n:find("enter") then
+                    or n:find("locker") or n:find("bedhide") then
                     return true
                 end
             end
         end
     end
     return false
-end
+    end
 
 local function destroyEscapeTimerUI()
     if escapeTimerGui then escapeTimerGui:Destroy() end
@@ -2505,55 +2361,85 @@ escapeTimerToggle:OnChanged(function(Value)
     end
 end)
 
+local autoAvoidActive = false
+local autoAvoidConn = nil
+local HIDE_NAMES = {wardrobe=true, closet=true, locker=true, bed=true, hide=true, cabinet=true}
+local ENTITY_MARK = {rush=true, ambush=true, a60=true, ["a-60"]=true, a120=true, ["a-120"]=true}
 
-escapeTimerToggle:OnChanged(function(Value)
-    escapeTimerActive = Value
-    if Value then
-        createEscapeTimerUI()
-        if escapeTimerConn then escapeTimerConn:Disconnect() end
-        escapeTimerConn = RunService.Heartbeat:Connect(function()
-            if not escapeTimerActive then return end
-            if not escapeTimerGui then createEscapeTimerUI() end
-
-            local hiding = isPlayerHiding()
-            if hiding then
-                if not hideStartTime then hideStartTime = tick() end
-                local left = math.max(0, ESCAPE_MAX - (tick() - hideStartTime))
-                local ratio = left / ESCAPE_MAX
-
-                escapeTimerGui.Enabled = true
-                if escapeTimerLabel then
-                    escapeTimerLabel.Text = string.format("%.0f", left)
-                    if left <= 5 then
-                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 70, 70)
-                    elseif left <= 10 then
-                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 200, 80)
-                    else
-                        escapeTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+local function findHidePromptNear(maxDist)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local rooms = Workspace:FindFirstChild("CurrentRooms")
+    if not rooms then return nil end
+    local best, bestD = nil, maxDist
+    for _, room in ipairs(rooms:GetChildren()) do
+        for _, d in ipairs(room:GetDescendants()) do
+            if d:IsA("ProximityPrompt") and d.Enabled then
+                local par = d.Parent
+                local n = string.lower(tostring(par and par.Name or ""))
+                local okName = false
+                for k in pairs(HIDE_NAMES) do
+                    if n:find(k, 1, true) then okName = true break end
+                end
+                if okName then
+                    local part = par:IsA("BasePart") and par
+                        or (par and (par.PrimaryPart or par:FindFirstChildWhichIsA("BasePart")))
+                    if part then
+                        local dist = (part.Position - hrp.Position).Magnitude
+                        if dist < bestD and dist <= 400 then
+                            bestD, best = dist, d
+                        end
                     end
                 end
-                if escapeTimerBar then
-                    escapeTimerBar.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
-                    if left <= 5 then
-                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-                    elseif left <= 10 then
-                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 200, 80)
-                    else
-                        escapeTimerBar.BackgroundColor3 = Color3.fromRGB(255, 140, 175)
-                    end
-                end
-            else
-                hideStartTime = nil
-                if escapeTimerGui then escapeTimerGui.Enabled = false end
             end
-        end)
-    else
-        if escapeTimerConn then
-            escapeTimerConn:Disconnect()
-            escapeTimerConn = nil
         end
-        destroyEscapeTimerUI()
     end
+    return best
+end
+
+local function tryHide()
+    if isPlayerHiding() then return end
+    local prompt = findHidePromptNear(400)
+    if prompt and fireproximityprompt then
+        pcall(function() fireproximityprompt(prompt) end)
+    end
+end
+
+local function tryExitHide()
+    if not isPlayerHiding() then return end
+    local prompt = findHidePromptNear(15)
+    if prompt and fireproximityprompt then
+        pcall(function() fireproximityprompt(prompt) end)
+    end
+end
+
+MiscLeft:AddToggle("AutoAvoidHideToggle", {
+    Text = "Auto Avoid by hiding", Default = false,
+    Tooltip = "Entity xuat hien -> tron; bien mat -> ra",
+}):OnChanged(function(on)
+    autoAvoidActive = on
+    if autoAvoidConn then autoAvoidConn:Disconnect() autoAvoidConn = nil end
+    if not on then return end
+    autoAvoidConn = Workspace.ChildAdded:Connect(function(obj)
+        if not autoAvoidActive then return end
+        task.defer(function()
+            local n = string.lower(obj.Name)
+            local hit = false
+            for k in pairs(ENTITY_MARK) do
+                if n:find(k, 1, true) then hit = true break end
+            end
+            if not hit then return end
+            tryHide()
+            local anc
+            anc = obj.AncestryChanged:Connect(function(_, parent)
+                if not parent then
+                    if anc then anc:Disconnect() end
+                    tryExitHide()
+                end
+            end)
+        end)
+    end)
 end)
 
 local weirdMode = "Ghost Green"
@@ -2923,20 +2809,6 @@ local function drawWps(wps)
     end
 end
 
--- Trong Show Path RenderStepped / Heartbeat (moi \~0.5s):
-local door = getNextDoor()
-if door then
-    currentPathTarget = door
-    local now = tick()
-    if door \~= lastDoorPart or now - lastCompute > 0.6 then
-        lastDoorPart, lastCompute = door, now
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            pathWps = computeWps(hrp.Position, door.Position)
-            drawWps(pathWps)
-        end
-    end
-            end
 
 PathLeft:AddToggle("ShowPathToggle", {
     Text = "Show Path", Default = false,
@@ -2949,8 +2821,20 @@ PathLeft:AddToggle("ShowPathToggle", {
         return
     end
     if pathConn then pathConn:Disconnect() end
-    pathConn = RunService.RenderStepped:Connect(function()
+pathConn = RunService.Heartbeat:Connect(function()
         if not showPathActive then return end
+        local door = getNextDoor()
+        if not door then return end
+        currentPathTarget = door
+        local now = tick()
+        if door ~= lastDoorPart or now - lastCompute > 0.6 then
+            lastDoorPart, lastCompute = door, now
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                pathWps = computeWps(hrp.Position, door.Position)
+                drawWps(pathWps)
+            end
+        end
     end)
 end)
 
@@ -2977,18 +2861,28 @@ PathRight:AddToggle("AutoStartPathToggle", {
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then return end
 
-        local door = currentPathTarget or getNextDoor()
+        local door = getNextDoor()
         if not door then return end
         currentPathTarget = door
 
-        local pos = door.Position
-        local flat = Vector3.new(pos.X - hrp.Position.X, 0, pos.Z - hrp.Position.Z)
-        if flat.Magnitude < 3.5 then
-            return
+        local goal = door.Position
+        if pathWps and #pathWps >= 2 then
+            for i = 2, #pathWps do
+                local w = pathWps[i]
+                local f = Vector3.new(w.X - hrp.Position.X, 0, w.Z - hrp.Position.Z)
+                if f.Magnitude > 2.5 then
+                    goal = w
+                    break
+                end
+            end
         end
+
+        local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
+        if flat.Magnitude < 2.5 then return end
         local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 20
         hum.WalkSpeed = math.max(spd, 16)
-        hum:MoveTo(Vector3.new(pos.X, hrp.Position.Y, pos.Z))
+        hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
+        hum:Move(flat.Unit, false)
     end)
 end)
 
