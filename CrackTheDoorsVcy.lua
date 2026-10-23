@@ -64,6 +64,25 @@ if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
 local VALID_KEY = "FREEKEYDOORS"
+local function unlockMenu()
+    menuUnlocked = true
+    Obsidian.Toggle = _obsidianToggle
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://4590657391"
+        s.Volume = 6
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(4, function() if s then s:Destroy() end end)
+    end)
+    pcall(function()
+        Obsidian:Notify({
+            Title = "PaintCrack",
+            Description = "Key hop le! Menu da mo — bam Toggle de dung.",
+            Time = 5
+        })
+    end)
+end
 
 pcall(function()
     if Window and Window.SetVisible then Window:SetVisible(false) end
@@ -87,11 +106,70 @@ local KeyLeft = KeyTab:AddLeftGroupbox("Executor Check")
 local KeyRight = KeyTab:AddRightGroupbox("Key")
 
 local checks = {
-    {"Drawing", function() return typeof(Drawing) == "table" end},
+    {"Drawing", function()
+        if typeof(Drawing) == "table" or typeof(Drawing) == "userdata" then return true end
+        local ok, o = pcall(function() return Drawing.new("Line") end)
+        if ok and o then pcall(function() o:Remove() end) return true end
+        return false
+    end},
+    {"Drawing.new Circle", function()
+        local ok, o = pcall(function() return Drawing.new("Circle") end)
+        if ok and o then pcall(function() o:Remove() end) return true end
+        return false
+    end},
+    {"Drawing.new Text", function()
+        local ok, o = pcall(function() return Drawing.new("Text") end)
+        if ok and o then pcall(function() o:Remove() end) return true end
+        return false
+    end},
+    {"Drawing.new Square", function()
+        local ok, o = pcall(function() return Drawing.new("Square") end)
+        if ok and o then pcall(function() o:Remove() end) return true end
+        return false
+    end},
+    {"Drawing.new Triangle", function()
+        local ok, o = pcall(function() return Drawing.new("Triangle") end)
+        if ok and o then pcall(function() o:Remove() end) return true end
+        return false
+    end},
     {"getgc", function() return type(getgc) == "function" end},
-    {"hookfunction", function() return type(hookfunction) == "function" or type(hookfunc) == "function" end},
+    {"getgenv", function() return type(getgenv) == "function" end},
+    {"getrenv", function() return type(getrenv) == "function" end},
+    {"getsenv", function() return type(getsenv) == "function" end},
+    {"getrawmetatable", function() return type(getrawmetatable) == "function" end},
+    {"setrawmetatable", function() return type(setrawmetatable) == "function" end},
+    {"hookfunction / hookfunc", function()
+        return type(hookfunction) == "function" or type(hookfunc) == "function"
+    end},
     {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
+    {"newcclosure", function() return type(newcclosure) == "function" end},
+    {"checkcaller", function() return type(checkcaller) == "function" end},
+    {"getnamecallmethod", function() return type(getnamecallmethod) == "function" end},
+    {"getconnections", function() return type(getconnections) == "function" end},
+    {"firesignal", function() return type(firesignal) == "function" end},
     {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
+    {"fireclickdetector", function() return type(fireclickdetector) == "function" end},
+    {"firetouchinterest", function() return type(firetouchinterest) == "function" end},
+    {"setclipboard", function() return type(setclipboard) == "function" end},
+    {"setfflag", function() return type(setfflag) == "function" end},
+    {"gethui", function() return type(gethui) == "function" end},
+    {"cloneref", function() return type(cloneref) == "function" end},
+    {"compareinstances", function() return type(compareinstances) == "function" end},
+    {"islclosure", function() return type(islclosure) == "function" end},
+    {"iscclosure", function() return type(iscclosure) == "function" end},
+    {"loadstring", function() return type(loadstring) == "function" end},
+    {"HttpGet", function()
+        return pcall(function() return game:HttpGet("https://example.com", true) end)
+    end},
+    {"request / http_request", function()
+        return type(request) == "function" or type(http_request) == "function"
+            or (syn and type(syn.request) == "function")
+    end},
+    {"WebSocket", function()
+        return type(WebSocket) == "table" or (syn and type(syn.websocket) == "table")
+    end},
+    {"crypt", function() return type(crypt) == "table" end},
+    {"cache", function() return type(cache) == "table" or type(getcache) == "function" end},
 }
 for _, c in ipairs(checks) do
     local ok = false
@@ -2441,7 +2519,7 @@ MiscLeft:AddToggle("AutoAvoidHideToggle", {
         end)
     end)
 end)
-
+(function()
 local weirdMode = "Ghost Green"
 local weirdModeDrop = FuncRight:AddDropdown("WeirdModeDrop", {
     Text = "Weird Style",
@@ -2591,7 +2669,7 @@ footMusicToggle:OnChanged(function(Value)
         end
     end
 end)
-
+        end)()
 do
     local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
     local setRight = Tabs.Settings:AddRightGroupbox("Config")
