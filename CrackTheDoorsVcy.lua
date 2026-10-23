@@ -2543,7 +2543,7 @@ escapeTimerToggle:OnChanged(function(Value)
         destroyEscapeTimerUI()
     end
 end)
-
+;(function()
 local autoAvoidActive = false
 local autoAvoidConn = nil
 local HIDE_NAMES = {wardrobe=true, closet=true, locker=true, bed=true, hide=true, cabinet=true}
@@ -2596,6 +2596,7 @@ local function tryExitHide()
         pcall(function() fireproximityprompt(prompt) end)
     end
 end
+end)()
 
 ;(function()
 local weirdMode = "Ghost Green"
@@ -2914,7 +2915,7 @@ local function clearPathDraw()
     end
     pathAtts = {}
     pathBeams = {}
-            end
+end
 local function computeWps(from, to)
     local path = PathfindingService:CreatePath({
         AgentRadius = 1.8,
