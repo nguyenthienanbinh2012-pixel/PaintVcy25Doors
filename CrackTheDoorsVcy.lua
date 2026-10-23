@@ -2815,28 +2815,43 @@ local function getNextDoor()
     if not rooms then return nil end
 
     local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
-    local best, bestScore = nil, -1e9
-    local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
-    if look.Magnitude > 0 then look = look.Unit end
+    local targetRoom = myRoom + 1
 
-    for _, room in ipairs(rooms:GetChildren()) do
-        local doorModel = room:FindFirstChild("Door") or room:FindFirstChild("Door", true)
+    -- 1) Cua room tiep theo (Floors / Hotel)
+    local roomInst = rooms:FindFirstChild(tostring(targetRoom))
+        or rooms:FindFirstChild(tostring(targetRoom) .. "_")
+    if roomInst then
+        local doorModel = roomInst:FindFirstChild("Door") or roomInst:FindFirstChild("Door", true)
         if doorModel then
             local part = doorModel:IsA("BasePart") and doorModel
                 or doorModel.PrimaryPart
                 or doorModel:FindFirstChild("Door")
                 or doorModel:FindFirstChildWhichIsA("BasePart", true)
-            if part then
-                local off = part.Position - hrp.Position
-                local dist = off.Magnitude
-                if dist > 2 and dist < 250 then
-                    local flat = Vector3.new(off.X, 0, off.Z)
-                    if flat.Magnitude > 0.1 then
-                        local score = -dist + flat.Unit:Dot(look) * 40
-                        -- uu tien room >= current
-                        local rn = tonumber(room.Name)
-                        if rn and rn >= myRoom then score = score + 50 end
-                        if score > bestScore then bestScore = score best = part end
+            if part then return part end
+        end
+    end
+
+    -- 2) Fallback: cua gan nhat phia truoc theo huong di (HRP), KHONG theo cam
+    local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+    if look.Magnitude < 0.05 then look = Vector3.new(0, 0, -1) else look = look.Unit end
+    local best, bestScore = nil, -1e9
+    for _, room in ipairs(rooms:GetChildren()) do
+        local rn = tonumber(room.Name)
+        if rn and rn >= myRoom then
+            local doorModel = room:FindFirstChild("Door") or room:FindFirstChild("Door", true)
+            if doorModel then
+                local part = doorModel:IsA("BasePart") and doorModel
+                    or doorModel.PrimaryPart
+                    or doorModel:FindFirstChildWhichIsA("BasePart", true)
+                if part then
+                    local off = part.Position - hrp.Position
+                    local dist = off.Magnitude
+                    if dist > 2 and dist < 250 then
+                        local flat = Vector3.new(off.X, 0, off.Z)
+                        if flat.Magnitude > 0.1 then
+                            local score = -dist + (rn - myRoom) * 100
+                            if score > bestScore then bestScore, best = score, part end
+                        end
                     end
                 end
             end
@@ -2847,82 +2862,81 @@ local function getNextDoor()
 
 local pathP0, pathP1, pathBeam = nil, nil, nil
 
-local function clearPathDraw()
-    if pathFolder then
-        pathFolder:Destroy()
-        pathFolder = nil
+local PathfindingService = game:GetService("PathfindingService")
+local lastDoorPart, lastCompute = nil, 0
+local pathWps = {}
+
+local function computeWps(from, to)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 1.8,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 4,
+    })
+    local ok = pcall(function() path:ComputeAsync(from, to) end)
+    if ok and path.Status == Enum.PathStatus.Success then
+        local t = {}
+        for _, wp in ipairs(path:GetWaypoints()) do
+            table.insert(t, wp.Position)
+        end
+        if #t >= 2 then return t end
     end
-    pathP0, pathP1, pathBeam = nil, nil, nil
-    pathWaypoints = {}
-    currentPathTarget = nil
+    return { from, to } -- fallback thang
 end
 
-local function ensureLine()
-    if pathFolder and pathBeam and pathBeam.Parent then return end
+local function drawWps(wps)
     clearPathDraw()
+    if not wps or #wps < 2 then return end
     pathFolder = Instance.new("Folder")
     pathFolder.Name = "PaintRoomPath"
     pathFolder.Parent = Workspace
-
-    local function ghost()
+    local atts = {}
+    for i, pos in ipairs(wps) do
         local p = Instance.new("Part")
-        p.Anchored = true
-        p.CanCollide = false
-        p.CanQuery = false
-        p.CanTouch = false
-        p.Size = Vector3.new(0.25, 0.25, 0.25)
-        p.Transparency = 1
+        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+        p.Size, p.Transparency = Vector3.new(0.2, 0.2, 0.2), 1
+        local y = pos.Y
+        pcall(function()
+            local pr = RaycastParams.new()
+            pr.FilterDescendantsInstances = {LocalPlayer.Character, pathFolder}
+            pr.FilterType = Enum.RaycastFilterType.Exclude
+            local h = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), pr)
+            if h then y = h.Position.Y + 0.12 end
+        end)
+        p.CFrame = CFrame.new(pos.X, y, pos.Z)
         p.Parent = pathFolder
         local a = Instance.new("Attachment")
         a.Parent = p
-        return p, a
+        atts[i] = a
     end
-
-    local a0, a1
-    pathP0, a0 = ghost()
-    pathP1, a1 = ghost()
-
-    pathBeam = Instance.new("Beam")
-    pathBeam.Attachment0 = a0
-    pathBeam.Attachment1 = a1
-    pathBeam.Width0 = 2.8
-    pathBeam.Width1 = 2.8
-    pathBeam.FaceCamera = true
-    pathBeam.LightEmission = 1
-    pathBeam.LightInfluence = 0
-    pathBeam.Texture = "rbxassetid://446111271"
-    pathBeam.TextureSpeed = 0.45
-    pathBeam.Color = ColorSequence.new(pathColor)
-    pathBeam.Transparency = NumberSequence.new(0.15)
-    pathBeam.Parent = pathFolder
+    for i = 1, #atts - 1 do
+        local b = Instance.new("Beam")
+        b.Attachment0, b.Attachment1 = atts[i], atts[i + 1]
+        b.Width0, b.Width1 = 2.4, 2.4
+        b.FaceCamera = true
+        b.LightEmission = 1
+        b.Color = ColorSequence.new(pathColor)
+        b.Transparency = NumberSequence.new(0.2)
+        b.Texture = "rbxassetid://446111271"
+        b.TextureSpeed = 0.4
+        b.Parent = pathFolder
+    end
 end
 
-local function updateLineTo(doorPart)
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp or not doorPart then return end
-    ensureLine()
-
-    local y0, y1 = hrp.Position.Y - 2.6, doorPart.Position.Y - 2
-    pcall(function()
-        local pr = RaycastParams.new()
-        pr.FilterDescendantsInstances = {char, pathFolder}
-        pr.FilterType = Enum.RaycastFilterType.Exclude
-        local h0 = Workspace:Raycast(hrp.Position, Vector3.new(0, -15, 0), pr)
-        local h1 = Workspace:Raycast(doorPart.Position + Vector3.new(0, 6, 0), Vector3.new(0, -25, 0), pr)
-        if h0 then y0 = h0.Position.Y + 0.12 end
-        if h1 then y1 = h1.Position.Y + 0.12 end
-    end)
-
-    pathP0.CFrame = CFrame.new(hrp.Position.X, y0, hrp.Position.Z)
-    pathP1.CFrame = CFrame.new(doorPart.Position.X, y1, doorPart.Position.Z)
-    if pathBeam then
-        pathBeam.Color = ColorSequence.new(pathColor)
-        pathBeam.Enabled = true
+-- Trong Show Path RenderStepped / Heartbeat (moi \~0.5s):
+local door = getNextDoor()
+if door then
+    currentPathTarget = door
+    local now = tick()
+    if door \~= lastDoorPart or now - lastCompute > 0.6 then
+        lastDoorPart, lastCompute = door, now
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            pathWps = computeWps(hrp.Position, door.Position)
+            drawWps(pathWps)
+        end
     end
-    currentPathTarget = doorPart
-    pathWaypoints = {hrp.Position, doorPart.Position}
-end
+            end
 
 PathLeft:AddToggle("ShowPathToggle", {
     Text = "Show Path", Default = false,
@@ -2937,8 +2951,6 @@ PathLeft:AddToggle("ShowPathToggle", {
     if pathConn then pathConn:Disconnect() end
     pathConn = RunService.RenderStepped:Connect(function()
         if not showPathActive then return end
-        local door = getNextDoor()
-        if door then updateLineTo(door) end
     end)
 end)
 
