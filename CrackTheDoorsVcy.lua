@@ -65,8 +65,19 @@ local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
 local VALID_KEY = "FREEKEYDOORS"
 local function unlockMenu()
+
+local function unlockMenu()
     menuUnlocked = true
     Obsidian.Toggle = _obsidianToggle
+    pcall(function()
+        if KeyWindow then
+            if type(KeyWindow.Unload) == "function" then
+                KeyWindow:Unload()
+            elseif KeyWindow.SetVisible then
+                KeyWindow:SetVisible(false)
+            end
+        end
+    end)
     pcall(function()
         local s = Instance.new("Sound")
         s.SoundId = "rbxassetid://4590657391"
@@ -78,11 +89,11 @@ local function unlockMenu()
     pcall(function()
         Obsidian:Notify({
             Title = "PaintCrack",
-            Description = "Key hop le! Menu da mo — bam Toggle de dung.",
+            Description = "Key hop le! Đã UNLOCK key thanh cong Hãy Sử dụng menu!✅.",
             Time = 5
         })
     end)
-end
+    end
 
 pcall(function()
     if Window and Window.SetVisible then Window:SetVisible(false) end
@@ -183,7 +194,7 @@ local keyInput = KeyRight:AddInput("PaintKeyInput", {
     Numeric = false,
     Finished = false,
     Text = "Nhap key",
-    Placeholder = "FREEKEYDOORS",
+    Placeholder = "Nhap key...",
     Callback = function() end,
 })
 
@@ -192,22 +203,19 @@ KeyRight:AddButton("Xac nhan Key", function()
     pcall(function()
         if type(keyInput) == "table" then
             input = tostring(keyInput.Value or keyInput.Text or "")
+        elseif type(keyInput) == "string" then
+            input = keyInput
         end
     end)
+    input = tostring(input or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if input == VALID_KEY then
         unlockMenu()
-        pcall(function()
-            if KeyWindow.SetVisible then KeyWindow:SetVisible(false) end
-        end)
-        pcall(function()
-            Obsidian:Notify({ Title = "PaintCrack", Description = "Key hop le!", Time = 4 })
-        end)
     else
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
                 Description = "KEY ĐÃ HẾT HẠN HOẶC SAI!",
-                Time = 4,
+                Time = 4
             })
         end)
     end
@@ -314,7 +322,6 @@ local antiEyesActive = false
 local antiDupeActive = false
 local antiEyesConn = nil
 local oldNamecall = nil
-
 local function isEyesOrLook(name)
     local n = tostring(name or ""):lower()
     return n:find("eyes", 1, true) or n:find("lookman", 1, true) or n:find("look_man", 1, true)
@@ -327,7 +334,7 @@ end
 
 AntiLeft:AddToggle("AntiEyesLookToggle", {
     Text = "Anti Eyes & LookMan", Default = false,
-    Tooltip = "Chan dame khi nhin, khong destroy entity"
+    Tooltip = "Chan dame khi nhin"
 }):OnChanged(function(v)
     antiEyesActive = v
     if v then
@@ -337,7 +344,7 @@ AntiLeft:AddToggle("AntiEyesLookToggle", {
             setreadonly(mt, false)
             mt.__namecall = newcclosure(function(self, ...)
                 local method = getnamecallmethod()
-                if antiEyesActive and method == "Raycast" and self == Workspace then
+                if antiEyesActive and method == "Raycast" then
                     local result = oldNamecall(self, ...)
                     if result and result.Instance then
                         local inst = result.Instance
@@ -352,20 +359,31 @@ AntiLeft:AddToggle("AntiEyesLookToggle", {
             end)
             setreadonly(mt, true)
         end)
-        antiEyesConn = RunService.Heartbeat:Connect(function()
-            if not antiEyesActive then return end
-            pcall(function()
-                for _, obj in ipairs(Workspace:GetChildren()) do
-                    if isEyesOrLook(obj.Name) then
-                        for _, p in ipairs(obj:GetDescendants()) do
-                            if p:IsA("BasePart") then
-                                p.CanQuery = false
-                                p.CanTouch = false
-                            end
-                        end
+        local function neutralize(obj)
+            if not obj or not isEyesOrLook(obj.Name) then return end
+            for _, p in ipairs(obj:GetDescendants()) do
+                pcall(function()
+                    if p:IsA("BasePart") then
+                        p.CanQuery = false
+                        p.CanTouch = false
+                        p.CanCollide = false
+                    elseif p:IsA("BillboardGui") or p:IsA("SurfaceGui") then
+                        p.Enabled = false
+                    elseif p:IsA("Sound") then
+                        p.Volume = 0
+                        p:Stop()
+                    elseif p:IsA("ParticleEmitter") or p:IsA("Beam") then
+                        p.Enabled = false
                     end
-                end
-            end)
+                end)
+            end
+        end
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            neutralize(obj)
+        end
+        if antiEyesConn then antiEyesConn:Disconnect() end
+        antiEyesConn = Workspace.ChildAdded:Connect(function(obj)
+            if antiEyesActive then task.defer(neutralize, obj) end
         end)
     else
         if antiEyesConn then antiEyesConn:Disconnect() antiEyesConn = nil end
@@ -1256,6 +1274,11 @@ thirdPersonToggle:OnChanged(function(Value)
             if not thirdPersonActive then return end
             local char = LocalPlayer.Character
             if not char then return end
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.LocalTransparencyModifier = 0
+                end
+                        end
             local head = char:FindFirstChild("Head")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not head or not hrp then return end
@@ -1274,6 +1297,14 @@ thirdPersonToggle:OnChanged(function(Value)
     else
         if thirdPersonConn then thirdPersonConn:Disconnect() thirdPersonConn = nil end
         cam.CameraType = Enum.CameraType.Custom
+        local c = LocalPlayer.Character
+        if c then
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.LocalTransparencyModifier = 0
+                end
+            end
+                end
     end
 end)
 
@@ -2135,7 +2166,7 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 3
+local autoInteractRange = 1.5
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
 local INTERACT_BLACKLIST = {
@@ -2160,8 +2191,8 @@ local function preparePrompt(prompt)
     pcall(function()
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
-        if prompt.MaxActivationDistance < 3 then
-            prompt.MaxActivationDistance = 3
+        if prompt.MaxActivationDistance < 2 then
+            prompt.MaxActivationDistance = 2
         end
     end)
 end
@@ -2491,34 +2522,6 @@ local function tryExitHide()
         pcall(function() fireproximityprompt(prompt) end)
     end
 end
-
-MiscLeft:AddToggle("AutoAvoidHideToggle", {
-    Text = "Auto Avoid by hiding", Default = false,
-    Tooltip = "Entity xuat hien -> tron; bien mat -> ra",
-}):OnChanged(function(on)
-    autoAvoidActive = on
-    if autoAvoidConn then autoAvoidConn:Disconnect() autoAvoidConn = nil end
-    if not on then return end
-    autoAvoidConn = Workspace.ChildAdded:Connect(function(obj)
-        if not autoAvoidActive then return end
-        task.defer(function()
-            local n = string.lower(obj.Name)
-            local hit = false
-            for k in pairs(ENTITY_MARK) do
-                if n:find(k, 1, true) then hit = true break end
-            end
-            if not hit then return end
-            tryHide()
-            local anc
-            anc = obj.AncestryChanged:Connect(function(_, parent)
-                if not parent then
-                    if anc then anc:Disconnect() end
-                    tryExitHide()
-                end
-            end)
-        end)
-    end)
-end)
 
 ;(function()
 local weirdMode = "Ghost Green"
@@ -2900,13 +2903,25 @@ PathLeft:AddToggle("ShowPathToggle", {
         return
     end
     if pathConn then pathConn:Disconnect() end
-pathConn = RunService.Heartbeat:Connect(function()
+    lastDoorPart = nil
+    lastCompute = 0
+    do
+        local door = getNextDoor()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if door and hrp then
+            pathWps = computeWps(hrp.Position, door.Position)
+            drawWps(pathWps)
+            currentPathTarget = door
+            lastDoorPart = door
+        end
+    end
+    pathConn = RunService.Heartbeat:Connect(function()
         if not showPathActive then return end
         local door = getNextDoor()
         if not door then return end
         currentPathTarget = door
         local now = tick()
-        if door ~= lastDoorPart or now - lastCompute > 0.6 then
+        if door \~= lastDoorPart or now - lastCompute > 0.6 then
             lastDoorPart, lastCompute = door, now
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -2928,7 +2943,8 @@ PathRight:AddToggle("AutoStartPathToggle", {
         if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:MoveTo(char.HumanoidRootPart and char.HumanoidRootPart.Position or Vector3.zero) end
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hum and hrp then hum:MoveTo(hrp.Position) end
         return
     end
     if autoPathConn then autoPathConn:Disconnect() end
@@ -2939,11 +2955,13 @@ PathRight:AddToggle("AutoStartPathToggle", {
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then return end
-
         local door = getNextDoor()
         if not door then return end
         currentPathTarget = door
-
+        if not pathWps or #pathWps < 2 then
+            pathWps = computeWps(hrp.Position, door.Position)
+            if showPathActive then drawWps(pathWps) end
+        end
         local goal = door.Position
         if pathWps and #pathWps >= 2 then
             for i = 2, #pathWps do
@@ -2955,13 +2973,42 @@ PathRight:AddToggle("AutoStartPathToggle", {
                 end
             end
         end
-
         local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
         if flat.Magnitude < 2.5 then return end
         local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 20
         hum.WalkSpeed = math.max(spd, 16)
         hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
         hum:Move(flat.Unit, false)
+    end)
+end)
+PathRight:AddToggle("AutoAvoidHideToggle", {
+    Text = "Auto Avoid by hiding", Default = false,
+    Tooltip = "Tu động trốn vào tủ gần nhất trước khi entity đi tới",
+}):OnChanged(function(on)
+    autoAvoidActive = on
+    if autoAvoidConn then autoAvoidConn:Disconnect() autoAvoidConn = nil end
+    if not on then return end
+    local function onEntity(obj)
+        if not autoAvoidActive or not obj then return end
+        local n = string.lower(obj.Name)
+        local hit = false
+        for k in pairs(ENTITY_MARK) do
+            if n:find(k, 1, true) then hit = true break end
+        end
+        if not hit then return end
+        tryHide()
+        local anc
+        anc = obj.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                if anc then anc:Disconnect() end
+                tryExitHide()
+            end
+        end)
+    end
+    autoAvoidConn = Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Model") then
+            task.defer(onEntity, obj)
+        end
     end)
 end)
 
