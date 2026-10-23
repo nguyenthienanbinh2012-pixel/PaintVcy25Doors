@@ -70,11 +70,23 @@ local function unlockMenu()
     Obsidian.Toggle = _obsidianToggle
     pcall(function()
         if KeyWindow then
-            if type(KeyWindow.Unload) == "function" then
-                KeyWindow:Unload()
-            elseif KeyWindow.SetVisible then
-                KeyWindow:SetVisible(false)
-            end
+            pcall(function()
+                if KeyWindow.Unload then KeyWindow:Unload() end
+            end)
+            pcall(function()
+                if KeyWindow.SetVisible then KeyWindow:SetVisible(false) end
+            end)
+            -- xoa UI goc neu con sot
+            pcall(function()
+                local pg = LocalPlayer:FindFirstChild("PlayerGui")
+                if pg then
+                    for _, g in ipairs(pg:GetChildren()) do
+                        if g.Name:lower():find("key") or g.Name:lower():find("paintcrack key") then
+                            g:Destroy()
+                        end
+                    end
+                end
+            end)
         end
     end)
     pcall(function()
@@ -88,7 +100,7 @@ local function unlockMenu()
     pcall(function()
         Obsidian:Notify({
             Title = "PaintCrack",
-            Description = "Key hop le! Đã UNLOCK key thanh cong Hãy Sử dụng menu!✅.",
+            Description = "Key hop le! Bam Toggle menu chinh.",
             Time = 5
         })
     end)
@@ -311,6 +323,68 @@ end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
+local IndexLeft = Tabs.Function:AddLeftGroupbox("Index")
+
+local jumpPowerVal = 50
+local jumpPowerOn = false
+local infJumpOn = false
+local infJumpConn = nil
+
+IndexLeft:AddToggle("JumpPowerToggle", {
+    Text = "JumpPower", Default = false,
+}):OnChanged(function(v)
+    jumpPowerOn = v
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum.UseJumpPower = true
+            hum.JumpPower = v and jumpPowerVal or 50
+            hum.JumpHeight = v and (jumpPowerVal / 5) or 7.2
+        end)
+    end
+end)
+
+IndexLeft:AddSlider("JumpPowerSlider", {
+    Text = "Jump Power", Default = 50, Min = 50, Max = 250, Rounding = 0, Compact = true,
+}):OnChanged(function(v)
+    jumpPowerVal = v
+    if jumpPowerOn then
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum.UseJumpPower = true
+                hum.JumpPower = v
+                hum.JumpHeight = v / 5
+            end)
+        end
+    end
+end)
+
+IndexLeft:AddToggle("InfJumpToggle", {
+    Text = "Infinity Jump", Default = false,
+}):OnChanged(function(v)
+    infJumpOn = v
+    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+    if not v then return end
+    infJumpConn = UserInputService.JumpRequest:Connect(function()
+        if not infJumpOn then return end
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hum then return end
+        pcall(function()
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            if hrp then
+                local vy = jumpPowerOn and (jumpPowerVal * 0.35) or 40
+                hrp.AssemblyLinearVelocity = Vector3.new(
+                    hrp.AssemblyLinearVelocity.X,
+                    math.max(hrp.AssemblyLinearVelocity.Y, vy),
+                    hrp.AssemblyLinearVelocity.Z
+                )
+            end
+        end)
+    end)
+end)
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
@@ -980,19 +1054,17 @@ local function startAxial()
         end
 
         local look = cam.CFrame.LookVector
-        local dir = Vector3.new(look.X, 0, look.Z)
+        local dir = cam.CFrame.LookVector
         if dir.Magnitude > 0.05 then
             dir = dir.Unit
             axialLastDir = dir
         else
             dir = axialLastDir
         end
-
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        -- chậm: hệ số 0.55 (trước 1.75)
         local move = dir * (axialSpeed * 0.55) * step
-        hrp.CFrame = hrp.CFrame + Vector3.new(move.X, 0, move.Z)
-        hrp.AssemblyLinearVelocity = Vector3.new(dir.X * axialSpeed * 0.4, hrp.AssemblyLinearVelocity.Y, dir.Z * axialSpeed * 0.4)
+        hrp.CFrame = hrp.CFrame + move
+        hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.4)
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
 end
@@ -1210,29 +1282,32 @@ local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
 speedToggle:OnChanged(function(Value)
     isSpeedActive = Value
     if Value then
-        speedConn = RunService.Heartbeat:Connect(function()
+speedConn = RunService.Heartbeat:Connect(function(dt)
+            if not speedActive then return end
             local char = LocalPlayer.Character
             if not char then return end
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hum or not hrp then return end
             local finalSpeed = targetWalkSpeed * 1.6
+            if finalSpeed < 16 then finalSpeed = 16 end
             if speedMethod == "Instant" then
                 hum.WalkSpeed = finalSpeed
+                local md = hum.MoveDirection
+                if md.Magnitude > 0.05 then
+                    local step = math.clamp(dt or 0.016, 0.008, 0.05)
+                    local u = md.Unit
+                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, hrp.AssemblyLinearVelocity.Y, u.Z * finalSpeed)
+                    hrp.CFrame = hrp.CFrame + Vector3.new(u.X, 0, u.Z) * (finalSpeed * step * 0.85)
+                else
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+                end
             else
                 if hum.WalkSpeed < finalSpeed then
                     hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
-                elseif hum.WalkSpeed > finalSpeed then
+                else
                     hum.WalkSpeed = finalSpeed
                 end
-            end
-        end)
-        remoteThreadSpeed = task.spawn(function()
-            while isSpeedActive do
-                if S and not S.enabled then
-                    local cr = getCrouchRemote()
-                    if cr then pcall(function() cr:FireServer(false, true) end) end
-                end
-                task.wait(0.4)
             end
         end)
     else
@@ -2825,14 +2900,21 @@ local function getNextDoor()
         end
     end
     return best
-            end
+    end
 
 local pathP0, pathP1, pathBeam = nil, nil, nil
 
 local PathfindingService = game:GetService("PathfindingService")
 local lastDoorPart, lastCompute = nil, 0
 local pathWps = {}
-
+local function clearPathDraw()
+    if pathFolder then
+        pathFolder:Destroy()
+        pathFolder = nil
+    end
+    pathAtts = {}
+    pathBeams = {}
+            end
 local function computeWps(from, to)
     local path = PathfindingService:CreatePath({
         AgentRadius = 1.8,
@@ -2890,10 +2972,9 @@ local function drawWps(wps)
     end
 end
 
-
 PathLeft:AddToggle("ShowPathToggle", {
     Text = "Show Path", Default = false,
-    Tooltip = "Hien thi duong di dung",
+    Tooltip = "Ve path toi cua tiep theo",
 }):OnChanged(function(v)
     showPathActive = v
     if not v then
@@ -2904,29 +2985,22 @@ PathLeft:AddToggle("ShowPathToggle", {
     if pathConn then pathConn:Disconnect() end
     lastDoorPart = nil
     lastCompute = 0
-    do
-        local door = getNextDoor()
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if door and hrp then
-            pathWps = computeWps(hrp.Position, door.Position)
-            drawWps(pathWps)
-            currentPathTarget = door
-            lastDoorPart = door
-        end
-    end
     pathConn = RunService.Heartbeat:Connect(function()
         if not showPathActive then return end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
         local door = getNextDoor()
         if not door then return end
         currentPathTarget = door
         local now = tick()
-        if door ~= lastDoorPart or now - lastCompute > 0.6 then
+        if door ~= lastDoorPart or now - lastCompute > 0.5 then
             lastDoorPart, lastCompute = door, now
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                pathWps = computeWps(hrp.Position, door.Position)
-                drawWps(pathWps)
+            pathWps = computeWps(hrp.Position, door.Position)
+            if not pathWps or #pathWps < 2 then
+                pathWps = {hrp.Position, door.Position}
             end
+            drawWps(pathWps)
         end
     end)
 end)
@@ -2935,7 +3009,7 @@ end)
 
 PathRight:AddToggle("AutoStartPathToggle", {
     Text = "Auto Start Path", Default = false,
-    Tooltip = "Tu Dong Di theo Path",
+    Tooltip = "Di theo path / cua",
 }):OnChanged(function(v)
     autoPathActive = v
     if not v then
@@ -2959,6 +3033,9 @@ PathRight:AddToggle("AutoStartPathToggle", {
         currentPathTarget = door
         if not pathWps or #pathWps < 2 then
             pathWps = computeWps(hrp.Position, door.Position)
+            if not pathWps or #pathWps < 2 then
+                pathWps = {hrp.Position, door.Position}
+            end
             if showPathActive then drawWps(pathWps) end
         end
         local goal = door.Position
