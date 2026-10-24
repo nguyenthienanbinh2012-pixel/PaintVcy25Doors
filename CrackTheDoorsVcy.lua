@@ -561,6 +561,7 @@ RunService.Heartbeat:Connect(function()
         if playerInfoLabel then playerInfoLabel:SetText("Player: " .. LocalPlayer.Name) end
     end)
 end)
+end)()
 
 local resetClickCount = 0
 local resetClickTime = 0
@@ -960,8 +961,13 @@ local function togglePositionSpoof(enable)
                 if cr then pcall(function() cr:FireServer(true, true) end) end
             end
         end)
-        createFloatingWidget()
-        if y < by - 25 or y > by + 80 then
+createFloatingWidget()
+        S.updateConn = RunService.RenderStepped:Connect(function()
+            if not S.enabled or not hrp or not hrp.Parent then return end
+            local by = S.baseY
+            if by then
+                local y = hrp.Position.Y
+                if y < by - 25 or y > by + 80 then
                     S.enabled = false
                     if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
                     if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
@@ -981,8 +987,9 @@ local function togglePositionSpoof(enable)
                     S.baseY = nil
                     pcall(destroyFloatingWidget)
                     return
-                    end
-            local relY = hrp.Position.Y - S.baseY
+                end
+            end
+            local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
             if S.uiLabel and S.uiStroke then
                 S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
                 if relY > -1.00 then
@@ -994,6 +1001,7 @@ local function togglePositionSpoof(enable)
                 end
             end
         end)
+                else
     else
         if not S.enabled then return end
         S.enabled = false
@@ -3285,7 +3293,7 @@ PathRight:AddToggle("AutoStartPathToggle", {
         if not hrp or not hum then return end
         local door = getNextDoor()
         if not door then return end
-        if not pathWps or #pathWps < 2 or currentPathTarget \~= door then
+        if not pathWps or #pathWps < 2 or currentPathTarget ~= door then
             pathWps = computeWps(hrp.Position, door.Position)
             currentPathTarget = door
             if showPathActive then drawWps(pathWps) end
