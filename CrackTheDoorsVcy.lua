@@ -2423,7 +2423,10 @@ skipProximityToggle:OnChanged(function(Value)
         end
     end
 end)
-local lastTpTime=0
+
+local autoTpActive = false
+local autoTpConn = nil
+local lastTpAttempt = 0
 local function getGroundYFromPos(pos)
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = {LocalPlayer.Character}
@@ -2435,79 +2438,91 @@ local function playAlertSound()
     pcall(function()
         local s = Instance.new("Sound")
         s.SoundId = "rbxassetid://3318713980"
-        s.Volume = 8
+        s.Volume = 10
         s.Parent = game:GetService("SoundService")
         s:Play()
-        task.delay(3, function() if s then s:Destroy() end end)
+        task.delay(4, function() if s then s:Destroy() end end)
     end)
 end
 local function findDoorOpenRemote()
-    local candidates = {"DoorOpen","Door_Open","OpenDoor","NextRoom","RoomChange","Client Door Open"}
+    local candidates = {"DoorOpen","Door_Open","OpenDoor","NextRoom","RoomChange","Crouch"}
     for _,n in ipairs(candidates) do
         local r = ReplicatedStorage:FindFirstChild(n,true)
         if r and r:IsA("RemoteEvent") then return r end
     end
     return nil
 end
-local function teleportNextDoor()
+local function doTeleportToNextDoor()
     if not menuUnlocked then
-        pcall(function() Obsidian:Notify({Title="Khóa",Description="Nhập key trước!",Time=2}) end)
-        return
+        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Khóa</font>",Description="<font color='#FF3232'>Nhập key trước!</font>",Time=2}) end)
+        return false
     end
-    local now = tick()
-    if now - lastTpTime < 3 then
-        pcall(function() Obsidian:Notify({Title="Cooldown",Description="Đợi 3 giây!",Time=2}) end)
-        return
-    end
-    lastTpTime = now
     local char = LocalPlayer.Character
-    if not char then pcall(function() Obsidian:Notify({Title="Lỗi",Description="Không có nhân vật!",Time=3}) end); return end
+    if not char then return false end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then pcall(function() Obsidian:Notify({Title="Lỗi",Description="Không tìm thấy HRP/Humanoid!",Time=3}) end); return end
+    if not hrp or not hum then return false end
     local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
     local targetRoom = myRoom + 1
     local rooms = Workspace:FindFirstChild("CurrentRooms")
     if not rooms then
         playAlertSound()
-        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
-        return
+        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
+        return false
     end
     local roomInst = rooms:FindFirstChild(tostring(targetRoom)) or rooms:FindFirstChild(tostring(targetRoom).."_")
     if not roomInst then
         playAlertSound()
-        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
-        return
+        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
+        return false
     end
     local door = roomInst:FindFirstChild("Door",true)
     if not door then door = roomInst:FindFirstChildWhichIsA("BasePart",true) end
     if not door then
         playAlertSound()
-        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
-        return
+        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
+        return false
     end
     local targetPos = getGroundYFromPos(door.Position + Vector3.new(0,1.8,0))
     local targetCf = CFrame.new(door.Position.X, targetPos, door.Position.Z)
     hum.PlatformStand = true
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
-    local cr = getCrouchRemote()
-    local dr = findDoorOpenRemote()
-    local okTp = true
+    local cr=getCrouchRemote(); local dr=findDoorOpenRemote()
+    local ok=true
     for i=1,3 do
-        task.wait(0.08)
+        task.wait(0.05) -- Tăng tốc: giảm delay từ 0.08 →0.05
         if cr then pcall(function() cr:FireServer(true,true) end) end
         if dr then pcall(function() dr:FireServer() end) end
-        if char and char.Parent then pcall(function() char:PivotTo(targetCf) end) else okTp=false; break end
+        if char and char.Parent then pcall(function() char:PivotTo(targetCf) end) else ok=false; break end
     end
-    task.wait(0.2)
-    if hum and hum.Parent then hum.PlatformStand = false end
-    pcall(function() Obsidian:Notify({Title="Teleport",Description="Đã thực hiện (server vẫn có thể kéo lại!)",Time=3}) end)
+    task.wait(0.15)
+    if hum and hum.Parent then hum.PlatformStand=false end
+    return ok
 end
+-- Nút bấm Teleport + Toggle Auto Teleport[Bypass]
 if MiscRight then
-    MiscRight:AddButton("Teleport to the next door", teleportNextDoor)
+    MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
+        doTeleportToNextDoor()
+    end)
+    local autoTpToggle = MiscRight:AddToggle("<font color='#FF3232'>Auto Teleport[Bypass]</font>", {Text="Auto Teleport[Bypass]",Default=false})
+    autoTpToggle:OnChanged(function(v)
+        autoTpActive = v
+        if v then
+            if autoTpConn then task.cancel(autoTpConn) end
+            autoTpConn = task.spawn(function()
+                while autoTpActive do
+                    lastTpAttempt = tick()
+                    pcall(doTeleportToNextDoor)
+                    task.wait(0.45) -- Tốc độ nhanh: lặp mỗi 0.45s (có thể chỉnh!)
+                end
+            end)
+        else
+            if autoTpConn then task.cancel(autoTpConn); autoTpConn=nil end
+        end
+    end)
 else
-    print("[ERROR] MiscRight chưa tồn tại! Kiểm tra vị trí dán!")
+    print("[LỖI] MiscRight chưa tồn tại! Dán SAU local MiscRight = ... và sau skipProximityToggle!")
             end
             
 local escapeTimerActive = false
