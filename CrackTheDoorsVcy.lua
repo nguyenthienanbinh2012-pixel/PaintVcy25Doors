@@ -795,7 +795,7 @@ local function loadPositionSpoof()
         if p and p:IsA("BasePart") then p.CanCollide = false end
     end
     hrp.Anchored = true
-    hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + 2.34, hrp.Position.Z)
+    hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + S.DEPTH, hrp.Position.Z)
     task.wait(0.05)
     hrp.Anchored = false
     humanoid.HipHeight = 2.396
