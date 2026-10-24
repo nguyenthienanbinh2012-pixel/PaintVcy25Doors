@@ -1001,7 +1001,6 @@ createFloatingWidget()
                 end
             end
         end)
-                else
     else
         if not S.enabled then return end
         S.enabled = false
