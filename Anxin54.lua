@@ -3088,7 +3088,7 @@ do
     end)
     end
 -- ========== ROOM PATH ==========
-;(function()
+do
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
 local PathRight = Tabs.Path:AddRightGroupbox("Auto")
 
@@ -3440,20 +3440,15 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
-end)()
+end
 
 Obsidian:OnUnload(function()
     pcall(function()
         local f = Workspace:FindFirstChild("PaintRoomPath")
         if f then f:Destroy() end
     end)
-    safeUnlockCharacter()
-    togglePositionSpoof(false)
-    -- ... cac dong disconnect giu nguyen ...
-    table.clear(originalPostEffects)
-end)
-    safeUnlockCharacter()
-    togglePositionSpoof(false)
+    pcall(safeUnlockCharacter)
+    pcall(function() togglePositionSpoof(false) end)
     if velocityConn then velocityConn:Disconnect() end
     if speedConn then speedConn:Disconnect() end
     if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
@@ -3470,7 +3465,7 @@ end)
     if autoInteractThread then task.cancel(autoInteractThread) end
     if skipProximityConn then skipProximityConn:Disconnect() end
     if escapeTimerConn then escapeTimerConn:Disconnect() end
-    destroyEscapeTimerUI()
+    pcall(destroyEscapeTimerUI)
     if chaosConn then chaosConn:Disconnect() end
     if weirdConn then weirdConn:Disconnect() end
     if weirdAnimConn then weirdAnimConn:Disconnect() end
