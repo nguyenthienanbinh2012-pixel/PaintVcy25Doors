@@ -128,7 +128,7 @@ local Tabs = {
     }
 local function setTabsLocked(locked)
     for name, tab in pairs(Tabs) do
-        if name \~= "Key" then
+        if name ~= "Key" then
             pcall(function()
                 if tab.Disabled ~= nil then tab.Disabled = locked end
                 if tab.SetDisabled then tab:SetDisabled(locked) end
