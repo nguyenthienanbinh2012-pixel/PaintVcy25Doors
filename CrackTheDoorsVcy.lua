@@ -1128,13 +1128,14 @@ local function startAxial()
         hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.75)
         hrp.AssemblyAngularVelocity = Vector3.zero
         -- Giam gravity Humanoid khi axial (de di len)
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
+        local hum = char:FindFirstChildOfClass("Humanoid")        if hum then
             pcall(function()
                 hum.PlatformStand = false
             end)
-                end
-
+        end
+    end)
+end
+local axialToggle = nil
 LocalPlayer.CharacterAdded:Connect(function()
     if axialToggle and axialToggle.Value then
         task.wait(0.8)
