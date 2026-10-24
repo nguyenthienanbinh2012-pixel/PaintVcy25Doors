@@ -401,6 +401,92 @@ IndexLeft:AddToggle("InfJumpToggle", {
 end)
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
+local lastTpTime=0
+local function getGroundYFromPos(pos)
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local hit = Workspace:Raycast(pos + Vector3.new(0, 6, 0), Vector3.new(0, -30, 0), params)
+    return hit and hit.Position.Y + 0.15 or pos.Y
+end
+local function playAlertSound()
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 8
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(3, function() if s then s:Destroy() end end)
+    end)
+end
+local function findDoorOpenRemote()
+    local candidates = {"DoorOpen","Door_Open","OpenDoor","NextRoom","RoomChange","Client Door open"}
+    for _,n in ipairs(candidates) do
+        local r = ReplicatedStorage:FindFirstChild(n,true)
+        if r and r:IsA("RemoteEvent") then return r end
+    end
+    return nil
+end
+local function teleportNextDoor()
+    if not menuUnlocked then
+        pcall(function() Obsidian:Notify({Title="Khóa",Description="Nhập key trước!",Time=2}) end)
+        return
+    end
+    local now = tick()
+    if now - lastTpTime < 3 then
+        pcall(function() Obsidian:Notify({Title="Cooldown",Description="Đợi 3 giây!",Time=2}) end)
+        return
+    end
+    lastTpTime = now
+    local char = LocalPlayer.Character
+    if not char then pcall(function() Obsidian:Notify({Title="Lỗi",Description="Không có nhân vật!",Time=3}) end); return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then pcall(function() Obsidian:Notify({Title="Lỗi",Description="Không tìm thấy HRP/Humanoid!",Time=3}) end); return end
+    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
+    local targetRoom = myRoom + 1
+    local rooms = Workspace:FindFirstChild("CurrentRooms")
+    if not rooms then
+        playAlertSound()
+        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
+        return
+    end
+    local roomInst = rooms:FindFirstChild(tostring(targetRoom)) or rooms:FindFirstChild(tostring(targetRoom).."_")
+    if not roomInst then
+        playAlertSound()
+        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
+        return
+    end
+    local door = roomInst:FindFirstChild("Door",true)
+    if not door then door = roomInst:FindFirstChildWhichIsA("BasePart",true) end
+    if not door then
+        playAlertSound()
+        pcall(function() Obsidian:Notify({Title="Chưa sẵn sàng",Description="The current door is not loading yet, please wait.",Time=2.4}) end)
+        return
+    end
+    local targetPos = getGroundYFromPos(door.Position + Vector3.new(0,1.8,0))
+    local targetCf = CFrame.new(door.Position.X, targetPos, door.Position.Z)
+    hum.PlatformStand = true
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    local cr = getCrouchRemote()
+    local dr = findDoorOpenRemote()
+    local okTp = true
+    for i=1,3 do
+        task.wait(0.08)
+        if cr then pcall(function() cr:FireServer(true,true) end) end
+        if dr then pcall(function() dr:FireServer() end) end
+        if char and char.Parent then pcall(function() char:PivotTo(targetCf) end) else okTp=false; break end
+    end
+    task.wait(0.2)
+    if hum and hum.Parent then hum.PlatformStand = false end
+    pcall(function() Obsidian:Notify({Title="Teleport",Description="Đã thực hiện (server vẫn có thể kéo lại!)",Time=3}) end)
+end
+if MiscRight then
+    MiscRight:AddButton("Teleport to the next door", teleportNextDoor)
+else
+    print("[LỖI] MiscRight chưa khai báo! Dán sau: local MiscRight = Tabs.Misc:AddRightGroupbox...")
+    end
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
 ;(function()
