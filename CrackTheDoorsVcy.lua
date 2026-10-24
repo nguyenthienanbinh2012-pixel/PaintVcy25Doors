@@ -48,7 +48,7 @@ local Window = Obsidian:CreateWindow({
     TabWidth = 160,
     Size = UDim2.new(0, 700, 0, 390),
     Center = true,
-    AutoShow = false,
+    AutoShow = true,
     MenuFadeTime = 0.10
 })
 pcall(function()
@@ -64,47 +64,6 @@ if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 local menuUnlocked = false
 local _obsidianToggle = Obsidian.Toggle
 local VALID_KEY = "FREEKEYDOORS"
-
-local function unlockMenu()
-    menuUnlocked = true
-    Obsidian.Toggle = _obsidianToggle
-    pcall(function()
-        if KeyWindow then
-            pcall(function()
-                if KeyWindow.Unload then KeyWindow:Unload() end
-            end)
-            pcall(function()
-                if KeyWindow.SetVisible then KeyWindow:SetVisible(false) end
-            end)
-            -- xoa UI goc neu con sot
-            pcall(function()
-                local pg = LocalPlayer:FindFirstChild("PlayerGui")
-                if pg then
-                    for _, g in ipairs(pg:GetChildren()) do
-                        if g.Name:lower():find("key") or g.Name:lower():find("paintcrack key") then
-                            g:Destroy()
-                        end
-                    end
-                end
-            end)
-        end
-    end)
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://3318713980"
-        s.Volume = 10
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        task.delay(4, function() if s then s:Destroy() end end)
-    end)
-    pcall(function()
-        Obsidian:Notify({
-            Title = "PaintCrack",
-            Description = "Key hop le! Bam Toggle menu chinh.",
-            Time = 5
-        })
-    end)
-    end
 
 pcall(function()
     if Window and Window.SetVisible then Window:SetVisible(false) end
@@ -180,11 +139,22 @@ local function unlockMenu()
     menuUnlocked = true
     Obsidian.Toggle = _obsidianToggle
     pcall(function() setTabsLocked(false) end)
+    pcall(function()
+        if Window and Window.SetVisible then
+            Window:SetVisible(true)
+        end
+    end)
+    -- mo menu 1 lan sau key
+    pcall(function()
+        if type(_obsidianToggle) == "function" then
+            _obsidianToggle(Obsidian)
+        end
+    end)
     playKeySound()
     pcall(function()
-        Obsidian:Notify({ Title = "PaintCrack", Description = "Key hop le!", Time = 5 })
+        Obsidian:Notify({ Title = "PaintCrack", Description = "Key hop le! Menu da mo.", Time = 5 })
     end)
-end
+    end
 
 ;(function()
 local KeyLeft = Tabs.Key:AddLeftGroupbox("Executor Check")
