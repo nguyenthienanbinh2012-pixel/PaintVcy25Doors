@@ -535,8 +535,8 @@ AntiRight:AddToggle("AntiDupeVacuumToggle", {
 
     pcall(function()
         local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://1548304764"
-        sound.Volume = 4
+        sound.SoundId = "rbxassetid://3318713980"
+        sound.Volume = 5
         sound.Parent = game:GetService("SoundService")
         sound:Play()
         task.delay(1.5, function()
@@ -1046,106 +1046,50 @@ local axialActive = false
 local axialSpeed = 2.0
 local axialConn = nil
 local axialSaved = setmetatable({}, {__mode = "k"})
-local axialLastDir = Vector3.new(0, 0, -1)
-
+local axialLastDir = Vector3.new(0,0,-1)
 local function stopAxial()
     axialActive = false
-    if axialConn then
-        axialConn:Disconnect()
-        axialConn = nil
-    end
-    -- Khôi phục ĐÚNG giá trị đã lưu (true/false gốc)
+    if axialConn then axialConn:Disconnect(); axialConn=nil end
     for part, data in pairs(axialSaved) do
         if part and part.Parent then
-            pcall(function()
-                part.CanCollide = data.CanCollide
-                part.CanQuery = data.CanQuery
-                part.CanTouch = data.CanTouch
-            end)
+            pcall(function() part.CanCollide=data.CanCollide; part.CanQuery=data.CanQuery; part.CanTouch=data.CanTouch end)
         end
     end
     table.clear(axialSaved)
-    local char = LocalPlayer.Character
-    if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
-            hrp.AssemblyAngularVelocity = Vector3.zero
-        end
-    end
+    local char=LocalPlayer.Character; if not char then return end
+    local hrp=char:FindFirstChild("HumanoidRootPart"); local hum=char:FindFirstChildOfClass("Humanoid")
+    if hrp then hrp.AssemblyLinearVelocity=Vector3.new(0,hrp.AssemblyLinearVelocity.Y,0); hrp.AssemblyAngularVelocity=Vector3.zero end
+    if hum then pcall(function() hum.PlatformStand=false; hum.WalkSpeed=16 end) end
 end
-
 local function startAxial()
-    if axialConn then
-        axialConn:Disconnect()
-        axialConn = nil
-    end
-    axialActive = true
-    axialConn = RunService.Heartbeat:Connect(function(dt)
+    stopAxial()
+    axialActive=true
+    axialConn=RunService.Heartbeat:Connect(function(dt)
         if not axialActive then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local cam = Workspace.CurrentCamera
-        if not hrp or not cam then return end
-
--- Collision: bo qua part Spoof
-        for _, p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then
-                local n = p.Name
-                if S.enabled and (n == "CollisionPart" or n == "Collision"
-                    or n == "CollisionPartClone" or n == "CollisionClone") then
-                    -- giu nguyen cho Position Spoof
-                else
-                    if axialSaved[p] == nil then
-                        axialSaved[p] = {
-                            CanCollide = p.CanCollide,
-                            CanQuery = p.CanQuery,
-                            CanTouch = p.CanTouch,
-                        }
-                    end
-                    p.CanCollide = false
-                    p.CanQuery = false
-                    p.CanTouch = false
-                end
+        local char=LocalPlayer.Character; if not char then return end
+        local hrp=char:FindFirstChild("HumanoidRootPart"); local cam=Workspace.CurrentCamera; local hum=char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not cam or not hum then return end
+        -- Lưu trạng thái part
+        for _,p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") and not (S.enabled and (p.Name:find("Collision") or p.Name:find("CollisionPart"))) then
+                if axialSaved[p]==nil then axialSaved[p]={CanCollide=p.CanCollide,CanQuery=p.CanQuery,CanTouch=p.CanTouch} end
+                p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
             end
         end
-
-        
-        -- trong vong CanCollide: neu S.enabled va ten Collision* thi continue
-        local dir = cam.CFrame.LookVector
-        if dir.Magnitude > 0.05 then dir = dir.Unit axialLastDir = dir else dir = axialLastDir end
-        local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        hrp.CFrame = hrp.CFrame + dir * (axialSpeed * 0.85) * step
-        hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.75)
-        hrp.AssemblyAngularVelocity = Vector3.zero
-        -- Giam gravity Humanoid khi axial (de di len)
-                local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                hum.PlatformStand = false
-            end)
-        end
-    end)   -- đóng Heartbeat:Connect
-end        -- đóng function startAxial
-
-local axialToggle = nil  -- khai báo trước
-local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
-    Text = "Axial Velocity", Default = false,
-    Tooltip = "Xuyen tuong 3D theo cam",
-})
-local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
-    Text = "Axial Speed", Default = 2.0, Min = 1.0, Max = 6.0, Rounding = 1, Compact = true,
-})
-axialSlider:OnChanged(function(v) axialSpeed = v end)
-axialToggle:OnChanged(function(Value)
-    if Value then startAxial() else stopAxial() end
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-    if axialToggle and axialToggle.Value then
-        task.wait(0.8)
-        if axialToggle.Value then startAxial() end
+        -- LẤY ĐẦY ĐỦ HƯỚNG CAM 3D
+        local dir=cam.CFrame.LookVector
+        if dir.Magnitude>0.05 then dir=dir.Unit; axialLastDir=dir else dir=axialLastDir end
+        local step=math.clamp(dt or 0.016,0.008,0.05)
+        hrp.CFrame=hrp.CFrame + dir*(axialSpeed*0.85)*step
+        hrp.AssemblyLinearVelocity=dir*(axialSpeed*0.75)
+        hum.PlatformStand=true
+    end)
+end
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
+local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
+axialSlider:OnChanged(function(v) axialSpeed=v end)
+axialToggle:OnChanged(function(Value) if Value then startAxial() else stopAxial() end end)
+LocalPlayer.CharacterAdded:Connect(function() if axialToggle and axialToggle.Value then task.wait(0.8); startAxial() end end)
     end
 end)
 
