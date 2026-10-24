@@ -735,7 +735,8 @@ ndTog:OnChanged(function(v)
         end
         ndSaved = {}
     end
-end)  
+end)
+;(function()
 local function getCrouchRemote()
     local char = LocalPlayer.Character
     if char then
@@ -1414,6 +1415,7 @@ speedToggle:OnChanged(function(Value)
         pcall(safeUnlockCharacter)
     end
 end)
+end)()
 local thirdPersonActive = false
 local thirdPersonConn = nil
 local thirdPersonZ = 8
@@ -2336,6 +2338,7 @@ autoPadlockToggle:OnChanged(function(Value)
     end
 end)
 
+;(function()
 local autoInteractActive = false
 local autoInteractThread = nil
 local autoInteractRange = 12
@@ -2606,6 +2609,7 @@ local function doTeleportToNextDoor()
     if hum and hum.Parent then hum.PlatformStand=false end
     return ok
 end
+end)()
 -- Nút bấm Teleport + Toggle Auto Teleport[Bypass]
 if MiscRight then
     MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
@@ -2630,12 +2634,11 @@ if MiscRight then
 else
     print("[LỖI] MiscRight chưa tồn tại! Dán SAU local MiscRight = ... và sau skipProximityToggle!")
             end
-            
+;(function()    
 local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
 local escapeTimerBar = nil
-do
 local escapeTimerConn = nil
 local ESCAPE_MAX = 19.5
 local hideStartTime = nil
@@ -2815,7 +2818,8 @@ escapeTimerToggle:OnChanged(function(Value)
         destroyEscapeTimerUI()
     end
 end)
-end
+end)()
+
 ;(function()
 local autoAvoidActive = false
 local autoAvoidConn = nil
@@ -3090,7 +3094,7 @@ do
     end)
     end
 -- ========== ROOM PATH ==========
-do
+;(function()
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
 local PathRight = Tabs.Path:AddRightGroupbox("Auto")
 
@@ -3174,7 +3178,7 @@ local function getNextDoor()
         end
     end
     return best
-    end
+    end)()
 
 local pathP0, pathP1, pathBeam = nil, nil, nil
 
@@ -3444,7 +3448,6 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
-end
 
 Obsidian:OnUnload(function()
     pcall(function()
