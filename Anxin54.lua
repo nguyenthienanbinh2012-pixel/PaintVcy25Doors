@@ -3178,7 +3178,7 @@ local function getNextDoor()
         end
     end
     return best
-    end)()
+    end
 
 local pathP0, pathP1, pathBeam = nil, nil, nil
 
@@ -3353,7 +3353,7 @@ end)
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
 }):OnChanged(function(v) pathDelay = v end)
-end
+end)()
 local chaosRemoveActive = false
 local chaosConn = nil
 
