@@ -35,7 +35,7 @@ Obsidian.Scheme = {
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
     FontColor        = Color3.fromRGB(95, 85, 95),    -- chu toi de doc tren nen hong
-    Font             = Font.fromEnum(Enum.Font.Code),
+    Font             = Font.fromEnum(Enum.Font.Gotham),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
     DarkColor        = Color3.new(0, 0, 0),
@@ -91,8 +91,8 @@ local function unlockMenu()
     end)
     pcall(function()
         local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://4590657391"
-        s.Volume = 6
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 10
         s.Parent = game:GetService("SoundService")
         s:Play()
         task.delay(4, function() if s then s:Destroy() end end)
@@ -115,131 +115,178 @@ Obsidian.Toggle = function(...)
     return _obsidianToggle(Obsidian, ...)
 end
 
-local KeyWindow = Obsidian:CreateWindow({
-    Title = "PaintCrack Key",
-    SubTitle = "Nhap key de mo menu",
-    TabWidth = 140,
-    Size = UDim2.fromOffset(480, 320),
-    Center = true,
-    AutoShow = true,
-})
-local KeyTab = KeyWindow:AddTab("License", "key")
-local KeyLeft = KeyTab:AddLeftGroupbox("Executor Check")
-local KeyRight = KeyTab:AddRightGroupbox("Key")
 
-local checks = {
-    {"Drawing", function()
-        if typeof(Drawing) == "table" or typeof(Drawing) == "userdata" then return true end
-        local ok, o = pcall(function() return Drawing.new("Line") end)
-        if ok and o then pcall(function() o:Remove() end) return true end
-        return false
-    end},
-    {"Drawing.new Circle", function()
-        local ok, o = pcall(function() return Drawing.new("Circle") end)
-        if ok and o then pcall(function() o:Remove() end) return true end
-        return false
-    end},
-    {"Drawing.new Text", function()
-        local ok, o = pcall(function() return Drawing.new("Text") end)
-        if ok and o then pcall(function() o:Remove() end) return true end
-        return false
-    end},
-    {"Drawing.new Square", function()
-        local ok, o = pcall(function() return Drawing.new("Square") end)
-        if ok and o then pcall(function() o:Remove() end) return true end
-        return false
-    end},
-    {"Drawing.new Triangle", function()
-        local ok, o = pcall(function() return Drawing.new("Triangle") end)
-        if ok and o then pcall(function() o:Remove() end) return true end
-        return false
-    end},
-    {"getgc", function() return type(getgc) == "function" end},
-    {"getgenv", function() return type(getgenv) == "function" end},
-    {"getrenv", function() return type(getrenv) == "function" end},
-    {"getsenv", function() return type(getsenv) == "function" end},
-    {"getrawmetatable", function() return type(getrawmetatable) == "function" end},
-    {"setrawmetatable", function() return type(setrawmetatable) == "function" end},
-    {"hookfunction / hookfunc", function()
-        return type(hookfunction) == "function" or type(hookfunc) == "function"
-    end},
-    {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
-    {"newcclosure", function() return type(newcclosure) == "function" end},
-    {"checkcaller", function() return type(checkcaller) == "function" end},
-    {"getnamecallmethod", function() return type(getnamecallmethod) == "function" end},
-    {"getconnections", function() return type(getconnections) == "function" end},
-    {"firesignal", function() return type(firesignal) == "function" end},
-    {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
-    {"fireclickdetector", function() return type(fireclickdetector) == "function" end},
-    {"firetouchinterest", function() return type(firetouchinterest) == "function" end},
-    {"setclipboard", function() return type(setclipboard) == "function" end},
-    {"setfflag", function() return type(setfflag) == "function" end},
-    {"gethui", function() return type(gethui) == "function" end},
-    {"cloneref", function() return type(cloneref) == "function" end},
-    {"compareinstances", function() return type(compareinstances) == "function" end},
-    {"islclosure", function() return type(islclosure) == "function" end},
-    {"iscclosure", function() return type(iscclosure) == "function" end},
-    {"loadstring", function() return type(loadstring) == "function" end},
-    {"HttpGet", function()
-        return pcall(function() return game:HttpGet("https://example.com", true) end)
-    end},
-    {"request / http_request", function()
-        return type(request) == "function" or type(http_request) == "function"
-            or (syn and type(syn.request) == "function")
-    end},
-    {"WebSocket", function()
-        return type(WebSocket) == "table" or (syn and type(syn.websocket) == "table")
-    end},
-    {"crypt", function() return type(crypt) == "table" end},
-    {"cache", function() return type(cache) == "table" or type(getcache) == "function" end},
-}
-for _, c in ipairs(checks) do
-    local ok = false
-    pcall(function() ok = c[2]() and true or false end)
-    KeyLeft:AddLabel((ok and "✅ " or "❌ ") .. c[1])
-end
-
-KeyRight:AddLabel("Key (dung tung ky tu)")
-local keyInput = KeyRight:AddInput("PaintKeyInput", {
-    Default = "",
-    Numeric = false,
-    Finished = false,
-    Text = "Nhap key",
-    Placeholder = "Nhap key...",
-    Callback = function() end,
-})
-
-KeyRight:AddButton("Xac nhan Key", function()
-    local input = ""
-    pcall(function()
-        if type(keyInput) == "table" then
-            input = tostring(keyInput.Value or keyInput.Text or "")
-        elseif type(keyInput) == "string" then
-            input = keyInput
-        end
-    end)
-    input = tostring(input or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if input == VALID_KEY then
-        unlockMenu()
-    else
-        pcall(function()
-            Obsidian:Notify({
-                Title = "PaintCrack",
-                Description = "KEY ĐÃ HẾT HẠN HOẶC SAI!",
-                Time = 4
-            })
-        end)
-    end
-end)
 local Tabs = {
+    Key = Window:AddTab("Key", "key"),
     Info = Window:AddTab("Info", "user-check"),
-    Function = Window:AddTab("Function", "user"),
+    Function = Window:AddTab("Function", "house"),
     Visual = Window:AddTab("Visual", "eye"),
     Misc = Window:AddTab("Misc", "door-open"),
     Anti = Window:AddTab("Anti", "skull"),
     Settings = Window:AddTab("Settings", "cog"),
     Path = Window:AddTab("Room Path", "footprints"),
     }
+local function setTabsLocked(locked)
+    for name, tab in pairs(Tabs) do
+        if name \~= "Key" then
+            pcall(function()
+                if tab.Disabled ~= nil then tab.Disabled = locked end
+                if tab.SetDisabled then tab:SetDisabled(locked) end
+            end)
+        end
+    end
+end
+setTabsLocked(true)
+local KEY_FILE = "PaintCrack_Key24.txt"
+local rememberKey = false
+local keyExpireAt = nil
+local keyCountdownConn = nil
+
+local function playKeySound()
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 10
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(4, function() if s then s:Destroy() end end)
+    end)
+end
+
+local function saveKey24(k)
+    local exp = os.time() + 86400
+    pcall(function() writefile(KEY_FILE, k .. "\n" .. tostring(exp)) end)
+    keyExpireAt = exp
+end
+
+local function loadKey24()
+    local ok, data = pcall(function() return readfile(KEY_FILE) end)
+    if not ok or not data then return nil, nil end
+    local k, exp = data:match("([^\n]+)\n(%d+)")
+    exp = tonumber(exp)
+    if k and exp and os.time() < exp then return k, exp end
+    return nil, nil
+end
+
+local function formatHMS(sec)
+    sec = math.max(0, math.floor(sec))
+    local h = math.floor(sec / 3600)
+    local m = math.floor((sec % 3600) / 60)
+    local s = sec % 60
+    return string.format("%02d:%02d:%02d", h, m, s)
+end
+
+local function unlockMenu()
+    menuUnlocked = true
+    Obsidian.Toggle = _obsidianToggle
+    pcall(function() setTabsLocked(false) end)
+    playKeySound()
+    pcall(function()
+        Obsidian:Notify({ Title = "PaintCrack", Description = "Key hop le!", Time = 5 })
+    end)
+end
+
+-- LEFT: check hook (dung trong script)
+local KeyLeft = Tabs.Key:AddLeftGroupbox("Executor Check")
+local KeyRight = Tabs.Key:AddRightGroupbox("License")
+
+local checks = {
+    {"Drawing", function() return typeof(Drawing) == "table" end},
+    {"getgc", function() return type(getgc) == "function" end},
+    {"getgenv", function() return type(getgenv) == "function" end},
+    {"getrenv", function() return type(getrenv) == "function" end},
+    {"getrawmetatable", function() return type(getrawmetatable) == "function" end},
+    {"setreadonly", function() return type(setreadonly) == "function" end},
+    {"hookfunction", function() return type(hookfunction) == "function" or type(hookfunc) == "function" end},
+    {"hookmetamethod", function() return type(hookmetamethod) == "function" end},
+    {"newcclosure", function() return type(newcclosure) == "function" end},
+    {"getnamecallmethod", function() return type(getnamecallmethod) == "function" end},
+    {"checkcaller", function() return type(checkcaller) == "function" end},
+    {"getconnections", function() return type(getconnections) == "function" end},
+    {"firesignal", function() return type(firesignal) == "function" end},
+    {"fireproximityprompt", function() return type(fireproximityprompt) == "function" end},
+    {"islclosure", function() return type(islclosure) == "function" end},
+    {"cloneref", function() return type(cloneref) == "function" end},
+    {"gethui", function() return type(gethui) == "function" end},
+    {"setclipboard", function() return type(setclipboard) == "function" end},
+    {"writefile", function() return type(writefile) == "function" end},
+    {"readfile", function() return type(readfile) == "function" end},
+    {"loadstring", function() return type(loadstring) == "function" end},
+    {"HttpGet", function() return pcall(function() return game:HttpGet("https://example.com", true) end) end},
+}
+for _, c in ipairs(checks) do
+    local ok = false
+    pcall(function() ok = c[2]() and true or false end)
+    KeyLeft:AddLabel((ok and "✅ " or "❌ ") .. c[1])
+end
+KeyLeft:AddLabel("Welcome to PaintCrack")
+
+KeyRight:AddLabel("Key")
+local keyInput = KeyRight:AddInput("PaintKeyInput", {
+    Default = "",
+    Numeric = false,
+    Text = "Key",
+    Placeholder = "Paste your key here",
+    Callback = function() end,
+})
+
+KeyRight:AddToggle("RememberKey24h", {
+    Text = "Remember Key For 24 Hours",
+    Default = false,
+}):OnChanged(function(v) rememberKey = v end)
+
+local countdownLbl = KeyRight:AddLabel("Key time: --:--:--")
+-- chu do: neu lib ho tro rich text
+pcall(function()
+    countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
+end)
+
+local function startCountdown()
+    if keyCountdownConn then keyCountdownConn:Disconnect() end
+    if not keyExpireAt then return end
+    keyCountdownConn = RunService.Heartbeat:Connect(function()
+        local left = (keyExpireAt or 0) - os.time()
+        local t = formatHMS(left)
+        pcall(function()
+            countdownLbl:SetText("<font color='#FF3232'>Key time: " .. t .. "</font>")
+        end)
+        if left <= 0 then
+            keyCountdownConn:Disconnect()
+            menuUnlocked = false
+            pcall(function() setTabsLocked(true) end)
+        end
+    end)
+end
+
+KeyRight:AddButton("Continue", function()
+    local input = ""
+    pcall(function() input = tostring(keyInput.Value or keyInput.Text or "") end)
+    input = input:gsub("^%s+", ""):gsub("%s+$", "")
+    if input == VALID_KEY then
+        if rememberKey then
+            saveKey24(input)
+            startCountdown()
+        end
+        unlockMenu()
+        playKeySound()
+    else
+        playKeySound()
+        Obsidian:Notify({
+            Title = "PaintCrack",
+            Description = "KEY ĐÃ HẾT HẠN HOẶC SAI!",
+            Time = 4
+        })
+    end
+end)
+
+task.defer(function()
+    local k, exp = loadKey24()
+    if k == VALID_KEY and exp then
+        keyExpireAt = exp
+        startCountdown()
+        unlockMenu()
+    end
+end)
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
@@ -1320,15 +1367,17 @@ local speedToggle = FuncRight:AddToggle("SpeedBypassToggle", {
 })
 speedToggle:OnChanged(function(Value)
     isSpeedActive = Value
+    speedActive = Value
     if Value then
-speedConn = RunService.Heartbeat:Connect(function(dt)
+        if speedConn then speedConn:Disconnect() end
+        speedConn = RunService.Heartbeat:Connect(function(dt)
             if not speedActive then return end
             local char = LocalPlayer.Character
             if not char then return end
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not hum or not hrp then return end
-local finalSpeed = targetWalkSpeed * 2.4
+            local finalSpeed = targetWalkSpeed * 2.4
             if finalSpeed < 16 then finalSpeed = 16 end
             if speedMethod == "Instant" then
                 hum.WalkSpeed = finalSpeed
@@ -1343,7 +1392,16 @@ local finalSpeed = targetWalkSpeed * 2.4
                 else
                     local vy = hrp.AssemblyLinearVelocity.Y
                     hrp.AssemblyLinearVelocity = Vector3.new(0, vy, 0)
-                                        end
+                end
+            else
+                if hum.WalkSpeed < finalSpeed then
+                    hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
+                else
+                    hum.WalkSpeed = finalSpeed
+                end
+            end
+        end)
+    else
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
         pcall(safeUnlockCharacter)
