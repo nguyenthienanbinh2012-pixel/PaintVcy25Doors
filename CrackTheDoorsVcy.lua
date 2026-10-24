@@ -2329,7 +2329,7 @@ end)
 
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 1.5
+local autoInteractRange = 12
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 
 local INTERACT_BLACKLIST = {
@@ -2352,12 +2352,12 @@ end
 
 local function preparePrompt(prompt)
     pcall(function()
+        prompt.Enabled = true
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
-        if prompt.MaxActivationDistance < 2 then
-            prompt.MaxActivationDistance = 2
-        end
+        prompt.MaxActivationDistance = math.max(prompt.MaxActivationDistance, autoInteractRange)
     end)
+    end
 end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
@@ -2373,39 +2373,55 @@ autoInteractToggle:OnChanged(function(Value)
                 while autoInteractActive do
                     pcall(function()
                         local char = LocalPlayer.Character
-                        if not char then return end
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
                         if not hrp then return end
                         local pos = hrp.Position
-                        for _, desc in ipairs(Workspace:GetDescendants()) do
-                            if desc:IsA("ProximityPrompt") and desc.Enabled then
-                                local parent = desc.Parent
-                                if parent and not isInteractBlacklisted(desc, parent) then
-                                    local pPos = nil
-                                    if parent:IsA("BasePart") then
-                                        pPos = parent.Position
-                                    elseif parent:IsA("Model") then
-                                        local pp = parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart")
-                                        if pp then pPos = pp.Position end
-                                    end
-                                    if pPos and (pos - pPos).Magnitude <= autoInteractRange then
-                                        preparePrompt(desc)
-                                        local now = tick()
-                                        if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.25) then
-                                            autoInteractCooldown[desc] = now
-                                            pcall(function()
-                                                fireproximityprompt(desc, 0)
-                                            end)
+                        local rooms = Workspace:FindFirstChild("CurrentRooms")
+                        local roots = {}
+                        if rooms then
+                            table.insert(roots, rooms)
+                        else
+                            table.insert(roots, Workspace)
+                        end
+                        for _, root in ipairs(roots) do
+                            for _, desc in ipairs(root:GetDescendants()) do
+                                if desc:IsA("ProximityPrompt") and desc.Enabled then
+                                    local parent = desc.Parent
+                                    if parent and not isInteractBlacklisted(desc, parent) then
+                                        local pPos = nil
+                                        if parent:IsA("BasePart") then
+                                            pPos = parent.Position
+                                        elseif parent:IsA("Attachment") and parent.Parent then
+                                            pPos = parent.WorldPosition
+                                        elseif parent:IsA("Model") then
+                                            local pp = parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart")
+                                            if pp then pPos = pp.Position end
+                                        end
+                                        if pPos and (pos - pPos).Magnitude <= autoInteractRange then
+                                            preparePrompt(desc)
+                                            local now = tick()
+                                            if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.2) then
+                                                autoInteractCooldown[desc] = now
+                                                pcall(function()
+                                                    if fireproximityprompt then
+                                                        fireproximityprompt(desc)
+                                                    end
+                                                end)
+                                                pcall(function()
+                                                    -- fallback mot so executor
+                                                    if fireproximityprompt then
+                                                        fireproximityprompt(desc, 1)
+                                                    end
+                                                end)
+                                            end
                                         end
                                     end
                                 end
                             end
                         end
                     end)
-                    task.wait(0.3)
-                end
-            end)
-        end
+                    task.wait(0.1)
+                        end
     else
         if autoInteractThread then
             task.cancel(autoInteractThread)
