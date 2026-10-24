@@ -203,8 +203,14 @@ local keyInput = KeyRight:AddInput("PaintKeyInput", {
 KeyRight:AddToggle("RememberKey24h", {
     Text = "Remember Key For 24 Hours",
     Default = false,
-}):OnChanged(function(v) rememberKey = v end)
-
+}):OnChanged(function(v)
+    rememberKey = v
+    if not v then
+        if keyCountdownConn then keyCountdownConn:Disconnect() keyCountdownConn = nil end
+        keyExpireAt = nil
+        pcall(function() countdownLbl:SetText("Key time: --:--:--") end)
+    end
+end)
 local countdownLbl = KeyRight:AddLabel("Key time: --:--:--")
 -- chu do: neu lib ho tro rich text
 pcall(function()
@@ -403,6 +409,7 @@ local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
+local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact")
 ;(function()
 local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity")
 local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap")
@@ -954,19 +961,26 @@ local function togglePositionSpoof(enable)
             end
         end)
         createFloatingWidget()
-        S.updateConn = RunService.RenderStepped:Connect(function()
-            if not S.enabled or not hrp or not hrp.Parent then return end
-            local by = S.baseY
-            if by then
-                local y = hrp.Position.Y
-                if y < by - 40 or y > by + 100 then
+        if y < by - 25 or y > by + 80 then
+                    S.enabled = false
+                    if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
+                    if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
                     pcall(function()
-                        hrp.AssemblyLinearVelocity = Vector3.zero
-                        hrp.CFrame = CFrame.new(hrp.Position.X, by, hrp.Position.Z)
+                        local lt = char and char:FindFirstChild("LowerTorso")
+                        if lt and S.c1Origin then
+                            for _, m in ipairs(lt:GetChildren()) do
+                                if m:IsA("Motor6D") and m.Name == "Root" then
+                                    m.C1 = S.c1Origin
+                                end
+                            end
+                        end
+                        if y < by - 50 then
+                            hrp.CFrame = CFrame.new(hrp.Position.X, by + 2, hrp.Position.Z)
+                        end
                     end)
-                    togglePositionSpoof(false)
+                    S.baseY = nil
+                    pcall(destroyFloatingWidget)
                     return
-                end
                     end
             local relY = hrp.Position.Y - S.baseY
             if S.uiLabel and S.uiStroke then
@@ -1106,13 +1120,7 @@ local function startAxial()
 end        -- đóng function startAxial
 
 local axialToggle = nil  -- khai báo trước
-
-LocalPlayer.CharacterAdded:Connect(function()
-    if axialToggle and axialToggle.Value then
-        task.wait(0.8)
-        if axialToggle.Value then startAxial() end
-    end
-    local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "Axial Velocity", Default = false,
     Tooltip = "Xuyen tuong 3D theo cam",
 })
@@ -1123,6 +1131,12 @@ axialSlider:OnChanged(function(v) axialSpeed = v end)
 axialToggle:OnChanged(function(Value)
     if Value then startAxial() else stopAxial() end
 end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if axialToggle and axialToggle.Value then
+        task.wait(0.8)
+        if axialToggle.Value then startAxial() end
+    end
 end)
 
 local noClipActive = false
@@ -2399,6 +2413,61 @@ autoInteractToggle:OnChanged(function(Value)
         end
         autoInteractCooldown = setmetatable({}, {__mode = "k"})
     end
+end)
+local reachState = { reachMultiplier = 2 }
+
+local function checkDoorOpen(door)
+    return door:GetAttribute("Opened") == true or door:GetAttribute("Open") == true
+end
+local function checkDoorLocked(door)
+    return door:GetAttribute("Locked") == true
+end
+
+local DEFAULT_REACH_STUDS = 20
+local ReachSlider = MiscInteract:AddSlider("ReachSlider", {
+    Text = "Multi X2 Reach",
+    Default = DEFAULT_REACH_STUDS,
+    Min = 10, Max = 110, Rounding = 5, Compact = true,
+})
+ReachSlider:OnChanged(function(v) reachState.reachMultiplier = v / 10 end)
+
+local reachToggle = MiscInteract:AddToggle("ReachToggle", {
+    Text = "Reach Doors", Default = false,
+})
+reachToggle:OnChanged(function(v)
+    if not v then
+        reachState.reachMultiplier = 2
+        pcall(function() ReachSlider:SetValue(DEFAULT_REACH_STUDS) end)
+        return
+    end
+    task.spawn(function()
+        local lastTP = 0
+        while reachToggle.Value do
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if char and hum and hum.Health > 0 and hrp then
+                local cur = tonumber(LocalPlayer:GetAttribute("CurrentRoom"))
+                local rooms = Workspace:FindFirstChild("CurrentRooms")
+                local roomObj = rooms and cur and rooms:FindFirstChild(tostring(cur))
+                if roomObj and roomObj:FindFirstChild("Door") then
+                    local door = roomObj.Door
+                    local doorPart = door:FindFirstChild("Door") or door:FindFirstChildWhichIsA("BasePart")
+                    if doorPart and (hrp.Position - doorPart.Position).Magnitude <= (reachState.reachMultiplier * 10) then
+                        if not checkDoorOpen(door) and not checkDoorLocked(door) and (tick() - lastTP > 0.4) then
+                            lastTP = tick()
+                            pcall(function()
+                                if door:FindFirstChild("ClientOpen") then door.ClientOpen:FireServer() end
+                                local prompt = door:FindFirstChildWhichIsA("ProximityPrompt", true)
+                                if prompt and fireproximityprompt then fireproximityprompt(prompt) end
+                            end)
+                        end
+                    end
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
 end)
 
 local skipProximityActive = false
