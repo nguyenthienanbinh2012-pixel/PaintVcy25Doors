@@ -941,6 +941,18 @@ local function togglePositionSpoof(enable)
         createFloatingWidget()
         S.updateConn = RunService.RenderStepped:Connect(function()
             if not S.enabled or not hrp or not hrp.Parent then return end
+            local by = S.baseY
+            if by then
+                local y = hrp.Position.Y
+                if y < by - 40 or y > by + 100 then
+                    pcall(function()
+                        hrp.AssemblyLinearVelocity = Vector3.zero
+                        hrp.CFrame = CFrame.new(hrp.Position.X, by, hrp.Position.Z)
+                    end)
+                    togglePositionSpoof(false)
+                    return
+                end
+                    end
             local relY = hrp.Position.Y - S.baseY
             if S.uiLabel and S.uiStroke then
                 S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
@@ -1060,25 +1072,14 @@ local function startAxial()
             end
         end
 
-        -- Huong 3D theo camera (len troi / xuong dat)
+        
+        -- trong vong CanCollide: neu S.enabled va ten Collision* thi continue
         local dir = cam.CFrame.LookVector
-        if dir.Magnitude > 0.05 then
-            dir = dir.Unit
-            axialLastDir = dir
-        else
-            dir = axialLastDir
-        end
-
+        if dir.Magnitude > 0.05 then dir = dir.Unit axialLastDir = dir else dir = axialLastDir end
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        local spd = axialSpeed * 0.85
-        local move = dir * spd * step
-
-        -- CFrame full XYZ
-        hrp.CFrame = hrp.CFrame + move
-        -- Velocity full 3D (khong giu Y cu)
+        hrp.CFrame = hrp.CFrame + dir * (axialSpeed * 0.85) * step
         hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.75)
         hrp.AssemblyAngularVelocity = Vector3.zero
-
         -- Giam gravity Humanoid khi axial (de di len)
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then
@@ -1138,6 +1139,39 @@ noClipToggle:OnChanged(function(Value)
         noClipSavedCanCollide = {}
         safeUnlockCharacter()
     end
+end)
+local removeVoidOn = false
+local voidConn = nil
+
+FuncLeft:AddToggle("RemoveVoidToggle", {
+    Text = "Remove Void Roblox & Kill brick", Default = false,
+    Tooltip = "Xoa Voids Roblox+Anti Kill brick!",
+}):OnChanged(function(v)
+    removeVoidOn = v
+    if voidConn then voidConn:Disconnect() voidConn = nil end
+    if not v then return end
+    local function strip(obj)
+        if not obj then return end
+        local n = string.lower(tostring(obj.Name or ""))
+        if n:find("void", 1, true) or n:find("kill", 1, true) then
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.CanTouch = false
+                    obj.CanQuery = false
+                end
+            end)
+        end
+        if obj:IsA("BasePart") and obj.Position.Y < -20 and obj.Size.X > 40 and obj.Size.Z > 40 then
+            pcall(function()
+                obj.CanTouch = false
+                obj.CanQuery = false
+            end)
+        end
+    end
+    for _, d in ipairs(Workspace:GetDescendants()) do strip(d) end
+    voidConn = Workspace.DescendantAdded:Connect(function(d)
+        if removeVoidOn then task.defer(strip, d) end
+    end)
 end)
 
 local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
@@ -1294,28 +1328,22 @@ speedConn = RunService.Heartbeat:Connect(function(dt)
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not hum or not hrp then return end
-            local finalSpeed = targetWalkSpeed * 1.6
+local finalSpeed = targetWalkSpeed * 2.4
             if finalSpeed < 16 then finalSpeed = 16 end
             if speedMethod == "Instant" then
                 hum.WalkSpeed = finalSpeed
                 local md = hum.MoveDirection
                 if md.Magnitude > 0.05 then
+                    local u = Vector3.new(md.X, 0, md.Z)
+                    if u.Magnitude > 0 then u = u.Unit end
                     local step = math.clamp(dt or 0.016, 0.008, 0.05)
-                    local u = md.Unit
-                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, hrp.AssemblyLinearVelocity.Y, u.Z * finalSpeed)
-                    hrp.CFrame = hrp.CFrame + Vector3.new(u.X, 0, u.Z) * (finalSpeed * step * 0.85)
+                    local vy = hrp.AssemblyLinearVelocity.Y
+                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, vy, u.Z * finalSpeed)
+                    hrp.CFrame = hrp.CFrame + Vector3.new(u.X, 0, u.Z) * (finalSpeed * step)
                 else
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
-                end
-            else
-                if hum.WalkSpeed < finalSpeed then
-                    hum.WalkSpeed = math.min(hum.WalkSpeed + 2.5, finalSpeed)
-                else
-                    hum.WalkSpeed = finalSpeed
-                end
-            end
-        end)
-    else
+                    local vy = hrp.AssemblyLinearVelocity.Y
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, vy, 0)
+                                        end
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
         pcall(safeUnlockCharacter)
