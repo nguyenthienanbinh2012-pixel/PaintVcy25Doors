@@ -186,7 +186,7 @@ local function unlockMenu()
     end)
 end
 
--- LEFT: check hook (dung trong script)
+;(function()
 local KeyLeft = Tabs.Key:AddLeftGroupbox("Executor Check")
 local KeyRight = Tabs.Key:AddRightGroupbox("License")
 
@@ -287,6 +287,7 @@ task.defer(function()
         unlockMenu()
     end
 end)
+end)()
 local InfoGroup = Tabs.Info:AddLeftGroupbox("Player & Area Info")
 local playerInfoLabel = InfoGroup:AddLabel("Player: " .. LocalPlayer.Name)
 local floorInfoLabel = InfoGroup:AddLabel("Status: Crack Xcode Ho Tro Doors")
@@ -432,6 +433,7 @@ local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
+;(function()
 local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity")
 local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap")
 local antiEyesActive = false
@@ -2840,7 +2842,7 @@ footMusicToggle:OnChanged(function(Value)
         end
     end
 end)
-        end)()
+end)()
 do
     local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
     local setRight = Tabs.Settings:AddRightGroupbox("Config")
