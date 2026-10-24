@@ -1385,8 +1385,21 @@ speedToggle:OnChanged(function(Value)
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not hum or not hrp then return end
-            local finalSpeed = targetWalkSpeed * 2.4
+            local finalSpeed = targetWalkSpeed * 1.0   -- truoc 2.4
             if finalSpeed < 16 then finalSpeed = 16 end
+            if speedMethod == "Instant" then
+                hum.WalkSpeed = finalSpeed
+                local md = hum.MoveDirection
+                if md.Magnitude > 0.05 then
+                    local u = Vector3.new(md.X, 0, md.Z)
+                    if u.Magnitude > 0 then u = u.Unit end
+                    local vy = hrp.AssemblyLinearVelocity.Y
+                    -- chi velocity, KHONG + CFrame (tranh xuyen tuong)
+                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, vy, u.Z * finalSpeed)
+                else
+                    local vy = hrp.AssemblyLinearVelocity.Y
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, vy, 0)
+                                    end
             if speedMethod == "Instant" then
                 hum.WalkSpeed = finalSpeed
                 local md = hum.MoveDirection
@@ -2183,6 +2196,15 @@ pcall(function()
         end
     end)
 end)
+AntiLeft:AddToggle("RemoveEntityToggle", {
+    Text = "Remove Entity & Dame cua chúng", Default = false,
+}):OnChanged(function(v)
+    if v then
+        startRemoveEntity()
+    else
+        stopRemoveEntity()
+    end
+end)
 
 local removedFunctions = {}
 local function tryHookDamageFuncs()
@@ -2585,31 +2607,30 @@ local function doTeleportToNextDoor()
         pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
         return false
     end
-    local door = roomInst:FindFirstChild("Door",true)
-    if not door then door = roomInst:FindFirstChildWhichIsA("BasePart",true) end
-    if not door then
+local door = roomInst:FindFirstChild("Door", true)
+    local doorPart = nil
+    if door then
+        if door:IsA("BasePart") then
+            doorPart = door
+        else
+            doorPart = door.PrimaryPart
+                or door:FindFirstChild("Door")
+                or door:FindFirstChildWhichIsA("BasePart", true)
+        end
+    end
+    if not doorPart then
         playAlertSound()
-        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
+        pcall(function()
+            Obsidian:Notify({
+                Title = "Chua san sang",
+                Description = "Doors Chưa Load xong vui lòng chờ",
+                Time = 2.4
+            })
+        end)
         return false
     end
-    local targetPos = getGroundYFromPos(door.Position + Vector3.new(0,1.8,0))
-    local targetCf = CFrame.new(door.Position.X, targetPos, door.Position.Z)
-    hum.PlatformStand = true
-    hrp.AssemblyLinearVelocity = Vector3.zero
-    hrp.AssemblyAngularVelocity = Vector3.zero
-    local cr=getCrouchRemote(); local dr=findDoorOpenRemote()
-    local ok=true
-    for i=1,3 do
-        task.wait(0.05) -- Tăng tốc: giảm delay từ 0.08 →0.05
-        if cr then pcall(function() cr:FireServer(true,true) end) end
-        if dr then pcall(function() dr:FireServer() end) end
-        if char and char.Parent then pcall(function() char:PivotTo(targetCf) end) else ok=false; break end
-    end
-    task.wait(0.15)
-    if hum and hum.Parent then hum.PlatformStand=false end
-    return ok
-end
-end)()
+    local targetPos = getGroundYFromPos(doorPart.Position + Vector3.new(0, 1.8, 0))
+    local targetCf = CFrame.new(doorPart.Position.X, targetPos, doorPart.Position.Z)
 -- Nút bấm Teleport + Toggle Auto Teleport[Bypass]
 if MiscRight then
     MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
