@@ -1020,6 +1020,7 @@ createFloatingWidget()
         end
         if hrp and hrp.Parent then
             pcall(function()
+                hrp.AssemblyLinearVelocity = Vector3.zero
                 hrp.CFrame = CFrame.new(hrp.Position.X, S.baseY or hrp.Position.Y, hrp.Position.Z)
             end)
         end
@@ -1030,8 +1031,9 @@ createFloatingWidget()
             pcall(function() crouchRemote:FireServer(false, true) end)
         end
         destroyFloatingWidget()
+        S.baseY = nil
     end
-end
+    end
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
