@@ -2366,7 +2366,6 @@ local function preparePrompt(prompt)
         prompt.RequiresLineOfSight = false
         prompt.MaxActivationDistance = math.max(prompt.MaxActivationDistance, autoInteractRange)
     end)
-    end
 end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
