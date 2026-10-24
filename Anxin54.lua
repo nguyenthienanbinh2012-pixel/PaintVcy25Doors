@@ -3088,7 +3088,7 @@ do
     end)
     end
 -- ========== ROOM PATH ==========
-(function()
+;(function()
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
 local PathRight = Tabs.Path:AddRightGroupbox("Auto")
 
@@ -3444,8 +3444,13 @@ end)()
 
 Obsidian:OnUnload(function()
     pcall(function()
-    local f = Workspace:FindFirstChild("PaintRoomPath")
-    if f then f:Destroy() end
+        local f = Workspace:FindFirstChild("PaintRoomPath")
+        if f then f:Destroy() end
+    end)
+    safeUnlockCharacter()
+    togglePositionSpoof(false)
+    -- ... cac dong disconnect giu nguyen ...
+    table.clear(originalPostEffects)
 end)
     safeUnlockCharacter()
     togglePositionSpoof(false)
