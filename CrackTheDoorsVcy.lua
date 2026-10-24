@@ -3282,6 +3282,7 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
+end)()
 
 Obsidian:OnUnload(function()
     pcall(function()
