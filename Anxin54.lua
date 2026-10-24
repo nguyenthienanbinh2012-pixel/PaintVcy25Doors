@@ -1375,8 +1375,8 @@ end)
 end)()
 local thirdPersonActive = false
 local thirdPersonConn = nil
-local thirdPersonZ = 8
-local thirdPersonSens = 0.6
+local thirdPersonZ = 11
+local thirdPersonSens = 1
 local yaw, pitch = 0, 0
 local cam = Workspace.CurrentCamera
 
