@@ -1128,14 +1128,17 @@ local function startAxial()
         hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.75)
         hrp.AssemblyAngularVelocity = Vector3.zero
         -- Giam gravity Humanoid khi axial (de di len)
-        local hum = char:FindFirstChildOfClass("Humanoid")        if hum then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
             pcall(function()
                 hum.PlatformStand = false
             end)
         end
-    end)
-end
-local axialToggle = nil
+    end)   -- đóng Heartbeat:Connect
+end        -- đóng function startAxial
+
+local axialToggle = nil  -- khai báo trước
+
 LocalPlayer.CharacterAdded:Connect(function()
     if axialToggle and axialToggle.Value then
         task.wait(0.8)
@@ -1349,6 +1352,7 @@ end)
 
 local targetWalkSpeed = 30
 local isSpeedActive = false
+local speedActive = false
 local speedMethod = "Instant"
 local speedConn = nil
 local remoteThreadSpeed = nil
