@@ -1038,22 +1038,29 @@ local function startAxial()
         local cam = Workspace.CurrentCamera
         if not hrp or not cam then return end
 
+-- Collision: bo qua part Spoof
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
-                if axialSaved[p] == nil then
-                    axialSaved[p] = {
-                        CanCollide = p.CanCollide,
-                        CanQuery = p.CanQuery,
-                        CanTouch = p.CanTouch,
-                    }
+                local n = p.Name
+                if S.enabled and (n == "CollisionPart" or n == "Collision"
+                    or n == "CollisionPartClone" or n == "CollisionClone") then
+                    -- giu nguyen cho Position Spoof
+                else
+                    if axialSaved[p] == nil then
+                        axialSaved[p] = {
+                            CanCollide = p.CanCollide,
+                            CanQuery = p.CanQuery,
+                            CanTouch = p.CanTouch,
+                        }
+                    end
+                    p.CanCollide = false
+                    p.CanQuery = false
+                    p.CanTouch = false
                 end
-                p.CanCollide = false
-                p.CanQuery = false
-                p.CanTouch = false
             end
         end
 
-        local look = cam.CFrame.LookVector
+        -- Huong 3D theo camera (len troi / xuong dat)
         local dir = cam.CFrame.LookVector
         if dir.Magnitude > 0.05 then
             dir = dir.Unit
@@ -1061,26 +1068,24 @@ local function startAxial()
         else
             dir = axialLastDir
         end
+
         local step = math.clamp(dt or 0.016, 0.008, 0.05)
-        local move = dir * (axialSpeed * 0.55) * step
+        local spd = axialSpeed * 0.85
+        local move = dir * spd * step
+
+        -- CFrame full XYZ
         hrp.CFrame = hrp.CFrame + move
-        hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.4)
+        -- Velocity full 3D (khong giu Y cu)
+        hrp.AssemblyLinearVelocity = dir * (axialSpeed * 0.75)
         hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-end
 
-local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
-    Text = "Axial Velocity", Default = false,
-    Tooltip = "Xuyen tuong Velocity Manipulation v2 Bypass Anti XuyenTuong"
-})
-local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
-    Text = "Axial Speed", Default = 2.0, Min = 1.0, Max = 6.0, Rounding = 1, Compact = true
-})
-axialSlider:OnChanged(function(v) axialSpeed = v end)
-
-axialToggle:OnChanged(function(Value)
-    if Value then startAxial() else stopAxial() end
-end)
+        -- Giam gravity Humanoid khi axial (de di len)
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum.PlatformStand = false
+            end)
+                end
 
 LocalPlayer.CharacterAdded:Connect(function()
     if axialToggle and axialToggle.Value then
