@@ -329,10 +329,6 @@ end)
 
 task.spawn(function()
     while task.wait(0.5) do
-        if activeEntityName and tick() > entityTimeout then
-            activeEntityName = nil
-            checkEntityLabel:SetText("<font color='#32FF64'>Check Entity: Không có Entity</font>")
-        end
         
         pcall(function()
             local riskScore = 0
