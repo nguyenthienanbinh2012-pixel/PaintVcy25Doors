@@ -3310,9 +3310,12 @@ PathRight:AddToggle("AutoStartPathToggle", {
         if flat.Magnitude < 2 then return end
         hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
         hum:Move(flat.Unit, false)
+    end)
+end)
+
 PathRight:AddToggle("AutoAvoidHideToggle", {
     Text = "Auto Avoid by hiding", Default = false,
-    Tooltip = "Tu động trốn vào tủ gần nhất trước khi entity đi tới",
+    Tooltip = "Tu dong tron khi entity tới + Auto trốn theo path",
 }):OnChanged(function(on)
     autoAvoidActive = on
     if autoAvoidConn then autoAvoidConn:Disconnect() autoAvoidConn = nil end
@@ -3343,9 +3346,7 @@ end)
 
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
-    Tooltip = "0 = Độ Delay Dừng đi"
 }):OnChanged(function(v) pathDelay = v end)
-    end)()
 local chaosRemoveActive = false
 local chaosConn = nil
 
