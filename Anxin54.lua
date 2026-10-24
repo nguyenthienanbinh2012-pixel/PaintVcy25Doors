@@ -45,11 +45,11 @@ Obsidian.Scheme = {
 local Window = Obsidian:CreateWindow({
     Title = "PaintCrack1.5",
     SubTitle = "PaintVcyCrack",
-    TabWidth = 160,
-    Size = UDim2.new(0, 700, 0, 390),
+    TabWidth = 180,
+    Size = UDim2.new(0, 720, 0, 410),
     Center = true,
     AutoShow = true,
-    MenuFadeTime = 0.10
+    MenuFadeTime = 0.8
 })
 pcall(function()
     Obsidian.Scheme.AccentColor  = Color3.fromRGB(255, 140, 175)
@@ -1042,6 +1042,7 @@ LocalPlayer.CharacterAdded:Connect(function()
     task.delay(1, loadPositionSpoof)
 end)
 
+
 local axialActive = false
 local axialSpeed = 2.0
 local axialConn = nil
@@ -1069,14 +1070,12 @@ local function startAxial()
         local char=LocalPlayer.Character; if not char then return end
         local hrp=char:FindFirstChild("HumanoidRootPart"); local cam=Workspace.CurrentCamera; local hum=char:FindFirstChildOfClass("Humanoid")
         if not hrp or not cam or not hum then return end
-        -- Lưu trạng thái part
         for _,p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") and not (S.enabled and (p.Name:find("Collision") or p.Name:find("CollisionPart"))) then
+            if p:IsA("BasePart") and not (S.enabled and (p.Name=="Collision" or p.Name=="CollisionPart" or p.Name=="CollisionClone" or p.Name=="CollisionPartClone")) then
                 if axialSaved[p]==nil then axialSaved[p]={CanCollide=p.CanCollide,CanQuery=p.CanQuery,CanTouch=p.CanTouch} end
                 p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
             end
         end
-        -- LẤY ĐẦY ĐỦ HƯỚNG CAM 3D
         local dir=cam.CFrame.LookVector
         if dir.Magnitude>0.05 then dir=dir.Unit; axialLastDir=dir else dir=axialLastDir end
         local step=math.clamp(dt or 0.016,0.008,0.05)
@@ -1085,11 +1084,12 @@ local function startAxial()
         hum.PlatformStand=true
     end)
 end
-local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
-local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
+local axialToggle = FuncLeft:AddToggle("Axial Velocity", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
+local axialSlider = FuncLeft:AddSlider("Axial Speed", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
 axialSlider:OnChanged(function(v) axialSpeed=v end)
 axialToggle:OnChanged(function(Value) if Value then startAxial() else stopAxial() end end)
 LocalPlayer.CharacterAdded:Connect(function() if axialToggle and axialToggle.Value then task.wait(0.8); startAxial() end end)
+            
     end
 end)
 
