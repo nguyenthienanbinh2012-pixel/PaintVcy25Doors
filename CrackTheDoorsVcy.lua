@@ -1112,6 +1112,17 @@ LocalPlayer.CharacterAdded:Connect(function()
         task.wait(0.8)
         if axialToggle.Value then startAxial() end
     end
+    local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
+    Text = "Axial Velocity", Default = false,
+    Tooltip = "Xuyen tuong 3D theo cam",
+})
+local axialSlider = FuncLeft:AddSlider("AxialSpeedSlider", {
+    Text = "Axial Speed", Default = 2.0, Min = 1.0, Max = 6.0, Rounding = 1, Compact = true,
+})
+axialSlider:OnChanged(function(v) axialSpeed = v end)
+axialToggle:OnChanged(function(Value)
+    if Value then startAxial() else stopAxial() end
+end)
 end)
 
 local noClipActive = false
@@ -3099,42 +3110,35 @@ local function computeWps(from, to)
     return { from, to } -- fallback thang
 end
 
-local function drawWps(wps)
+ h = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), pr)
+ local function drawWps(wps)
     clearPathDraw()
     if not wps or #wps < 2 then return end
     pathFolder = Instance.new("Folder")
     pathFolder.Name = "PaintRoomPath"
     pathFolder.Parent = Workspace
-    local atts = {}
     for i, pos in ipairs(wps) do
-        local p = Instance.new("Part")
-        p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
-        p.Size, p.Transparency = Vector3.new(0.2, 0.2, 0.2), 1
         local y = pos.Y
         pcall(function()
             local pr = RaycastParams.new()
             pr.FilterDescendantsInstances = {LocalPlayer.Character, pathFolder}
             pr.FilterType = Enum.RaycastFilterType.Exclude
-            local h = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), pr)
-            if h then y = h.Position.Y + 0.12 end
+            local h = Workspace:Raycast(pos + Vector3.new(0, 5, 0), Vector3.new(0, -30, 0), pr)
+            if h then y = h.Position.Y + 0.2 end
         end)
-        p.CFrame = CFrame.new(pos.X, y, pos.Z)
+        local p = Instance.new("Part")
+        p.Name = "PathNode"
+        p.Shape = Enum.PartType.Cylinder
+        p.Size = Vector3.new(0.35, 1.6, 1.6) -- cylinder: X = height
+        p.CFrame = CFrame.new(pos.X, y + 0.15, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
+        p.Anchored = true
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.Material = Enum.Material.Neon
+        p.Color = pathColor or Color3.fromRGB(255, 140, 200)
+        p.Transparency = 0.25
         p.Parent = pathFolder
-        local a = Instance.new("Attachment")
-        a.Parent = p
-        atts[i] = a
-    end
-    for i = 1, #atts - 1 do
-        local b = Instance.new("Beam")
-        b.Attachment0, b.Attachment1 = atts[i], atts[i + 1]
-        b.Width0, b.Width1 = 2.4, 2.4
-        b.FaceCamera = true
-        b.LightEmission = 1
-        b.Color = ColorSequence.new(pathColor)
-        b.Transparency = NumberSequence.new(0.2)
-        b.Texture = "rbxassetid://446111271"
-        b.TextureSpeed = 0.4
-        b.Parent = pathFolder
     end
 end
 
@@ -3175,7 +3179,7 @@ end)
 
 PathRight:AddToggle("AutoStartPathToggle", {
     Text = "Auto Start Path", Default = false,
-    Tooltip = "Di theo path / cua",
+    Tooltip = "Di theo path ",
 }):OnChanged(function(v)
     autoPathActive = v
     if not v then
@@ -3196,33 +3200,21 @@ PathRight:AddToggle("AutoStartPathToggle", {
         if not hrp or not hum then return end
         local door = getNextDoor()
         if not door then return end
-        currentPathTarget = door
-        if not pathWps or #pathWps < 2 then
+        if not pathWps or #pathWps < 2 or currentPathTarget \~= door then
             pathWps = computeWps(hrp.Position, door.Position)
-            if not pathWps or #pathWps < 2 then
-                pathWps = {hrp.Position, door.Position}
-            end
+            currentPathTarget = door
             if showPathActive then drawWps(pathWps) end
         end
         local goal = door.Position
-        if pathWps and #pathWps >= 2 then
-            for i = 2, #pathWps do
-                local w = pathWps[i]
-                local f = Vector3.new(w.X - hrp.Position.X, 0, w.Z - hrp.Position.Z)
-                if f.Magnitude > 2.5 then
-                    goal = w
-                    break
-                end
-            end
+        for i = 2, #pathWps do
+            local w = pathWps[i]
+            local f = Vector3.new(w.X - hrp.Position.X, 0, w.Z - hrp.Position.Z)
+            if f.Magnitude > 2.5 then goal = w break end
         end
         local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
-        if flat.Magnitude < 2.5 then return end
-        local spd = (typeof(targetWalkSpeed) == "number" and targetWalkSpeed > 0) and targetWalkSpeed or 20
-        hum.WalkSpeed = math.max(spd, 16)
+        if flat.Magnitude < 2 then return end
         hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
         hum:Move(flat.Unit, false)
-    end)
-end)
 PathRight:AddToggle("AutoAvoidHideToggle", {
     Text = "Auto Avoid by hiding", Default = false,
     Tooltip = "Tu động trốn vào tủ gần nhất trước khi entity đi tới",
