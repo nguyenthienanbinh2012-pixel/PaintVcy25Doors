@@ -2635,6 +2635,7 @@ local escapeTimerActive = false
 local escapeTimerGui = nil
 local escapeTimerLabel = nil
 local escapeTimerBar = nil
+do
 local escapeTimerConn = nil
 local ESCAPE_MAX = 19.5
 local hideStartTime = nil
@@ -2814,6 +2815,7 @@ escapeTimerToggle:OnChanged(function(Value)
         destroyEscapeTimerUI()
     end
 end)
+end
 ;(function()
 local autoAvoidActive = false
 local autoAvoidConn = nil
@@ -3347,6 +3349,7 @@ end)
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
 }):OnChanged(function(v) pathDelay = v end)
+end
 local chaosRemoveActive = false
 local chaosConn = nil
 
