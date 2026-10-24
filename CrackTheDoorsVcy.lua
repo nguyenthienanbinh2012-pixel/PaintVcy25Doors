@@ -2429,7 +2429,9 @@ autoInteractToggle:OnChanged(function(Value)
                         end
                     end)
                     task.wait(0.1)
-                        end
+                end
+            end)
+        end
     else
         if autoInteractThread then
             task.cancel(autoInteractThread)
