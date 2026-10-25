@@ -3078,13 +3078,99 @@ end)()
         end)
     end)
 
+    local function playNotifyTestSound()
+        pcall(function()
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://3318713980"
+            s.Volume = 12
+            s.Parent = game:GetService("SoundService")
+            s:Play()
+            task.delay(5, function()
+                if s then s:Destroy() end
+            end)
+        end)
+    end
+
     setRight:AddButton("Notify Test", function()
+        playNotifyTestSound()
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
-                Description = "Thông báo thử nghiệm thành Công!",
+                Description = "Thong bao thu nghiem thanh cong!",
                 Time = 4
             })
+        end)
+    end)
+-- cot phai: Language (radar)
+    local setLang = Tabs.Settings:AddRightGroupbox("📡 Language")
+
+    local menuLanguage = "vi" -- "vi" | "en"
+    pcall(function()
+        if isfile and isfile("PaintCrack_Lang.txt") then
+            local v = readfile("PaintCrack_Lang.txt")
+            if v == "en" or v == "vi" then menuLanguage = v end
+        end
+    end)
+
+    local LANG = {
+        vi = {
+            notify_ok = "Thong bao thu nghiem thanh cong!",
+            lang_set = "Da dat ngon ngu: Tieng Viet",
+            pick = "Chon ngon ngu",
+            btn = "Set Language",
+            tip = "Bam Set Language sau khi chon",
+        },
+        en = {
+            notify_ok = "Test notification success!",
+            lang_set = "Language set: English",
+            pick = "Select language",
+            btn = "Set Language",
+            tip = "Press Set Language after selecting",
+        },
+    }
+
+    local langDrop = setLang:AddDropdown("MenuLanguageDrop", {
+        Text = "Language",
+        Values = { "Tiếng Việt", "English" },
+        Default = (menuLanguage == "en") and 2 or 1,
+    })
+
+    local function langCodeFromLabel(label)
+        label = tostring(label or "")
+        if label:find("English") or label == "en" then return "en" end
+        return "vi"
+    end
+
+    langDrop:OnChanged(function(v)
+        -- chi luu lua chon, chua apply cho den khi bam Set Language
+        if type(v) == "string" then
+            menuLanguage = langCodeFromLabel(v)
+        elseif type(v) == "number" then
+            menuLanguage = (v == 2) and "en" or "vi"
+        end
+    end)
+
+    setLang:AddLabel("📡 " .. (LANG[menuLanguage].tip or ""))
+
+    setLang:AddButton("Set Language", function()
+        local code = menuLanguage
+        if code \~= "en" and code \~= "vi" then code = "vi" end
+        menuLanguage = code
+        pcall(function()
+            if writefile then writefile("PaintCrack_Lang.txt", code) end
+        end)
+        playNotifyTestSound()
+        local t = LANG[code] or LANG.vi
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = t.lang_set,
+                Time = 4
+            })
+        end)
+        -- cap nhat chu Settings (co the goi lai neu lib ho tro SetText)
+        pcall(function()
+            setLeft:AddLabel(code == "en" and "Toggle menu: Mobile button / executor keybind" or "Toggle menu: nut Mobile / Keybind executor")
         end)
     end)
 
@@ -3099,7 +3185,6 @@ end)()
             pcall(function()
                 ThemeManager:SetLibrary(Obsidian)
                 ThemeManager:SetFolder("PaintCrackDoors")
-                if ThemeManager.ApplyToTab then ThemeManager:ApplyToTab(Tabs.Settings) end
             end)
         end
         if okS and type(SaveManager) == "table" then
@@ -3107,7 +3192,6 @@ end)()
                 SaveManager:SetLibrary(Obsidian)
                 pcall(function() SaveManager:IgnoreThemeSettings() end)
                 SaveManager:SetFolder("PaintCrackDoors")
-                if SaveManager.ApplyToTab then SaveManager:ApplyToTab(Tabs.Settings) end
             end)
         end
     end)
