@@ -923,6 +923,12 @@ local function togglePositionSpoof(enable)
         if S.enabled or not S.loaded then return end
         if not S.hrp or not S.humanoid then return end
         S.enabled = true
+        if enable then
+    if not S.loaded then
+        pcall(loadPositionSpoof)
+        task.wait(0.3)
+    end
+    if S.enabled or not S.hrp then return end    
         local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
         local crouchRemote = getCrouchRemote()
         local baseY = hrp.Position.Y
@@ -1096,6 +1102,8 @@ LocalPlayer.CharacterAdded:Connect(function()
         if axialToggle.Value then startAxial() end
     end
 end)
+_G.togglePositionSpoof = togglePositionSpoof
+_G.loadPositionSpoof = loadPositionSpoof       
 end)()
 
 local noClipActive = false
