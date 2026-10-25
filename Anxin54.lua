@@ -1090,6 +1090,13 @@ local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {Text="Axial Veloc
 local axialSlider = FuncLeft:AddSlider("Axial Speed", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
 axialSlider:OnChanged(function(v) axialSpeed=v end)
 axialToggle:OnChanged(function(Value) if Value then startAxial() else stopAxial() end end)
+LocalPlayer.CharacterAdded:Connect(function()
+    if axialToggle and axialToggle.Value then
+        task.wait(0.8)
+        if axialToggle.Value then startAxial() end
+    end
+end)
+end)()
 
 local noClipActive = false
 local noClipSavedCanCollide = {}
