@@ -82,6 +82,7 @@ local Tabs = {
     Visual = Window:AddTab("Visual", "eye"),
     Misc = Window:AddTab("Misc", "door-open"),
     Anti = Window:AddTab("Anti", "skull"),
+    Mode = Window:AddTab("Mode", "flame"),   -- ← thêm dòng này
     Settings = Window:AddTab("Settings", "cog"),
     Path = Window:AddTab("Room Path", "footprints"),
     }
@@ -226,11 +227,16 @@ local function startCountdown()
         pcall(function()
             countdownLbl:SetText("<font color='#FF3232'>Key time: " .. t .. "</font>")
         end)
-        if left <= 0 then
-            keyCountdownConn:Disconnect()
-            menuUnlocked = false
-            pcall(function() setTabsLocked(true) end)
-        end
+if left <= 0 then
+    keyCountdownConn:Disconnect()
+    menuUnlocked = false
+    Obsidian.Toggle = function(...) end   -- khóa luôn nút toggle
+    pcall(function() setTabsLocked(true) end)
+    pcall(function()
+        if Window and Window.SetVisible then Window:SetVisible(false) end
+    end)
+    pcall(function()
+        Obsidian:Notify({Title="PaintCrack", Description="<font color='#FF3232'>KEY ĐÃ HẾT HẠN!</font>", Time=5})
     end)
 end
 
@@ -2343,13 +2349,15 @@ end)
 ;(function()
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 12
+local autoInteractRange = 6
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
-
 local INTERACT_BLACKLIST = {
     bed = true, seat = true, chair = true, armchair = true,
     couch = true, sofa = true, closet = true, wardrobe = true,
     locker = true, hide = true, stool = true, bench = true,
+    painting = true, picture = true, art = true, canvas = true,
+    frame = true, poster = true, image = true, photo = true,
+    portrait = true, drawing = true, paint = true,
 }
 
 local function isInteractBlacklisted(prompt, parent)
@@ -2445,7 +2453,7 @@ autoInteractToggle:OnChanged(function(Value)
         autoInteractCooldown = setmetatable({}, {__mode = "k"})
     end
 end)
-local reachState = { reachMultiplier = 2 }
+local reachState = { reachMultiplier = 1.5 }
 
 local function checkDoorOpen(door)
     return door:GetAttribute("Opened") == true or door:GetAttribute("Open") == true
@@ -2458,7 +2466,7 @@ local DEFAULT_REACH_STUDS = 20
 local ReachSlider = MiscInteract:AddSlider("ReachSlider", {
     Text = "Multi X2 Reach",
     Default = DEFAULT_REACH_STUDS,
-    Min = 10, Max = 50, Rounding = 5, Compact = true,
+    Min = 1, Max = 2, Rounding = 1, Compact = true,
 })
 ReachSlider:OnChanged(function(v) reachState.reachMultiplier = v / 10 end)
 
@@ -2467,7 +2475,7 @@ local reachToggle = MiscInteract:AddToggle("ReachToggle", {
 })
 reachToggle:OnChanged(function(v)
     if not v then
-        reachState.reachMultiplier = 2
+        reachState.reachMultiplier = 1.5
         pcall(function() ReachSlider:SetValue(DEFAULT_REACH_STUDS) end)
         return
     end
@@ -2484,7 +2492,7 @@ reachToggle:OnChanged(function(v)
                 if roomObj and roomObj:FindFirstChild("Door") then
                     local door = roomObj.Door
                     local doorPart = door:FindFirstChild("Door") or door:FindFirstChildWhichIsA("BasePart")
-                    if doorPart and (hrp.Position - doorPart.Position).Magnitude <= (reachState.reachMultiplier * 10) then
+                    if doorPart and (hrp.Position - doorPart.Position).Magnitude <= (reachState.reachMultiplier * 12) then
                         if not checkDoorOpen(door) and not checkDoorLocked(door) and (tick() - lastTP > 0.4) then
                             lastTP = tick()
                             pcall(function()
@@ -3453,6 +3461,374 @@ end)
 PathRight:AddSlider("PathDelaySlider", {
     Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
 }):OnChanged(function(v) pathDelay = v end)
+end)()
+-- ========== MISC: Make the entity fall ==========
+;(function()
+local entityFallOn = false
+local tracked = {}
+local selectedEntities = {}
+local FALL_SPEED = -3
+local HOLD_TIME = 0.8
+local TRIGGER_DIST = 30
+local RELEASE_DEPTH = -60
+local STATE = { TRACKING = 1, ANCHORED = 2, FALLING = 3, RELEASED = 4 }
+local lockedParts = {}
+local visualContainer = nil
+local heartConn = nil
+local descConn = nil
+
+local ENTITY_OPTIONS = {"Rush", "Ambush", "AroXmbush", "Blitz", "A-120", "A-90"}
+
+local function playToggleSound()
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 8
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(3, function() if s then s:Destroy() end end)
+    end)
+end
+
+local function isSelectedEntity(obj)
+    if not obj then return false end
+    local nameLower = tostring(obj.Name or ""):lower()
+    for sel, on in pairs(selectedEntities) do
+        if on and nameLower:find(sel:lower(), 1, true) then return true end
+    end
+    return false
+end
+
+local function createVisual(obj)
+    local hl = Instance.new("Highlight")
+    hl.FillColor = Color3.fromRGB(255, 40, 90)
+    hl.OutlineColor = Color3.fromRGB(255, 200, 0)
+    hl.FillTransparency = 0.5
+    hl.OutlineTransparency = 0.1
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = obj
+    if not visualContainer then
+        visualContainer = Instance.new("Folder")
+        visualContainer.Name = "EntityFallVisuals"
+        visualContainer.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+    hl.Parent = visualContainer
+    return hl
+end
+
+local function createAnchorAndWeld(obj)
+    local parts = obj:IsA("BasePart") and {obj} or obj:GetDescendants()
+    local rootPart = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart", true)) or obj
+    if not rootPart then return nil end
+
+    local anchor = Instance.new("Part")
+    anchor.Name = "EntityFall_Anchor"
+    anchor.Size = Vector3.new(1, 1, 1)
+    anchor.Transparency = 1
+    anchor.CanCollide = false
+    anchor.Anchored = true
+    anchor.CFrame = rootPart.CFrame
+    anchor.Parent = Workspace
+
+    for _, p in ipairs(parts) do
+        if p:IsA("BasePart") then
+            pcall(function()
+                p.Anchored = false
+                p.CanCollide = false
+                p.Massless = true
+                p.AssemblyLinearVelocity = Vector3.zero
+                p.AssemblyAngularVelocity = Vector3.zero
+                for _, child in ipairs(p:GetChildren()) do
+                    if child:IsA("AlignPosition") or child:IsA("AlignOrientation") or child:IsA("BodyPosition") or child:IsA("BodyVelocity") then
+                        child:Destroy()
+                    end
+                end
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = p
+                weld.Part1 = anchor
+                weld.Parent = p
+            end)
+            lockedParts[p] = true
+        end
+    end
+
+    local hum = obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum.PlatformStand = true
+            hum.WalkSpeed = 0
+            hum.JumpPower = 0
+            hum:ChangeState(Enum.HumanoidStateType.Physics)
+        end)
+    end
+    return anchor
+end
+
+local function removeFall(obj)
+    local r = tracked[obj]
+    if not r then return end
+    tracked[obj] = nil
+    if r.obj and r.obj.Parent then
+        local parts = r.obj:IsA("BasePart") and {r.obj} or r.obj:GetDescendants()
+        for _, p in ipairs(parts) do
+            if p:IsA("BasePart") then
+                lockedParts[p] = nil
+                pcall(function() p.Anchored = false end)
+            end
+        end
+        local hum = r.obj:IsA("Model") and r.obj:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum.PlatformStand = false
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end)
+        end
+    end
+    if r.anchorPart then pcall(function() r.anchorPart:Destroy() end) end
+    if r.visual and r.visual.Parent then r.visual:Destroy() end
+end
+
+local function makeFall(obj)
+    if not obj or tracked[obj] or not isSelectedEntity(obj) then return end
+    tracked[obj] = {
+        obj = obj,
+        visual = createVisual(obj),
+        state = STATE.TRACKING,
+        stateTime = 0,
+        anchorPos = nil,
+        basePivot = nil,
+        fallTime = 0,
+        anchorPart = nil,
+    }
+end
+
+local function processObject(obj)
+    if not entityFallOn or not obj:IsA("Model") or tracked[obj] or not isSelectedEntity(obj) then return end
+    local center = obj:GetPivot().Position
+    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if myHrp and (center - myHrp.Position).Magnitude <= 500 then
+        makeFall(obj)
+    end
+end
+
+local function initialScan()
+    local function scan(container)
+        for _, obj in ipairs(container:GetChildren()) do
+            if obj:IsA("Model") then processObject(obj) end
+            if obj:IsA("Folder") or obj:IsA("Model") then pcall(scan, obj) end
+        end
+    end
+    pcall(scan, Workspace)
+end
+
+local function startFallLoop()
+    if heartConn then heartConn:Disconnect() end
+    heartConn = RunService.Heartbeat:Connect(function(dt)
+        if not entityFallOn then return end
+        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local myPos = myHrp and myHrp.Position
+        if not myPos then return end
+
+        for obj, r in pairs(tracked) do
+            if not obj.Parent then
+                removeFall(obj)
+            else
+                local currentCenter = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+                local dist = (currentCenter - myPos).Magnitude
+
+                if r.state == STATE.TRACKING then
+                    if dist <= TRIGGER_DIST then
+                        r.state = STATE.ANCHORED
+                        r.stateTime = 0
+                        r.basePivot = obj:IsA("Model") and obj:GetPivot() or obj.CFrame
+                        r.anchorPart = createAnchorAndWeld(obj)
+                        r.anchorPos = currentCenter
+                    end
+                elseif r.state == STATE.ANCHORED then
+                    r.stateTime = r.stateTime + dt
+                    if r.anchorPart then r.anchorPart.CFrame = r.basePivot end
+                    if r.stateTime >= HOLD_TIME then
+                        r.state = STATE.FALLING
+                        r.fallTime = 0
+                    end
+                elseif r.state == STATE.FALLING then
+                    r.fallTime = r.fallTime + dt
+                    local yOffset = math.abs(FALL_SPEED) * r.fallTime
+                    local targetY = r.anchorPos.Y - yOffset
+                    local rotPart = r.basePivot - r.basePivot.Position
+                    local newCFrame = CFrame.new(r.anchorPos.X, targetY, r.anchorPos.Z) * rotPart
+                    if r.anchorPart then r.anchorPart.CFrame = newCFrame end
+                    if (targetY - myPos.Y) < RELEASE_DEPTH then
+                        r.state = STATE.RELEASED
+                        removeFall(obj)
+                    end
+                end
+            end
+        end
+    end)
+
+    if descConn then descConn:Disconnect() end
+    descConn = Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Model") then processObject(obj) end
+    end)
+end
+
+local function stopFallLoop()
+    if heartConn then heartConn:Disconnect(); heartConn = nil end
+    if descConn then descConn:Disconnect(); descConn = nil end
+    for obj in pairs(tracked) do removeFall(obj) end
+    tracked = {}
+end
+
+local fallGroup = Tabs.Misc:AddLeftGroupbox("Entity Fall")
+fallGroup:AddLabel("<font color='#FF3232'>Make the entity fall</font>", true)
+
+local entityDrop = fallGroup:AddDropdown("EntityFallSelect", {
+    Text = "Chọn entity rơi",
+    Values = ENTITY_OPTIONS,
+    Multi = true,
+    Default = {},
+    Tooltip = "Không chọn = không con nào rơi",
+})
+entityDrop:OnChanged(function(v)
+    selectedEntities = {}
+    if type(v) == "table" then
+        for _, name in pairs(v) do
+            if type(name) == "string" then selectedEntities[name] = true end
+        end
+    end
+end)
+
+fallGroup:AddToggle("MakeEntityFallToggle", {
+    Text = "<font color='#FF3232'>Make the entity fall</font>",
+    Default = false,
+}):OnChanged(function(v)
+    playToggleSound()
+    entityFallOn = v
+    if v then
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = "Làm thực thể rơi xuống chỉ là ẢO không thực sự,chỉ giúp đỡ kinh sợ!",
+                Time = 5
+            })
+        end)
+        startFallLoop()
+        initialScan()
+    else
+        stopFallLoop()
+    end
+end)
+
+fallGroup:AddLabel("<font color='#AAAAAA'>Chỉ ẢO - giúp bớt kinh sợ</font>", true)
+end)()
+-- ========== MODE TAB: Infinite Revive ==========
+;(function()
+local ModeLeft = Tabs.Mode:AddLeftGroupbox("Hotel Mode")
+pcall(function()
+    ModeLeft:AddLabel("<font color='#FFAA00'>🏢 Old Hotels Mode</font>", true)
+end)
+
+local infReviveOn = false
+local reviveEvent = nil
+local diedConn = nil
+local addedConn = nil
+local loopThread = nil
+local lastFire = 0
+
+local function findRevive()
+    local ok, ev = pcall(function()
+        return ReplicatedStorage:WaitForChild("Bricks", 3):WaitForChild("Revive", 3)
+    end)
+    if ok and ev then return ev end
+    for _, v in ipairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") and v.Name == "Revive" then return v end
+    end
+    return nil
+end
+
+local function fireRevive()
+    local now = tick()
+    if now - lastFire < 0.8 then return end
+    lastFire = now
+    if not reviveEvent then reviveEvent = findRevive() end
+    if reviveEvent then pcall(function() reviveEvent:FireServer() end) end
+end
+
+local function isDead()
+    local c = LocalPlayer.Character
+    if not c then return true end
+    local h = c:FindFirstChildOfClass("Humanoid")
+    if not h then return true end
+    return h.Health <= 0 or h:GetState() == Enum.HumanoidStateType.Dead
+end
+
+local function bindChar(char)
+    if diedConn then diedConn:Disconnect() end
+    local h = char:WaitForChild("Humanoid", 5)
+    if not h then return end
+    diedConn = h.Died:Connect(function()
+        if not infReviveOn then return end
+        task.wait(0.9)
+        if infReviveOn and isDead() then fireRevive() end
+    end)
+end
+
+local function turnOnRevive()
+    infReviveOn = true
+    lastFire = 0
+    reviveEvent = findRevive()
+    if loopThread then task.cancel(loopThread) end
+    loopThread = task.spawn(function()
+        while infReviveOn do
+            if isDead() then fireRevive() end
+            task.wait(0.25)
+        end
+    end)
+    if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
+    if addedConn then addedConn:Disconnect() end
+    addedConn = LocalPlayer.CharacterAdded:Connect(bindChar)
+end
+
+local function turnOffRevive()
+    infReviveOn = false
+    if diedConn then diedConn:Disconnect(); diedConn = nil end
+    if addedConn then addedConn:Disconnect(); addedConn = nil end
+    if loopThread then task.cancel(loopThread); loopThread = nil end
+end
+
+local function playToggleSound()
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 8
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(3, function() if s then s:Destroy() end end)
+    end)
+end
+
+ModeLeft:AddToggle("InfiniteReviveToggle", {
+    Text = "<font color='#FF3232'>infinite Revive</font>",
+    Default = false,
+    Tooltip = "Chi hoat dong Old Hotels",
+}):OnChanged(function(v)
+    playToggleSound()
+    if v then
+        turnOnRevive()
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = "<font color='#FF3232'>Vô hạn hồi sinh chỉ hoạt động trong chế độ Old Hotels!</font>",
+                Time = 5
+            })
+        end)
+    else
+        turnOffRevive()
+    end
+end)
+
+ModeLeft:AddLabel("<font color='#FF6666'>⚠ Chỉ dùng ở Old Hotels</font>", true)
 end)()
 local chaosRemoveActive = false
 local chaosConn = nil
