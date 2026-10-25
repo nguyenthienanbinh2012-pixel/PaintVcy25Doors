@@ -2565,8 +2565,30 @@ local door = roomInst:FindFirstChild("Door", true)
         return false
     end
     local targetPos = getGroundYFromPos(doorPart.Position + Vector3.new(0, 1.8, 0))
-    local targetCf = CFrame.new(doorPart.Position.X, targetPos, doorPart.Position.Z)
--- Nút bấm Teleport + Toggle Auto Teleport[Bypass]
+local targetCf = CFrame.new(doorPart.Position.X, targetPos, doorPart.Position.Z)
+    hum.PlatformStand = true
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    local cr = getCrouchRemote()
+    local dr = findDoorOpenRemote()
+    local ok = true
+    for i = 1, 3 do
+        task.wait(0.05)
+        if cr then pcall(function() cr:FireServer(true, true) end) end
+        if dr then pcall(function() dr:FireServer() end) end
+        if char and char.Parent then
+            pcall(function() char:PivotTo(targetCf) end)
+        else
+            ok = false
+            break
+        end
+    end
+    task.wait(0.15)
+    if hum and hum.Parent then hum.PlatformStand = false end
+    return ok
+end
+
+-- Nút Teleport (NGOAI function)
 if MiscRight then
     MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
         doTeleportToNextDoor()
@@ -2589,7 +2611,9 @@ if MiscRight then
     end)
 else
     print("[LỖI] MiscRight chưa tồn tại! Dán SAU local MiscRight = ... và sau skipProximityToggle!")
-            end
+end
+end)()
+
 ;(function()    
 local escapeTimerActive = false
 local escapeTimerGui = nil
