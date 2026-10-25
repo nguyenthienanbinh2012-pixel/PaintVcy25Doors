@@ -227,16 +227,18 @@ local function startCountdown()
         pcall(function()
             countdownLbl:SetText("<font color='#FF3232'>Key time: " .. t .. "</font>")
         end)
-if left <= 0 then
-    keyCountdownConn:Disconnect()
-    menuUnlocked = false
-    Obsidian.Toggle = function(...) end   -- khóa luôn nút toggle
-    pcall(function() setTabsLocked(true) end)
-    pcall(function()
-        if Window and Window.SetVisible then Window:SetVisible(false) end
-    end)
-    pcall(function()
-        Obsidian:Notify({Title="PaintCrack", Description="<font color='#FF3232'>KEY ĐÃ HẾT HẠN!</font>", Time=5})
+        if left <= 0 then
+            keyCountdownConn:Disconnect()
+            menuUnlocked = false
+            Obsidian.Toggle = function(...) end
+            pcall(function() setTabsLocked(true) end)
+            pcall(function()
+                if Window and Window.SetVisible then Window:SetVisible(false) end
+            end)
+            pcall(function()
+                Obsidian:Notify({Title="PaintCrack", Description="<font color='#FF3232'>KEY ĐÃ HẾT HẠN!</font>", Time=5})
+            end)
+        end
     end)
 end
 
@@ -2462,13 +2464,15 @@ local function checkDoorLocked(door)
     return door:GetAttribute("Locked") == true
 end
 
-local DEFAULT_REACH_STUDS = 20
+local DEFAULT_REACH_MULTI = 1.5
 local ReachSlider = MiscInteract:AddSlider("ReachSlider", {
-    Text = "Multi X2 Reach",
-    Default = DEFAULT_REACH_STUDS,
+    Text = "Reach Multiplier (1-2)",
+    Default = DEFAULT_REACH_MULTI,
     Min = 1, Max = 2, Rounding = 1, Compact = true,
 })
-ReachSlider:OnChanged(function(v) reachState.reachMultiplier = v / 10 end)
+ReachSlider:OnChanged(function(v)
+    reachState.reachMultiplier = v
+end)
 
 local reachToggle = MiscInteract:AddToggle("ReachToggle", {
     Text = "Reach Doors", Default = false,
@@ -2476,7 +2480,7 @@ local reachToggle = MiscInteract:AddToggle("ReachToggle", {
 reachToggle:OnChanged(function(v)
     if not v then
         reachState.reachMultiplier = 1.5
-        pcall(function() ReachSlider:SetValue(DEFAULT_REACH_STUDS) end)
+        pcall(function() ReachSlider:SetValue(DEFAULT_REACH_MULTI) end)
         return
     end
     task.spawn(function()
