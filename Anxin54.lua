@@ -1043,8 +1043,6 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 
-
--- XÓA DÒNG local axialToggle = nil !!
 local axialActive = false
 local axialSpeed = 2.0
 local axialConn = nil
