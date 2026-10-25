@@ -1009,7 +1009,6 @@ createFloatingWidget()
                         end
                     end)
                     return
-                            end
                 end
             end
             local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
@@ -3154,7 +3153,7 @@ end)()
 
     setLang:AddButton("Set Language", function()
         local code = menuLanguage
-        if code \~= "en" and code \~= "vi" then code = "vi" end
+        if code ~= "en" and code ~= "vi" then code = "vi" end
         menuLanguage = code
         pcall(function()
             if writefile then writefile("PaintCrack_Lang.txt", code) end
