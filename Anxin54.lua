@@ -561,7 +561,6 @@ RunService.Heartbeat:Connect(function()
         if playerInfoLabel then playerInfoLabel:SetText("Player: " .. LocalPlayer.Name) end
     end)
 end)
-end)()
 
 local resetClickCount = 0
 local resetClickTime = 0
@@ -2268,7 +2267,7 @@ pcall(function()
     -- neu da AddDropdown o tren, chi can goi start khi load
     if anySelected() then startRemoveEntity() end
 end)
-
+end)()
 local autoPadlockActive = false
 local autoPadlockThread = nil
 local autoPadlockToggle = MiscRight:AddToggle("AutoPadlockCodeToggle", {
