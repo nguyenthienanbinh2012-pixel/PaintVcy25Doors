@@ -34,7 +34,7 @@ Obsidian.Scheme = {
     MainColor        = Color3.fromRGB(255, 220, 230), -- panel hong nhat
     AccentColor      = Color3.fromRGB(255, 140, 175), -- icon / toggle / slider
     OutlineColor     = Color3.fromRGB(45, 45, 55),    -- VIEN KHUNG xam (khong hong)
-    FontColor        = Color3.fromRGB(95, 85, 95),    -- chu toi de doc tren nen hong
+    FontColor        = Color3.fromRGB(130, 115, 125),
     Font             = Font.fromEnum(Enum.Font.Gotham),
     RedColor         = Color3.fromRGB(255, 50, 50),
     DestructiveColor = Color3.fromRGB(220, 38, 38),
@@ -54,11 +54,11 @@ local Window = Obsidian:CreateWindow({
 pcall(function()
     Obsidian.Scheme.AccentColor  = Color3.fromRGB(255, 140, 175)
     Obsidian.Scheme.OutlineColor = Color3.fromRGB(45, 45, 55)
-    Obsidian.Scheme.FontColor = Color3.fromRGB(55, 45, 55)
+    Obsidian.Scheme.FontColor = Color3.fromRGB(130, 115, 125)
 if Obsidian.UpdateColors then Obsidian:UpdateColors() end
     if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 end)
-Obsidian.Scheme.FontColor = Color3.fromRGB(95, 85, 95)
+Obsidian.Scheme.FontColor = Color3.fromRGB(130, 115, 125)
 if Obsidian.UpdateColors then Obsidian:UpdateColors() end
 
 local menuUnlocked = false
@@ -736,7 +736,7 @@ ndTog:OnChanged(function(v)
         ndSaved = {}
     end
 end)
-;(function()
+local function __spoofAxialBlock()
 local function getCrouchRemote()
     local char = LocalPlayer.Character
     if char then
@@ -920,15 +920,17 @@ end
 
 local function togglePositionSpoof(enable)
     if enable then
-        if S.enabled or not S.loaded then return end
+        if not S.loaded then
+            pcall(loadPositionSpoof)
+            task.wait(0.35)
+        end
+        if S.enabled then return end
+        if not S.hrp or not S.humanoid then
+            pcall(loadPositionSpoof)
+            task.wait(0.35)
+        end
         if not S.hrp or not S.humanoid then return end
-        S.enabled = true
-        if enable then
-    if not S.loaded then
-        pcall(loadPositionSpoof)
-        task.wait(0.3)
-    end
-    if S.enabled or not S.hrp then return end    
+        S.enabled = true    
         local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
         local crouchRemote = getCrouchRemote()
         local baseY = hrp.Position.Y
@@ -1103,8 +1105,9 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 _G.togglePositionSpoof = togglePositionSpoof
-_G.loadPositionSpoof = loadPositionSpoof       
-end)()
+_G.loadPositionSpoof = loadPositionSpoof
+end
+__spoofAxialBlock()
 
 local noClipActive = false
 local noClipSavedCanCollide = {}
@@ -1190,7 +1193,10 @@ local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
     Tooltip = "Gia Mao vi tri,danh lua sever va entity"
 })
 positionSpoofToggle:OnChanged(function(Value)
-    togglePositionSpoof(Value)
+    local fn = rawget(_G, "togglePositionSpoof")
+    if type(fn) == "function" then
+        pcall(fn, Value)
+    end
 end)
 
 local flyActive = false
@@ -1353,7 +1359,6 @@ speedToggle:OnChanged(function(Value)
                     local step=math.clamp(dt or 0.016,0.008,0.05)
                     local vy=hrp.AssemblyLinearVelocity.Y
                     hrp.AssemblyLinearVelocity=Vector3.new(u.X*finalSpeed,vy,u.Z*finalSpeed)
-                    hrp.CFrame=hrp.CFrame + Vector3.new(u.X,0,u.Z)*finalSpeed*step
                 else
                     local vy=hrp.AssemblyLinearVelocity.Y
                     hrp.AssemblyLinearVelocity=Vector3.new(0,vy,0)
@@ -3014,7 +3019,7 @@ footMusicToggle:OnChanged(function(Value)
     end
 end)
 end)()
-do
+
     local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
     local setRight = Tabs.Settings:AddRightGroupbox("Config")
 
@@ -3080,7 +3085,6 @@ do
             end)
         end
     end)
-    end
 -- ========== ROOM PATH ==========
 ;(function()
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
