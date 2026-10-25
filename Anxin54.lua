@@ -1002,8 +1002,6 @@ createFloatingWidget()
                         end
                         local cr = getCrouchRemote()
                         if cr then pcall(function() cr:FireServer(false, true) end) end
-                        -- luon keo ve base, khong chi khi y < by-50
-                        hrp.AssemblyLinearVelocity = Vector3.zero
                         hrp.CFrame = CFrame.new(hrp.Position.X, by + 3, hrp.Position.Z)
                     end)
                     S.baseY = nil
@@ -1049,7 +1047,6 @@ createFloatingWidget()
         end
         if hrp and hrp.Parent then
             pcall(function()
-                hrp.AssemblyLinearVelocity = Vector3.zero
                 hrp.CFrame = CFrame.new(hrp.Position.X, S.baseY or hrp.Position.Y, hrp.Position.Z)
             end)
         end
@@ -3185,18 +3182,26 @@ end)()
     end)
 
     task.spawn(function()
-        local okT, ThemeManager = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
-        end)
-        local okS, SaveManager = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
-        end)
-        if okT and type(ThemeManager) == "table" then
-            pcall(function()
-                ThemeManager:SetLibrary(Obsidian)
-                ThemeManager:SetFolder("PaintCrackDoors")
-            end)
-        end
+if okT and type(ThemeManager) == "table" then
+    pcall(function()
+        ThemeManager:SetLibrary(Obsidian)
+        ThemeManager:SetFolder("PaintCrackDoors")
+        ThemeManager:ApplyToTab(Tabs.Settings)
+    end)
+else
+    warn("[PaintCrack] ThemeManager load failed")
+end
+if okS and type(SaveManager) == "table" then
+    pcall(function()
+        SaveManager:SetLibrary(Obsidian)
+        pcall(function() SaveManager:IgnoreThemeSettings() end)
+        SaveManager:SetFolder("PaintCrackDoors")
+        SaveManager:BuildConfigSection(Tabs.Settings)
+        SaveManager:LoadAutoloadConfig()
+    end)
+else
+    warn("[PaintCrack] SaveManager load failed")
+            end
         if okS and type(SaveManager) == "table" then
             pcall(function()
                 SaveManager:SetLibrary(Obsidian)
@@ -3928,6 +3933,114 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
+-- ========== MODE TAB ==========
+;(function()
+    if not Tabs.Mode then return end
+
+    local ModeLeft = Tabs.Mode:AddLeftGroupbox("🏢 Hotel Mode")
+    local ModeRight = Tabs.Mode:AddRightGroupbox("🔥 Special")
+
+    ModeLeft:AddLabel("<font color='#FFAA00'>🏢 Old Hotels Only</font>", true)
+
+    local infReviveOn = false
+    local reviveEvent, diedConn, addedConn, loopThread
+    local lastFire = 0
+
+    local function findRevive()
+        local ok, ev = pcall(function()
+            return ReplicatedStorage:WaitForChild("Bricks", 3):WaitForChild("Revive", 3)
+        end)
+        if ok and ev then return ev end
+        for _, v in ipairs(game:GetDescendants()) do
+            if v:IsA("RemoteEvent") and v.Name == "Revive" then return v end
+        end
+        return nil
+    end
+
+    local function fireRevive()
+        local now = tick()
+        if now - lastFire < 0.8 then return end
+        lastFire = now
+        if not reviveEvent then reviveEvent = findRevive() end
+        if reviveEvent then pcall(function() reviveEvent:FireServer() end) end
+    end
+
+    local function isDead()
+        local c = LocalPlayer.Character
+        if not c then return true end
+        local h = c:FindFirstChildOfClass("Humanoid")
+        if not h then return true end
+        return h.Health <= 0 or h:GetState() == Enum.HumanoidStateType.Dead
+    end
+
+    local function bindChar(char)
+        if diedConn then diedConn:Disconnect() end
+        local h = char:WaitForChild("Humanoid", 5)
+        if not h then return end
+        diedConn = h.Died:Connect(function()
+            if not infReviveOn then return end
+            task.wait(0.9)
+            if infReviveOn and isDead() then fireRevive() end
+        end)
+    end
+
+    local function turnOn()
+        infReviveOn = true
+        lastFire = 0
+        reviveEvent = findRevive()
+        if loopThread then task.cancel(loopThread) end
+        loopThread = task.spawn(function()
+            while infReviveOn do
+                if isDead() then fireRevive() end
+                task.wait(0.25)
+            end
+        end)
+        if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
+        if addedConn then addedConn:Disconnect() end
+        addedConn = LocalPlayer.CharacterAdded:Connect(bindChar)
+    end
+
+    local function turnOff()
+        infReviveOn = false
+        if diedConn then diedConn:Disconnect(); diedConn = nil end
+        if addedConn then addedConn:Disconnect(); addedConn = nil end
+        if loopThread then task.cancel(loopThread); loopThread = nil end
+    end
+
+    local function playSnd()
+        pcall(function()
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://3318713980"
+            s.Volume = 8
+            s.Parent = game:GetService("SoundService")
+            s:Play()
+            task.delay(3, function() if s then s:Destroy() end end)
+        end)
+    end
+
+    ModeLeft:AddToggle("InfiniteReviveToggle", {
+        Text = "<font color='#FF3232'>infinite Revive</font>",
+        Default = false,
+        Tooltip = "Chỉ hoạt động Old Hotels",
+    }):OnChanged(function(v)
+        playSnd()
+        if v then
+            turnOn()
+            pcall(function()
+                Obsidian:Notify({
+                    Title = "PaintCrack",
+                    Description = "<font color='#FF3232'>Vô hạn hồi sinh chỉ hoạt động trong chế độ Old Hotels!</font>",
+                    Time = 5
+                })
+            end)
+        else
+            turnOff()
+        end
+    end)
+
+    ModeLeft:AddLabel("<font color='#FF6666'>⚠ Chỉ dùng ở Old Hotels</font>", true)
+    ModeRight:AddLabel("<font color='#AAAAAA'>Icon lửa = tab Mode</font>", true)
+end)()
 
 Obsidian:OnUnload(function()
     pcall(function()
