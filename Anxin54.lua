@@ -1043,6 +1043,8 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 
+
+-- XÓA DÒNG local axialToggle = nil !!
 local axialActive = false
 local axialSpeed = 2.0
 local axialConn = nil
@@ -1052,9 +1054,7 @@ local function stopAxial()
     axialActive = false
     if axialConn then axialConn:Disconnect(); axialConn=nil end
     for part, data in pairs(axialSaved) do
-        if part and part.Parent then
-            pcall(function() part.CanCollide=data.CanCollide; part.CanQuery=data.CanQuery; part.CanTouch=data.CanTouch end)
-        end
+        if part and part.Parent then pcall(function() part.CanCollide=data.CanCollide; part.CanQuery=data.CanQuery; part.CanTouch=data.CanTouch end) end
     end
     table.clear(axialSaved)
     local char=LocalPlayer.Character; if not char then return end
@@ -1063,7 +1063,7 @@ local function stopAxial()
     if hum then pcall(function() hum.PlatformStand=false; hum.WalkSpeed=16 end) end
 end
 local function startAxial()
-    stopAxial()
+    if axialConn then axialConn:Disconnect(); axialConn=nil end
     axialActive=true
     axialConn=RunService.Heartbeat:Connect(function(dt)
         if not axialActive then return end
@@ -1071,20 +1071,24 @@ local function startAxial()
         local hrp=char:FindFirstChild("HumanoidRootPart"); local cam=Workspace.CurrentCamera; local hum=char:FindFirstChildOfClass("Humanoid")
         if not hrp or not cam or not hum then return end
         for _,p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") and not (S.enabled and (p.Name=="Collision" or p.Name=="CollisionPart" or p.Name=="CollisionClone" or p.Name=="CollisionPartClone")) then
-                if axialSaved[p]==nil then axialSaved[p]={CanCollide=p.CanCollide,CanQuery=p.CanQuery,CanTouch=p.CanTouch} end
-                p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
+            if p:IsA("BasePart") then
+                local n=p.Name
+                if not (S.enabled and (n=="Collision" or n=="CollisionPart" or n=="CollisionClone" or n=="CollisionPartClone")) then
+                    if axialSaved[p]==nil then axialSaved[p]={CanCollide=p.CanCollide,CanQuery=p.CanQuery,CanTouch=p.CanTouch} end
+                    p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
+                end
             end
         end
         local dir=cam.CFrame.LookVector
         if dir.Magnitude>0.05 then dir=dir.Unit; axialLastDir=dir else dir=axialLastDir end
         local step=math.clamp(dt or 0.016,0.008,0.05)
-        hrp.CFrame=hrp.CFrame + dir*(axialSpeed*0.85)*step
+        hrp.CFrame=hrp.CFrame+dir*(axialSpeed*0.85)*step
         hrp.AssemblyLinearVelocity=dir*(axialSpeed*0.75)
+        hrp.AssemblyAngularVelocity=Vector3.zero
         hum.PlatformStand=true
     end)
 end
-local axialToggle = FuncLeft:AddToggle("Axial Velocity", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
 local axialSlider = FuncLeft:AddSlider("Axial Speed", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
 axialSlider:OnChanged(function(v) axialSpeed=v end)
 axialToggle:OnChanged(function(Value) if Value then startAxial() else stopAxial() end end)
@@ -1329,34 +1333,21 @@ speedToggle:OnChanged(function(Value)
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not hum or not hrp then return end
-            local finalSpeed = targetWalkSpeed * 1.0   -- truoc 2.4
+            local finalSpeed = targetWalkSpeed * 1.0
             if finalSpeed < 16 then finalSpeed = 16 end
             if speedMethod == "Instant" then
                 hum.WalkSpeed = finalSpeed
                 local md = hum.MoveDirection
                 if md.Magnitude > 0.05 then
-                    local u = Vector3.new(md.X, 0, md.Z)
-                    if u.Magnitude > 0 then u = u.Unit end
-                    local vy = hrp.AssemblyLinearVelocity.Y
-                    -- chi velocity, KHONG + CFrame (tranh xuyen tuong)
-                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, vy, u.Z * finalSpeed)
+                    local u = Vector3.new(md.X,0,md.Z)
+                    if u.Magnitude>0 then u=u.Unit end
+                    local step=math.clamp(dt or 0.016,0.008,0.05)
+                    local vy=hrp.AssemblyLinearVelocity.Y
+                    hrp.AssemblyLinearVelocity=Vector3.new(u.X*finalSpeed,vy,u.Z*finalSpeed)
+                    hrp.CFrame=hrp.CFrame + Vector3.new(u.X,0,u.Z)*finalSpeed*step
                 else
-                    local vy = hrp.AssemblyLinearVelocity.Y
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, vy, 0)
-                                    end
-            if speedMethod == "Instant" then
-                hum.WalkSpeed = finalSpeed
-                local md = hum.MoveDirection
-                if md.Magnitude > 0.05 then
-                    local u = Vector3.new(md.X, 0, md.Z)
-                    if u.Magnitude > 0 then u = u.Unit end
-                    local step = math.clamp(dt or 0.016, 0.008, 0.05)
-                    local vy = hrp.AssemblyLinearVelocity.Y
-                    hrp.AssemblyLinearVelocity = Vector3.new(u.X * finalSpeed, vy, u.Z * finalSpeed)
-                    hrp.CFrame = hrp.CFrame + Vector3.new(u.X, 0, u.Z) * (finalSpeed * step)
-                else
-                    local vy = hrp.AssemblyLinearVelocity.Y
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, vy, 0)
+                    local vy=hrp.AssemblyLinearVelocity.Y
+                    hrp.AssemblyLinearVelocity=Vector3.new(0,vy,0)
                 end
             else
                 if hum.WalkSpeed < finalSpeed then
@@ -1367,8 +1358,8 @@ speedToggle:OnChanged(function(Value)
             end
         end)
     else
-        if speedConn then speedConn:Disconnect() speedConn = nil end
-        if remoteThreadSpeed then task.cancel(remoteThreadSpeed) remoteThreadSpeed = nil end
+        if speedConn then speedConn:Disconnect(); speedConn=nil end
+        if remoteThreadSpeed then task.cancel(remoteThreadSpeed); remoteThreadSpeed=nil end
         pcall(safeUnlockCharacter)
     end
 end)
@@ -1388,7 +1379,7 @@ FuncRight:AddSlider("ThirdPersonZSlider", {
     Text = "Z offset Cam", Default = 8, Min = 1, Max = 20, Rounding = 1, Compact = true
 }):OnChanged(function(v) thirdPersonZ = v end)
 FuncRight:AddSlider("ThirdPersonSensSlider", {
-    Text = "Do Nhay Cua Camera", Default = 4.5, Min = 1.0, Max = 6, Rounding = 2, Compact = true
+    Text = "Do Nhay Cua Camera", Default = 4.3, Min = 1.0, Max = 6, Rounding = 2, Compact = true
 }):OnChanged(function(v) thirdPersonSens = v end)
 
 thirdPersonToggle:OnChanged(function(Value)
@@ -2422,7 +2413,7 @@ local DEFAULT_REACH_STUDS = 20
 local ReachSlider = MiscInteract:AddSlider("ReachSlider", {
     Text = "Multi X2 Reach",
     Default = DEFAULT_REACH_STUDS,
-    Min = 10, Max = 110, Rounding = 5, Compact = true,
+    Min = 10, Max = 50, Rounding = 5, Compact = true,
 })
 ReachSlider:OnChanged(function(v) reachState.reachMultiplier = v / 10 end)
 
