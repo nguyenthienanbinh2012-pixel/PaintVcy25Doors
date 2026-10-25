@@ -989,13 +989,27 @@ createFloatingWidget()
                                 end
                             end
                         end
-                        if y < by - 50 then
-                            hrp.CFrame = CFrame.new(hrp.Position.X, by + 2, hrp.Position.Z)
+                        if humanoid and humanoid.Parent then
+                            humanoid.HipHeight = 2.396
+                            humanoid.PlatformStand = false
                         end
+                        local cr = getCrouchRemote()
+                        if cr then pcall(function() cr:FireServer(false, true) end) end
+                        -- luon keo ve base, khong chi khi y < by-50
+                        hrp.AssemblyLinearVelocity = Vector3.zero
+                        hrp.CFrame = CFrame.new(hrp.Position.X, by + 3, hrp.Position.Z)
                     end)
                     S.baseY = nil
+                    S.c1Origin = nil
                     pcall(destroyFloatingWidget)
+                    -- tat toggle UI neu co
+                    pcall(function()
+                        if positionSpoofToggle and positionSpoofToggle.SetValue then
+                            positionSpoofToggle:SetValue(false)
+                        end
+                    end)
                     return
+                            end
                 end
             end
             local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
@@ -1106,6 +1120,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 _G.togglePositionSpoof = togglePositionSpoof
 _G.loadPositionSpoof = loadPositionSpoof
+_G.getCrouchRemote = getCrouchRemote
 end
 __spoofAxialBlock()
 
@@ -1342,6 +1357,25 @@ speedToggle:OnChanged(function(Value)
     if Value then
         if speedConn then speedConn:Disconnect() end
         speedConn = RunService.Heartbeat:Connect(function(dt)
+        if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
+        remoteThreadSpeed = task.spawn(function()
+            while speedActive do
+                pcall(function()
+                    local cr = (rawget(_G, "getCrouchRemote") or getCrouchRemote)
+                    if type(cr) == "function" then cr = cr() end
+                    if not cr then
+                        local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
+                        cr = rf:FindFirstChild("Crouch", true)
+                    end
+                    if cr and cr:IsA("RemoteEvent") then
+                        cr:FireServer(false, true)
+                        task.wait(0.05)
+                        cr:FireServer(true, true)
+                    end
+                end)
+                task.wait(0.5)
+            end
+        end)
             if not speedActive then return end
             local char = LocalPlayer.Character
             if not char then return end
@@ -3044,19 +3078,11 @@ end)()
         end)
     end)
 
-    setRight:AddLabel("Theme: Accent hong / Outline xam (Scheme dau file)")
-    setRight:AddButton("Ap dung Accent Hong", function()
-        pcall(function()
-            Obsidian.Scheme.AccentColor = Color3.fromRGB(255, 140, 175)
-            Obsidian.Scheme.OutlineColor = Color3.fromRGB(45, 45, 55)
-            if Obsidian.UpdateColors then Obsidian:UpdateColors() end
-        end)
-    end)
-    setRight:AddButton("Notify Tips", function()
+    setRight:AddButton("Notify Test", function()
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
-                Description = "Nen dung Delta / Arceus X",
+                Description = "Thông báo thử nghiệm thành Công!",
                 Time = 4
             })
         end)
