@@ -1364,7 +1364,6 @@ speedToggle:OnChanged(function(Value)
         pcall(safeUnlockCharacter)
     end
 end)
-end)()
 local thirdPersonActive = false
 local thirdPersonConn = nil
 local thirdPersonZ = 11
