@@ -3151,7 +3151,7 @@ local function googleTranslate(text, targetLang)
     if text:find("^rbxasset") or text:match("^[%d%.]+$") then return text end
     local key = targetLang .. "|" .. text
     if translateCache[key] then return translateCache[key] end
-    local encoded = text:gsub("([^%w %-%_%.\~])", function(c)
+    local encoded = text:gsub("([^%w %-%_%.~])", function(c)
         return string.format("%%%02X", string.byte(c))
     end):gsub(" ", "+")
     local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="
