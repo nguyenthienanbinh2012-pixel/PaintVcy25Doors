@@ -3787,7 +3787,7 @@ fallGroup:AddToggle("MakeEntityFallToggle", {
 end)
 
 fallGroup:AddLabel("<font color='#AAAAAA'>Chỉ ẢO - giúp bớt kinh sợ</font>", true)
-
+end)()
 local chaosRemoveActive = false
 local chaosConn = nil
 
