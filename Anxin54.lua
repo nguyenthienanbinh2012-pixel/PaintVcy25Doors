@@ -3145,35 +3145,36 @@ end)()
         end)
     end)
 
-    task.spawn(function()
-if okT and type(ThemeManager) == "table" then
-    pcall(function()
-        ThemeManager:SetLibrary(Obsidian)
-        ThemeManager:SetFolder("PaintCrackDoors")
-        ThemeManager:ApplyToTab(Tabs.Settings)
+task.spawn(function()
+    local okT, ThemeManager = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
     end)
-else
-    warn("[PaintCrack] ThemeManager load failed")
-end
-if okS and type(SaveManager) == "table" then
-    pcall(function()
-        SaveManager:SetLibrary(Obsidian)
-        pcall(function() SaveManager:IgnoreThemeSettings() end)
-        SaveManager:SetFolder("PaintCrackDoors")
-        SaveManager:BuildConfigSection(Tabs.Settings)
-        SaveManager:LoadAutoloadConfig()
+    local okS, SaveManager = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
     end)
-else
-    warn("[PaintCrack] SaveManager load failed")
-            end
-        if okS and type(SaveManager) == "table" then
-            pcall(function()
-                SaveManager:SetLibrary(Obsidian)
-                pcall(function() SaveManager:IgnoreThemeSettings() end)
-                SaveManager:SetFolder("PaintCrackDoors")
-            end)
-        end
-    end)
+
+    if okT and type(ThemeManager) == "table" then
+        pcall(function()
+            ThemeManager:SetLibrary(Obsidian)
+            ThemeManager:SetFolder("PaintCrackDoors")
+            ThemeManager:ApplyToTab(Tabs.Settings)
+        end)
+    else
+        warn("[PaintCrack] ThemeManager load failed")
+    end
+
+    if okS and type(SaveManager) == "table" then
+        pcall(function()
+            SaveManager:SetLibrary(Obsidian)
+            pcall(function() SaveManager:IgnoreThemeSettings() end)
+            SaveManager:SetFolder("PaintCrackDoors")
+            SaveManager:BuildConfigSection(Tabs.Settings)  -- hiện Save/Load
+            SaveManager:LoadAutoloadConfig()
+        end)
+    else
+        warn("[PaintCrack] SaveManager load failed")
+    end
+end) 
 -- ========== ROOM PATH ==========
 ;(function()
 local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
