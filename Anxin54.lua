@@ -3194,7 +3194,7 @@ local function applyAutoTranslate(targetLang)
                     local src = originalTexts[inst]
                     if src and #src >= 2 then
                         local tr = googleTranslate(src, targetLang)
-                        if tr and tr \~= "" then
+                        if tr and tr ~= "" then
                             pcall(function() inst.Text = tr end)
                         end
                     end
@@ -3221,7 +3221,7 @@ setLang:AddLabel("Chon ngon ngu roi bam Apply (tu dong dich menu)")
 
 setLang:AddButton("Apply Language", function()
     local code = menuLanguage
-    if code \~= "en" and code \~= "vi" then code = "vi" end
+    if code ~= "en" and code ~= "vi" then code = "vi" end
     pcall(function()
         if writefile then writefile("PaintCrack_Lang.txt", code) end
     end)
