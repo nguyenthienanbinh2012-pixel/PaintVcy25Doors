@@ -980,42 +980,6 @@ local function togglePositionSpoof(enable)
 createFloatingWidget()
         S.updateConn = RunService.RenderStepped:Connect(function()
             if not S.enabled or not hrp or not hrp.Parent then return end
-            local by = S.baseY
-            if by then
-                local y = hrp.Position.Y
-                if y < by - 25 or y > by + 80 then
-                    S.enabled = false
-                    if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
-                    if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
-                    pcall(function()
-                        local lt = char and char:FindFirstChild("LowerTorso")
-                        if lt and S.c1Origin then
-                            for _, m in ipairs(lt:GetChildren()) do
-                                if m:IsA("Motor6D") and m.Name == "Root" then
-                                    m.C1 = S.c1Origin
-                                end
-                            end
-                        end
-                        if humanoid and humanoid.Parent then
-                            humanoid.HipHeight = 2.396
-                            humanoid.PlatformStand = false
-                        end
-                        local cr = getCrouchRemote()
-                        if cr then pcall(function() cr:FireServer(false, true) end) end
-                        hrp.CFrame = CFrame.new(hrp.Position.X, by + 3, hrp.Position.Z)
-                    end)
-                    S.baseY = nil
-                    S.c1Origin = nil
-                    pcall(destroyFloatingWidget)
-                    -- tat toggle UI neu co
-                    pcall(function()
-                        if positionSpoofToggle and positionSpoofToggle.SetValue then
-                            positionSpoofToggle:SetValue(false)
-                        end
-                    end)
-                    return
-                end
-            end
             local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
             if S.uiLabel and S.uiStroke then
                 S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
