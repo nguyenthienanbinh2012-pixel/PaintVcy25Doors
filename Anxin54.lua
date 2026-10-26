@@ -1031,65 +1031,174 @@ LocalPlayer.CharacterAdded:Connect(function()
     task.delay(1, loadPositionSpoof)
 end)
 
-
 local axialActive = false
 local axialSpeed = 2.0
 local axialConn = nil
-local axialSaved = setmetatable({}, {__mode = "k"})
-local axialLastDir = Vector3.new(0,0,-1)
+local axialJumpConn = nil
+local axialSaved = setmetatable({}, { __mode = "k" })
+local axialSpoofBackup = nil -- backup CollisionPart spoof
+local axialLastDir = Vector3.new(0, 0, -1)
+
 local function stopAxial()
     axialActive = false
-    if axialConn then axialConn:Disconnect(); axialConn=nil end
+    if axialConn then axialConn:Disconnect(); axialConn = nil end
+    if axialJumpConn then axialJumpConn:Disconnect(); axialJumpConn = nil end
+
+    -- Khôi phục CanCollide nhân vật
     for part, data in pairs(axialSaved) do
-        if part and part.Parent then pcall(function() part.CanCollide=data.CanCollide; part.CanQuery=data.CanQuery; part.CanTouch=data.CanTouch end) end
+        if part and part.Parent then
+            pcall(function()
+                part.CanCollide = data.CanCollide
+                part.CanQuery = data.CanQuery
+                part.CanTouch = data.CanTouch
+            end)
+        end
     end
     table.clear(axialSaved)
-    local char=LocalPlayer.Character; if not char then return end
-    local hrp=char:FindFirstChild("HumanoidRootPart"); local hum=char:FindFirstChildOfClass("Humanoid")
-    if hrp then hrp.AssemblyLinearVelocity=Vector3.new(0,hrp.AssemblyLinearVelocity.Y,0); hrp.AssemblyAngularVelocity=Vector3.zero end
-    if hum then pcall(function() hum.PlatformStand=false; hum.WalkSpeed=16 end) end
-end
-local function startAxial()
-    if axialConn then axialConn:Disconnect(); axialConn=nil end
-    axialActive=true
-    axialConn=RunService.Heartbeat:Connect(function(dt)
-        if not axialActive then return end
-        local char=LocalPlayer.Character; if not char then return end
-        local hrp=char:FindFirstChild("HumanoidRootPart"); local cam=Workspace.CurrentCamera; local hum=char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not cam or not hum then return end
-        for _,p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then
-                local n=p.Name
-                if not (S.enabled and (n=="Collision" or n=="CollisionPart" or n=="CollisionClone" or n=="CollisionPartClone")) then
-                    if axialSaved[p]==nil then axialSaved[p]={CanCollide=p.CanCollide,CanQuery=p.CanQuery,CanTouch=p.CanTouch} end
-                    p.CanCollide=false; p.CanQuery=false; p.CanTouch=false
-                end
+
+    -- Khôi phục 100% part Position Spoof (nếu đã tắt tạm)
+    if axialSpoofBackup then
+        for part, data in pairs(axialSpoofBackup) do
+            if part and part.Parent then
+                pcall(function()
+                    part.CanCollide = data.CanCollide
+                    part.CanQuery = data.CanQuery
+                    part.CanTouch = data.CanTouch
+                end)
             end
         end
-        local dir=cam.CFrame.LookVector
-        if dir.Magnitude>0.05 then dir=dir.Unit; axialLastDir=dir else dir=axialLastDir end
-        local step=math.clamp(dt or 0.016,0.008,0.05)
-        hrp.CFrame=hrp.CFrame+dir*(axialSpeed*0.85)*step
-        hrp.AssemblyLinearVelocity=dir*(axialSpeed*0.75)
-        hrp.AssemblyAngularVelocity=Vector3.zero
-        hum.PlatformStand=true
+        axialSpoofBackup = nil
+    end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hrp then
+        hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+    if hum then
+        pcall(function()
+            hum.PlatformStand = false
+            hum.WalkSpeed = 16
+            hum.JumpPower = 50
+            hum.UseJumpPower = true
+        end)
+    end
+end
+
+local function startAxial()
+    if axialConn then axialConn:Disconnect(); axialConn = nil end
+    if axialJumpConn then axialJumpConn:Disconnect(); axialJumpConn = nil end
+    axialActive = true
+
+    -- Khóa nhảy hoàn toàn khi bật Axial
+    axialJumpConn = UserInputService.JumpRequest:Connect(function()
+        if not axialActive then return end
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+                hum.Jump = false
+            end)
+        end
+    end)
+
+    -- Tạm tắt collision part của Position Spoof (backup để restore)
+    axialSpoofBackup = {}
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        for _, name in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+            local p = char:FindFirstChild(name)
+            if p and p:IsA("BasePart") then
+                axialSpoofBackup[p] = {
+                    CanCollide = p.CanCollide,
+                    CanQuery = p.CanQuery,
+                    CanTouch = p.CanTouch,
+                }
+                p.CanCollide = false
+                p.CanQuery = false
+                p.CanTouch = false
+            end
+        end
+    end)
+
+    axialConn = RunService.Heartbeat:Connect(function(dt)
+        if not axialActive then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local cam = Workspace.CurrentCamera
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not cam or not hum then return end
+
+        -- Khóa jump + platform
+        pcall(function()
+            hum.JumpPower = 0
+            hum.JumpHeight = 0
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+            hum.PlatformStand = true
+        end)
+
+        -- Tắt collide toàn bộ part nhân vật (xuyên)
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                if axialSaved[p] == nil then
+                    axialSaved[p] = {
+                        CanCollide = p.CanCollide,
+                        CanQuery = p.CanQuery,
+                        CanTouch = p.CanTouch,
+                    }
+                end
+                p.CanCollide = false
+                p.CanQuery = false
+                p.CanTouch = false
+            end
+        end
+
+        -- CHỈ theo hướng camera (trái/phải/lên/xuống đầu) — KHÔNG cần phím
+        local dir = cam.CFrame.LookVector
+        if dir.Magnitude > 0.05 then
+            dir = dir.Unit
+            axialLastDir = dir
+        else
+            dir = axialLastDir
+        end
+
+        local step = math.clamp(dt or 0.016, 0.008, 0.05)
+        local speed = axialSpeed * 1.15
+        hrp.CFrame = hrp.CFrame + dir * speed * step
+        hrp.AssemblyLinearVelocity = dir * (speed * 0.9)
+        hrp.AssemblyAngularVelocity = Vector3.zero
     end)
 end
-local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {Text="Axial Velocity",Default=false,Tooltip="Xuyên tường 3D theo cam"})
-local axialSlider = FuncLeft:AddSlider("Axial Speed", {Text="Axial Speed",Default=2.0,Min=1.0,Max=6.0,Rounding=1,Compact=true})
-axialSlider:OnChanged(function(v) axialSpeed=v end)
-axialToggle:OnChanged(function(Value) if Value then startAxial() else stopAxial() end end)
+
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
+    Text = "Axial Velocity",
+    Default = false,
+    Tooltip = "Di theo cam 3D,tranh game keo lui",
+})
+local axialSlider = FuncLeft:AddSlider("Axial Speed", {
+    Text = "Axial Speed",
+    Default = 2.0,
+    Min = 1.0,
+    Max = 6.0,
+    Rounding = 1,
+    Compact = true,
+})
+axialSlider:OnChanged(function(v) axialSpeed = v end)
+axialToggle:OnChanged(function(Value)
+    if Value then startAxial() else stopAxial() end
+end)
 LocalPlayer.CharacterAdded:Connect(function()
     if axialToggle and axialToggle.Value then
         task.wait(0.8)
         if axialToggle.Value then startAxial() end
     end
 end)
-_G.togglePositionSpoof = togglePositionSpoof
-_G.loadPositionSpoof = loadPositionSpoof
-_G.getCrouchRemote = getCrouchRemote
-end
-__spoofAxialBlock()
 
 local noClipActive = false
 local noClipSavedCanCollide = {}
