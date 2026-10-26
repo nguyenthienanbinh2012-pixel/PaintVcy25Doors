@@ -3132,77 +3132,110 @@ end)()
         end)
     end)
 -- cot phai: Language (radar)
-    local setLang = Tabs.Settings:AddRightGroupbox("📡 Language")
+local setLang = Tabs.Settings:AddRightGroupbox("Language")
 
-    local menuLanguage = "vi" -- "vi" | "en"
-    pcall(function()
-        if isfile and isfile("PaintCrack_Lang.txt") then
-            local v = readfile("PaintCrack_Lang.txt")
-            if v == "en" or v == "vi" then menuLanguage = v end
-        end
-    end)
-
-    local LANG = {
-        vi = {
-            notify_ok = "Thong bao thu nghiem thanh cong!",
-            lang_set = "Da dat ngon ngu: Tieng Viet",
-            pick = "Chon ngon ngu",
-            btn = "Set Language",
-            tip = "Bam Set Language sau khi chon",
-        },
-        en = {
-            notify_ok = "Test notification success!",
-            lang_set = "Language set: English",
-            pick = "Select language",
-            btn = "Set Language",
-            tip = "Press Set Language after selecting",
-        },
-    }
-
-    local langDrop = setLang:AddDropdown("MenuLanguageDrop", {
-        Text = "Language",
-        Values = { "Tiếng Việt", "English" },
-        Default = (menuLanguage == "en") and 2 or 1,
-    })
-
-    local function langCodeFromLabel(label)
-        label = tostring(label or "")
-        if label:find("English") or label == "en" then return "en" end
-        return "vi"
+local menuLanguage = "vi"
+pcall(function()
+    if isfile and isfile("PaintCrack_Lang.txt") then
+        local v = readfile("PaintCrack_Lang.txt")
+        if v == "en" or v == "vi" then menuLanguage = v end
     end
+end)
 
-    langDrop:OnChanged(function(v)
-        -- chi luu lua chon, chua apply cho den khi bam Set Language
-        if type(v) == "string" then
-            menuLanguage = langCodeFromLabel(v)
-        elseif type(v) == "number" then
-            menuLanguage = (v == 2) and "en" or "vi"
+local translateCache = {}
+local originalTexts = setmetatable({}, { __mode = "k" })
+
+local function googleTranslate(text, targetLang)
+    text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if text == "" or #text < 2 then return text end
+    if text:find("^rbxasset") or text:match("^[%d%.]+$") then return text end
+    local key = targetLang .. "|" .. text
+    if translateCache[key] then return translateCache[key] end
+    local encoded = text:gsub("([^%w %-%_%.\~])", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end):gsub(" ", "+")
+    local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="
+        .. targetLang .. "&dt=t&q=" .. encoded
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if not ok or not res then return text end
+    local out = res:match('%[%[%["(.-)"%s*,')
+    if out then
+        out = out:gsub("\\n", "\n"):gsub('\\"', '"')
+        translateCache[key] = out
+        return out
+    end
+    return text
+end
+
+local function applyAutoTranslate(targetLang)
+    local roots = {}
+    pcall(function()
+        for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
+            table.insert(roots, g)
         end
     end)
-
-    setLang:AddLabel("📡 " .. (LANG[menuLanguage].tip or ""))
-
-    setLang:AddButton("Set Language", function()
-        local code = menuLanguage
-        if code ~= "en" and code ~= "vi" then code = "vi" end
-        menuLanguage = code
+    pcall(function()
+        for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+            table.insert(roots, g)
+        end
+    end)
+    if typeof(gethui) == "function" then
+        pcall(function() table.insert(roots, gethui()) end)
+    end
+    for _, root in ipairs(roots) do
         pcall(function()
-            if writefile then writefile("PaintCrack_Lang.txt", code) end
+            for _, inst in ipairs(root:GetDescendants()) do
+                if inst:IsA("TextLabel") or inst:IsA("TextButton") then
+                    if not originalTexts[inst] and inst.Text and #inst.Text > 0 then
+                        if not tostring(inst.Text):find("Key time:") then
+                            originalTexts[inst] = inst.Text
+                        end
+                    end
+                    local src = originalTexts[inst]
+                    if src and #src >= 2 then
+                        local tr = googleTranslate(src, targetLang)
+                        if tr and tr \~= "" then
+                            pcall(function() inst.Text = tr end)
+                        end
+                    end
+                end
+            end
         end)
-        playNotifyTestSound()
-        local t = LANG[code] or LANG.vi
+    end
+end
+
+local langDrop = setLang:AddDropdown("MenuLanguageDrop", {
+    Text = "Language",
+    Values = { "Tiếng Việt", "English" },
+    Default = (menuLanguage == "en") and 2 or 1,
+})
+langDrop:OnChanged(function(v)
+    if type(v) == "string" then
+        menuLanguage = (v:find("English") or v == "en") and "en" or "vi"
+    elseif type(v) == "number" then
+        menuLanguage = (v == 2) and "en" or "vi"
+    end
+end)
+
+setLang:AddLabel("Chon ngon ngu roi bam Apply (tu dong dich menu)")
+
+setLang:AddButton("Apply Language", function()
+    local code = menuLanguage
+    if code \~= "en" and code \~= "vi" then code = "vi" end
+    pcall(function()
+        if writefile then writefile("PaintCrack_Lang.txt", code) end
+    end)
+    task.spawn(function()
+        applyAutoTranslate(code)
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
-                Description = t.lang_set,
-                Time = 4
+                Description = (code == "en") and "Language: English (auto)" or "Ngon ngu: Tieng Viet (tu dong)",
+                Time = 4,
             })
         end)
-        -- cap nhat chu Settings (co the goi lai neu lib ho tro SetText)
-        pcall(function()
-            setLeft:AddLabel(code == "en" and "Toggle menu: Mobile button / executor keybind" or "Toggle menu: nut Mobile / Keybind executor")
-        end)
     end)
+end)
 
 task.spawn(function()
     local okT, ThemeManager = pcall(function()
@@ -3754,115 +3787,7 @@ fallGroup:AddToggle("MakeEntityFallToggle", {
 end)
 
 fallGroup:AddLabel("<font color='#AAAAAA'>Chỉ ẢO - giúp bớt kinh sợ</font>", true)
-end)()
--- ========== MODE TAB: Infinite Revive ==========
-;(function()
-local ModeLeft = Tabs.Mode:AddLeftGroupbox("Hotel Mode")
-pcall(function()
-    ModeLeft:AddLabel("<font color='#FFAA00'>🏢 Old Hotels Mode</font>", true)
-end)
 
-local infReviveOn = false
-local reviveEvent = nil
-local diedConn = nil
-local addedConn = nil
-local loopThread = nil
-local lastFire = 0
-
-local function findRevive()
-    local ok, ev = pcall(function()
-        return ReplicatedStorage:WaitForChild("Bricks", 3):WaitForChild("Revive", 3)
-    end)
-    if ok and ev then return ev end
-    for _, v in ipairs(game:GetDescendants()) do
-        if v:IsA("RemoteEvent") and v.Name == "Revive" then return v end
-    end
-    return nil
-end
-
-local function fireRevive()
-    local now = tick()
-    if now - lastFire < 0.8 then return end
-    lastFire = now
-    if not reviveEvent then reviveEvent = findRevive() end
-    if reviveEvent then pcall(function() reviveEvent:FireServer() end) end
-end
-
-local function isDead()
-    local c = LocalPlayer.Character
-    if not c then return true end
-    local h = c:FindFirstChildOfClass("Humanoid")
-    if not h then return true end
-    return h.Health <= 0 or h:GetState() == Enum.HumanoidStateType.Dead
-end
-
-local function bindChar(char)
-    if diedConn then diedConn:Disconnect() end
-    local h = char:WaitForChild("Humanoid", 5)
-    if not h then return end
-    diedConn = h.Died:Connect(function()
-        if not infReviveOn then return end
-        task.wait(0.9)
-        if infReviveOn and isDead() then fireRevive() end
-    end)
-end
-
-local function turnOnRevive()
-    infReviveOn = true
-    lastFire = 0
-    reviveEvent = findRevive()
-    if loopThread then task.cancel(loopThread) end
-    loopThread = task.spawn(function()
-        while infReviveOn do
-            if isDead() then fireRevive() end
-            task.wait(0.25)
-        end
-    end)
-    if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
-    if addedConn then addedConn:Disconnect() end
-    addedConn = LocalPlayer.CharacterAdded:Connect(bindChar)
-end
-
-local function turnOffRevive()
-    infReviveOn = false
-    if diedConn then diedConn:Disconnect(); diedConn = nil end
-    if addedConn then addedConn:Disconnect(); addedConn = nil end
-    if loopThread then task.cancel(loopThread); loopThread = nil end
-end
-
-local function playToggleSound()
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://3318713980"
-        s.Volume = 8
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        task.delay(3, function() if s then s:Destroy() end end)
-    end)
-end
-
-ModeLeft:AddToggle("InfiniteReviveToggle", {
-    Text = "<font color='#FF3232'>infinite Revive</font>",
-    Default = false,
-    Tooltip = "Chi hoat dong Old Hotels",
-}):OnChanged(function(v)
-    playToggleSound()
-    if v then
-        turnOnRevive()
-        pcall(function()
-            Obsidian:Notify({
-                Title = "PaintCrack",
-                Description = "<font color='#FF3232'>Vô hạn hồi sinh chỉ hoạt động trong chế độ Old Hotels!</font>",
-                Time = 5
-            })
-        end)
-    else
-        turnOffRevive()
-    end
-end)
-
-ModeLeft:AddLabel("<font color='#FF6666'>⚠ Chỉ dùng ở Old Hotels</font>", true)
-end)()
 local chaosRemoveActive = false
 local chaosConn = nil
 
