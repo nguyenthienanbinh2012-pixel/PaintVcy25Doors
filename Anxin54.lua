@@ -207,13 +207,34 @@ KeyRight:AddToggle("RememberKey24h", {
 }):OnChanged(function(v)
     rememberKey = v
     if not v then
-        if keyCountdownConn then keyCountdownConn:Disconnect() keyCountdownConn = nil end
+        -- Tắt nhớ key → xóa file, dừng đếm, khóa tab, bắt nhập lại
+        if keyCountdownConn then
+            keyCountdownConn:Disconnect()
+            keyCountdownConn = nil
+        end
         keyExpireAt = nil
-        pcall(function() countdownLbl:SetText("Key time: --:--:--") end)
+        pcall(function()
+            if isfile and isfile(KEY_FILE) and delfile then
+                delfile(KEY_FILE)
+            end
+        end)
+        pcall(function()
+            countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
+        end)
+        menuUnlocked = false
+        Obsidian.Toggle = function(...) end
+        pcall(function() setTabsLocked(true) end)
+        pcall(function()
+            Obsidian:Notify({
+                Title = "PaintCrack",
+                Description = "<font color='#FF3232'>Đã tắt Remember — nhập lại key!</font>",
+                Time = 4,
+            })
+        end)
     end
 end)
+
 local countdownLbl = KeyRight:AddLabel("Key time: --:--:--")
--- chu do: neu lib ho tro rich text
 pcall(function()
     countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
 end)
@@ -229,36 +250,93 @@ local function startCountdown()
         end)
         if left <= 0 then
             keyCountdownConn:Disconnect()
+            keyCountdownConn = nil
+            keyExpireAt = nil
             menuUnlocked = false
             Obsidian.Toggle = function(...) end
             pcall(function() setTabsLocked(true) end)
             pcall(function()
-                if Window and Window.SetVisible then Window:SetVisible(false) end
+                countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
             end)
             pcall(function()
-                Obsidian:Notify({Title="PaintCrack", Description="<font color='#FF3232'>KEY ĐÃ HẾT HẠN!</font>", Time=5})
+                Obsidian:Notify({
+                    Title = "PaintCrack",
+                    Description = "<font color='#FF3232'>KEY ĐÃ HẾT HẠN!</font>",
+                    Time = 5,
+                })
             end)
         end
     end)
 end
 
+local function lockMenu()
+    menuUnlocked = false
+    Obsidian.Toggle = function(...) end
+    pcall(function() setTabsLocked(true) end)
+    keyExpireAt = nil
+    if keyCountdownConn then
+        keyCountdownConn:Disconnect()
+        keyCountdownConn = nil
+    end
+    pcall(function()
+        countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
+    end)
+end
+
 KeyRight:AddButton("Continue", function()
     local input = ""
-    pcall(function() input = tostring(keyInput.Value or keyInput.Text or "") end)
+    pcall(function()
+        input = tostring(keyInput.Value or keyInput.Text or "")
+    end)
     input = input:gsub("^%s+", ""):gsub("%s+$", "")
+
     if input == VALID_KEY then
         if rememberKey then
+            -- Có nhớ key → lưu 24h + bộ đếm + mở menu
             saveKey24(input)
             startCountdown()
+            unlockMenu()
+            playKeySound()
+            pcall(function()
+                Obsidian:Notify({
+                    Title = "PaintCrack",
+                    Description = "Key hợp lệ — Remember 24h!",
+                    Time = 4,
+                })
+            end)
+        else
+            -- Không nhớ key → chỉ mở session, không đếm, không lưu
+            -- (tab mở trong session này; tắt script / rejoin phải nhập lại)
+            pcall(function()
+                if isfile and isfile(KEY_FILE) and delfile then
+                    delfile(KEY_FILE)
+                end
+            end)
+            keyExpireAt = nil
+            if keyCountdownConn then
+                keyCountdownConn:Disconnect()
+                keyCountdownConn = nil
+            end
+            pcall(function()
+                countdownLbl:SetText("<font color='#FF3232'>Key time: --:--:--</font>")
+            end)
+            unlockMenu()
+            playKeySound()
+            pcall(function()
+                Obsidian:Notify({
+                    Title = "PaintCrack",
+                    Description = "Key OK (không nhớ — chỉ session này)",
+                    Time = 4,
+                })
+            end)
         end
-        unlockMenu()
-        playKeySound()
     else
         playKeySound()
+        lockMenu()
         Obsidian:Notify({
             Title = "PaintCrack",
             Description = "KEY ĐÃ HẾT HẠN HOẶC SAI!",
-            Time = 4
+            Time = 4,
         })
     end
 end)
@@ -266,9 +344,17 @@ end)
 task.defer(function()
     local k, exp = loadKey24()
     if k == VALID_KEY and exp then
+        -- Chỉ auto-mở khi đã từng Remember
+        rememberKey = true
         keyExpireAt = exp
         startCountdown()
         unlockMenu()
+        pcall(function()
+            -- sync toggle UI nếu lib hỗ trợ
+            if KeyRight then end
+        end)
+    else
+        lockMenu()
     end
 end)
 end)()
@@ -1606,142 +1692,6 @@ paintEspToggle:OnChanged(function(Value)
             end
         end)
         paintEspLoaded = false
-    end
-end)
-
-local bookEspActive = false
-local bookEspConnections = {}
-local bookEspCache = setmetatable({}, {__mode = "k"})
-local bookEspUpdateConn = nil
-
-local function createBookEsp(bookObj)
-    if not bookObj or not bookObj.Parent then return end
-    if bookEspCache[bookObj] then return end
-
-    local prompt = bookObj:FindFirstChildWhichIsA("ProximityPrompt", true)
-    if not prompt or not prompt.Enabled then return end
-    local actionText = tostring(prompt.ActionText or ""):lower()
-    if not actionText:find("read") and not actionText:find("book") and not actionText:find("take") then
-        return
-    end
-
-    -- Hiệu ứng Highlight ma mị
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "BookEspHighlight"
-    highlight.FillColor = Color3.fromRGB(0, 255, 100)
-    highlight.FillTransparency = 0.7
-    highlight.OutlineColor = Color3.fromRGB(0, 255, 150)
-    highlight.OutlineTransparency = 0.1
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = bookObj
-
-    -- Bảng thông tin
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "BookEspBillboard"
-    billboard.Size = UDim2.new(0, 100, 0, 35)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Book [--m]"
-    textLabel.TextColor3 = Color3.fromRGB(50, 255, 100) -- Xanh lá ma mị
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 50, 0) -- Viền xanh đen
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextSize = 16
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Parent = billboard
-
-    local holder = nil
-    if bookObj:IsA("BasePart") then
-        holder = bookObj
-    elseif bookObj:IsA("Model") and bookObj.PrimaryPart then
-        holder = bookObj.PrimaryPart
-    elseif bookObj:IsA("Model") then
-        holder = bookObj:FindFirstChildWhichIsA("BasePart")
-    end
-
-    if holder then
-        billboard.Parent = holder
-        bookEspCache[bookObj] = {
-            billboard = billboard,
-            highlight = highlight,
-            label = textLabel
-        }
-    end
-end
-
-local function removeBookEsp()
-    if bookEspUpdateConn then bookEspUpdateConn:Disconnect() bookEspUpdateConn = nil end
-    for obj, data in pairs(bookEspCache) do
-        if data.billboard and data.billboard.Parent then data.billboard:Destroy() end
-        if data.highlight and data.highlight.Parent then data.highlight:Destroy() end
-    end
-    bookEspCache = setmetatable({}, {__mode = "k"})
-end
-
-local bookEspToggle = VisualLeft:AddToggle("BookEspToggle", {
-    Text = "Book ESP (Room 50)", Default = false,
-    Tooltip = "ESP sach ma mi, do khoang cach [m]"
-})
-
-bookEspToggle:OnChanged(function(Value)
-    bookEspActive = Value
-    if Value then
-        for _, desc in ipairs(Workspace:GetDescendants()) do
-            if desc:IsA("ProximityPrompt") then
-                local actionText = tostring(desc.ActionText or ""):lower()
-                if actionText:find("read") or actionText:find("book") or actionText:find("take") then
-                    local target = desc.Parent
-                    if target then
-                        pcall(function() createBookEsp(target) end)
-                    end
-                end
-            end
-        end
-
-        table.insert(bookEspConnections, Workspace.DescendantAdded:Connect(function(desc)
-            if not bookEspActive then return end
-            if desc:IsA("ProximityPrompt") then
-                local actionText = tostring(desc.ActionText or ""):lower()
-                if actionText:find("read") or actionText:find("book") or actionText:find("take") then
-                    local target = desc.Parent
-                    if target then
-                        task.defer(function() 
-                            pcall(function() createBookEsp(target) end)
-                        end)
-                    end
-                end
-            end
-        end))
-
-        -- Cập nhật khoảng cách [m] liên tục (tối ưu 0.5s/lần)
-        local tickCount = 0
-        bookEspUpdateConn = RunService.RenderStepped:Connect(function()
-            tickCount = tickCount + 1
-            if tickCount % 30 ~= 0 then return end
-            
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            for obj, data in pairs(bookEspCache) do
-                if data.label and data.label.Parent and obj.Parent then
-                    local targetPart = obj:IsA("BasePart") and obj or (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))
-                    if targetPart then
-                        local dist = math.floor((hrp.Position - targetPart.Position).Magnitude)
-                        data.label.Text = string.format("Book [%dm]", dist)
-                    end
-                end
-            end
-        end)
-    else
-        for _, conn in ipairs(bookEspConnections) do
-            if conn then conn:Disconnect() end
-        end
-        bookEspConnections = {}
-        removeBookEsp()
     end
 end)
 
@@ -3771,7 +3721,7 @@ local entityDrop = fallGroup:AddDropdown("EntityFallSelect", {
     Values = ENTITY_OPTIONS,
     Multi = true,
     Default = {},
-    Tooltip = "Không chọn = không con nào rơi",
+    Tooltip = "Mặc định không con nào bị rơi",
 })
 entityDrop:OnChanged(function(v)
     selectedEntities = {}
