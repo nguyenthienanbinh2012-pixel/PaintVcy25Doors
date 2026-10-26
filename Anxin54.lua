@@ -829,7 +829,6 @@ ndTog:OnChanged(function(v)
         ndSaved = {}
     end
 end)
-local function __spoofAxialBlock()
 local function getCrouchRemote()
     local char = LocalPlayer.Character
     if char then
