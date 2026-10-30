@@ -2756,9 +2756,6 @@ local function doTeleportToNextDoor()
     return true
 end
 
-    return ok
-end
-
 -- Nút Teleport (NGOAI function)
 if MiscRight then
 MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
