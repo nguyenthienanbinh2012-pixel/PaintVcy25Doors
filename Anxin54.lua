@@ -157,7 +157,7 @@ local function unlockMenu()
     end
 
 ;(function()
-local KeyLeft = Tabs.Key:AddLeftGroupbox("Executor Check")
+local KeyLeft = Tabs.Key:AddLeftGroupbox("Executor Check","terminal")
 local KeyRight = Tabs.Key:AddRightGroupbox("License")
 
 local checks = {
@@ -435,7 +435,7 @@ task.spawn(function()
 end)
 
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
-local FuncRight = Tabs.Function:AddRightGroupbox("Exploits")
+local FuncRight = Tabs.Function:AddRightGroupbox("Exploits","Flame")
 local IndexLeft = Tabs.Function:AddLeftGroupbox("Index")
 
 local jumpPowerVal = 50
@@ -499,13 +499,13 @@ IndexLeft:AddToggle("InfJumpToggle", {
     end)
 end)
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
-local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag")
+local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag","measuring instrument")
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
-local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto")
-local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact")
+local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto","wrench")
+local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
 ;(function()
-local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity")
-local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap")
+local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
+local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","Shield-off")
 local antiEyesActive = false
 local antiDupeActive = false
 local antiEyesConn = nil
@@ -2443,12 +2443,14 @@ end)
 ;(function()
 local autoInteractActive = false
 local autoInteractThread = nil
-local autoInteractRange = 14
+local autoInteractRange = 8
 local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 local INTERACT_BLACKLIST = {
     bed = true, seat = true, chair = true, armchair = true,
     couch = true, sofa = true, stool = true, bench = true,
-    closet = true, Hide = true, painting = true, picture = true,
+    closet = true, wardrobe = true, hide = true, locker = true,
+    painting = true, picture = true, art = true, canvas = true,
+    frame = true, poster = true, image = true, photo = true,
 }
 
 local function isInteractBlacklisted(prompt, parent)
@@ -2464,11 +2466,11 @@ local function isInteractBlacklisted(prompt, parent)
 end
 
 local function preparePrompt(prompt)
-    for_=1,3 do
+    pcall(function()
         prompt.Enabled = true
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
-        prompt.MaxActivationDistance = math.max(prompt.MaxActivationDistance, autoInteractRange)
+        -- KHONG tang MaxActivationDistance (tranh nut hien xa)
     end)
 end
 
