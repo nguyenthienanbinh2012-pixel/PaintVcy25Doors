@@ -531,6 +531,9 @@ AntiLeft:AddToggle("AntiEyesLookToggle", {
             if not oldNamecall then oldNamecall = mt.__namecall end
             setreadonly(mt, false)
             mt.__namecall = newcclosure(function(self, ...)
+                if checkcaller and checkcaller() then
+                    return oldNamecall(self, ...)
+                end
                 local method = getnamecallmethod()
                 if antiEyesActive and method == "Raycast" then
                     local result = oldNamecall(self, ...)
@@ -743,9 +746,6 @@ local function ndHookHum(hum)
             local c = LocalPlayer.Character
             if not c then return end
             local h = c:FindFirstChildOfClass("Humanoid")
-            if h and h.Health < h.MaxHealth then
-                pcall(function() h.Health = h.MaxHealth end)
-            end
         end)
     end
 end
@@ -807,8 +807,6 @@ ndTog:OnChanged(function(v)
                 end
             end
             local h = ndChar and ndChar:FindFirstChildOfClass("Humanoid")
-            if h and h.Health < h.MaxHealth then
-                pcall(function() h.Health = h.MaxHealth end)
             end
         end)
     else
@@ -1021,7 +1019,7 @@ local function togglePositionSpoof(enable)
             task.wait(0.35)
         end
         if not S.hrp or not S.humanoid then return end
-        S.enabled = true    
+        S.enabled = true
         local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
         local crouchRemote = getCrouchRemote()
         local baseY = hrp.Position.Y
@@ -1032,6 +1030,12 @@ local function togglePositionSpoof(enable)
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(true, true) end)
         end
+
+        local cp = char:FindFirstChild("CollisionPart")
+        local col = char:FindFirstChild("Collision")
+        if cp then cp.CanTouch = false; cp.CanQuery = false end
+        if col then col.CanTouch = false; col.CanQuery = false end
+
         local lt = char:FindFirstChild("LowerTorso")
         if lt then
             for _, m in ipairs(lt:GetChildren()) do
@@ -1040,6 +1044,81 @@ local function togglePositionSpoof(enable)
                     m.C1 = CFrame.new(S.c1Origin.X, S.c1Origin.Y - S.DEPTH, S.c1Origin.Z)
                     break
                 end
+            end
+        end
+        local cp2 = char:FindFirstChild("CollisionPart")
+        if cp2 then
+            for _, w in ipairs(cp2:GetChildren()) do
+                if w:IsA("Weld") and w.Part1 == hrp then
+                    local cpBaseY = baseY - 0.31
+                    w.C0 = CFrame.new(w.C0.X, spoofY - cpBaseY, w.C0.Z)
+                end
+            end
+        end
+        if S.crouchConn then S.crouchConn:Disconnect() end
+        S.crouchConn = RunService.Heartbeat:Connect(function()
+            if not S.enabled then return end
+            S._last = S._last or 0
+            if tick() - S._last > 0.1 then
+                S._last = tick()
+                local cr = getCrouchRemote()
+                if cr then pcall(function() cr:FireServer(true, true) end) end
+                local cp3 = char:FindFirstChild("CollisionPart")
+                local col3 = char:FindFirstChild("Collision")
+                if cp3 then cp3.CanTouch = false; cp3.CanQuery = false end
+                if col3 then col3.CanTouch = false; col3.CanQuery = false end
+            end
+        end)
+        createFloatingWidget()
+        S.updateConn = RunService.RenderStepped:Connect(function()
+            if not S.enabled or not hrp or not hrp.Parent then return end
+            local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
+            if S.uiLabel and S.uiStroke then
+                S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
+                if relY > -1.00 then
+                    S.uiStroke.Color = Color3.fromRGB(255, 50, 50)
+                elseif relY > -2.20 then
+                    S.uiStroke.Color = Color3.fromRGB(255, 200, 0)
+                else
+                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
+                end
+            end
+        end)
+    else
+        if not S.enabled then return end
+        S.enabled = false
+        if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
+        if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
+        local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
+        local crouchRemote = getCrouchRemote()
+        if char then
+            local lt = char:FindFirstChild("LowerTorso")
+            if lt and S.c1Origin then
+                for _, m in ipairs(lt:GetChildren()) do
+                    if m:IsA("Motor6D") and m.Name == "Root" then
+                        m.C1 = S.c1Origin
+                    end
+                end
+            end
+            local cp4 = char:FindFirstChild("CollisionPart")
+            local col4 = char:FindFirstChild("Collision")
+            if cp4 then cp4.CanTouch = true; cp4.CanQuery = true end
+            if col4 then col4.CanTouch = true; col4.CanQuery = true end
+        end
+        if hrp and hrp.Parent then
+            pcall(function()
+                hrp.CFrame = CFrame.new(hrp.Position.X, S.baseY or hrp.Position.Y, hrp.Position.Z)
+            end)
+        end
+        if humanoid and humanoid.Parent then
+            pcall(function() humanoid.HipHeight = 2.396 end)
+        end
+        if crouchRemote then
+            pcall(function() crouchRemote:FireServer(false, true) end)
+        end
+        destroyFloatingWidget()
+        S.baseY = nil
+    end
             end
         end
         local cp = char:FindFirstChild("CollisionPart")
@@ -2369,6 +2448,7 @@ local autoInteractCooldown = setmetatable({}, {__mode = "k"})
 local INTERACT_BLACKLIST = {
     bed = true, seat = true, chair = true, armchair = true,
     couch = true, sofa = true, stool = true, bench = true,
+    closet = true, Hide = true, painting = true, picture = true,
 }
 
 local function isInteractBlacklisted(prompt, parent)
@@ -2384,7 +2464,7 @@ local function isInteractBlacklisted(prompt, parent)
 end
 
 local function preparePrompt(prompt)
-    pcall(function()
+    for_=1,3 do
         prompt.Enabled = true
         prompt.HoldDuration = 0
         prompt.RequiresLineOfSight = false
@@ -2584,7 +2664,14 @@ local function findDoorOpenRemote()
     end
     return nil
 end
-local function doTeleportToNextDoor()
+local ok = doTeleportToNextDoor()
+        pcall(function()
+            Obsidian:Notify({
+                Title = "TP",
+                Description = ok and "Da TP!" or "TP that bai",
+                Time = 2,
+            })
+        end)
     if not menuUnlocked then
         pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Khóa</font>",Description="<font color='#FF3232'>Nhập key trước!</font>",Time=2}) end)
         return false
@@ -3871,114 +3958,6 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
--- ========== MODE TAB ==========
-;(function()
-    if not Tabs.Mode then return end
-
-    local ModeLeft = Tabs.Mode:AddLeftGroupbox("🏢 Hotel Mode")
-    local ModeRight = Tabs.Mode:AddRightGroupbox("🔥 Special")
-
-    ModeLeft:AddLabel("<font color='#FFAA00'>🏢 Old Hotels Only</font>", true)
-
-    local infReviveOn = false
-    local reviveEvent, diedConn, addedConn, loopThread
-    local lastFire = 0
-
-    local function findRevive()
-        local ok, ev = pcall(function()
-            return ReplicatedStorage:WaitForChild("Bricks", 3):WaitForChild("Revive", 3)
-        end)
-        if ok and ev then return ev end
-        for _, v in ipairs(game:GetDescendants()) do
-            if v:IsA("RemoteEvent") and v.Name == "Revive" then return v end
-        end
-        return nil
-    end
-
-    local function fireRevive()
-        local now = tick()
-        if now - lastFire < 0.8 then return end
-        lastFire = now
-        if not reviveEvent then reviveEvent = findRevive() end
-        if reviveEvent then pcall(function() reviveEvent:FireServer() end) end
-    end
-
-    local function isDead()
-        local c = LocalPlayer.Character
-        if not c then return true end
-        local h = c:FindFirstChildOfClass("Humanoid")
-        if not h then return true end
-        return h.Health <= 0 or h:GetState() == Enum.HumanoidStateType.Dead
-    end
-
-    local function bindChar(char)
-        if diedConn then diedConn:Disconnect() end
-        local h = char:WaitForChild("Humanoid", 5)
-        if not h then return end
-        diedConn = h.Died:Connect(function()
-            if not infReviveOn then return end
-            task.wait(0.9)
-            if infReviveOn and isDead() then fireRevive() end
-        end)
-    end
-
-    local function turnOn()
-        infReviveOn = true
-        lastFire = 0
-        reviveEvent = findRevive()
-        if loopThread then task.cancel(loopThread) end
-        loopThread = task.spawn(function()
-            while infReviveOn do
-                if isDead() then fireRevive() end
-                task.wait(0.25)
-            end
-        end)
-        if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
-        if addedConn then addedConn:Disconnect() end
-        addedConn = LocalPlayer.CharacterAdded:Connect(bindChar)
-    end
-
-    local function turnOff()
-        infReviveOn = false
-        if diedConn then diedConn:Disconnect(); diedConn = nil end
-        if addedConn then addedConn:Disconnect(); addedConn = nil end
-        if loopThread then task.cancel(loopThread); loopThread = nil end
-    end
-
-    local function playSnd()
-        pcall(function()
-            local s = Instance.new("Sound")
-            s.SoundId = "rbxassetid://3318713980"
-            s.Volume = 8
-            s.Parent = game:GetService("SoundService")
-            s:Play()
-            task.delay(3, function() if s then s:Destroy() end end)
-        end)
-    end
-
-    ModeLeft:AddToggle("InfiniteReviveToggle", {
-        Text = "<font color='#FF3232'>infinite Revive</font>",
-        Default = false,
-        Tooltip = "Chỉ hoạt động Old Hotels",
-    }):OnChanged(function(v)
-        playSnd()
-        if v then
-            turnOn()
-            pcall(function()
-                Obsidian:Notify({
-                    Title = "PaintCrack",
-                    Description = "<font color='#FF3232'>Vô hạn hồi sinh chỉ hoạt động trong chế độ Old Hotels!</font>",
-                    Time = 5
-                })
-            end)
-        else
-            turnOff()
-        end
-    end)
-
-    ModeLeft:AddLabel("<font color='#FF6666'>⚠ Chỉ dùng ở Old Hotels</font>", true)
-    ModeRight:AddLabel("<font color='#AAAAAA'>Icon lửa = tab Mode</font>", true)
-end)()
 
 Obsidian:OnUnload(function()
     pcall(function()
