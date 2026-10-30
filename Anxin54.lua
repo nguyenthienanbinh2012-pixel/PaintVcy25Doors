@@ -1029,10 +1029,6 @@ local function togglePositionSpoof(enable)
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(true, true) end)
         end
-        local cp = char:FindFirstChild("CollisionPart")
-        local col = char:FindFirstChild("Collision")
-        if cp then cp.CanTouch = false; cp.CanQuery = false end
-        if col then col.CanTouch = false; col.CanQuery = false end
         local lt = char:FindFirstChild("LowerTorso")
         if lt then
             for _, m in ipairs(lt:GetChildren()) do
