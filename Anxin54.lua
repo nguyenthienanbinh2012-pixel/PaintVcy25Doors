@@ -1841,25 +1841,40 @@ local originalPostEffects = {}
 local originalPartProps = setmetatable({}, {__mode = "k"})
 local antiLagProcessed = setmetatable({}, {__mode = "k"})
 
+local ENTITY_SKIP = {
+    rush=true, ambush=true, seek=true, figure=true, screech=true, halt=true,
+    eyes=true, lookman=true, dread=true, timothy=true, jack=true, dupe=true,
+    ["a-90"]=true, a90=true, ["a-60"]=true, a60=true, ["a-120"]=true, a120=true,
+    glitch=true, vacuum=true, giggle=true, snare=true, shadow=true, sally=true,
+    blitz=true, arox=true,
+}
+
+local function isEntityModel(model)
+    if not model then return false end
+    local n = tostring(model.Name or ""):lower()
+    for k in pairs(ENTITY_SKIP) do
+        if n:find(k, 1, true) then return true end
+    end
+    return false
+end
+
+local function shouldSkipAntiLag(inst)
+    if not inst or not inst.Parent then return true end
+    local char = LocalPlayer.Character
+    if char and inst:IsDescendantOf(char) then return true end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character and inst:IsDescendantOf(plr.Character) then return true end
+    end
+    local model = inst:FindFirstAncestorOfClass("Model") or (inst:IsA("Model") and inst)
+    if model and isEntityModel(model) then return true end
+    return false
+end
+
 local function applyAntiLagToPart(part)
-    if not part or not part.Parent then return end
+    if not part or not part:IsA("BasePart") then return end
     if antiLagProcessed[part] then return end
     if part.Name == "HumanoidRootPart" or part.Name == "Baseplate" then return end
-    local char = LocalPlayer.Character
-    if char and part:IsDescendantOf(char) then return end
-
-    local model = part:FindFirstAncestorOfClass("Model")
-    if model then
-        local n = model.Name:lower()
-        if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
-            or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("lookman")
-            or n:find("dread") or n:find("timothy") or n:find("jack") or n:find("dupe")
-            or n:find("a-90") or n:find("a90") or n:find("a-60") or n:find("a60")
-            or n:find("a-120") or n:find("a120") or n:find("glitch") or n:find("vacuum")
-            or n:find("giggle") or n:find("snare") or n:find("shadow") or n:find("sally") then
-            return
-        end
-    end
+    if shouldSkipAntiLag(part) then return end
 
     antiLagProcessed[part] = true
     if originalPartProps[part] == nil then
@@ -1867,43 +1882,93 @@ local function applyAntiLagToPart(part)
             Material = part.Material,
             CastShadow = part.CastShadow,
             Reflectance = part.Reflectance,
+            Color = part.Color,
             TextureID = part:IsA("MeshPart") and part.TextureID or nil,
         }
     end
+    -- carton / nhua tron
     part.Material = Enum.Material.SmoothPlastic
     part.CastShadow = false
     part.Reflectance = 0
-    if part:IsA("MeshPart") and part.TextureID ~= "" then
-        part.TextureID = ""
+    if part:IsA("MeshPart") then
+        pcall(function() part.TextureID = "" end)
+    end
+
+    -- xoa hoa tiet tren part
+    for _, ch in ipairs(part:GetChildren()) do
+        if ch:IsA("Decal") or ch:IsA("Texture") then
+            if originalPartProps[ch] == nil then
+                originalPartProps[ch] = {Transparency = ch.Transparency}
+            end
+            ch.Transparency = 1
+        elseif ch:IsA("SurfaceAppearance") then
+            if originalPartProps[ch] == nil then
+                originalPartProps[ch] = {Parent = ch.Parent}
+            end
+            pcall(function() ch:Destroy() end)
+        elseif ch:IsA("SpecialMesh") or ch:IsA("FileMesh") then
+            pcall(function()
+                if ch.TextureId \~= nil then ch.TextureId = "" end
+            end)
+        elseif ch:IsA("SurfaceGui") or ch:IsA("BillboardGui") then
+            if originalPartProps[ch] == nil then
+                originalPartProps[ch] = {Enabled = ch.Enabled}
+            end
+            ch.Enabled = false
+        end
     end
 end
 
 local function applyAntiLagToEffect(effect)
     if not effect or not effect.Parent then return end
     if antiLagProcessed[effect] then return end
-    local model = effect:FindFirstAncestorOfClass("Model")
-    if model then
-        local n = model.Name:lower()
-        if n:find("rush") or n:find("ambush") or n:find("seek") or n:find("figure")
-            or n:find("screech") or n:find("halt") or n:find("eyes") or n:find("a-90")
-            or n:find("a90") or n:find("glitch") then
-            return
-        end
-    end
+    if shouldSkipAntiLag(effect) then return end
+
     antiLagProcessed[effect] = true
+
+    -- tat particle / anh sang / vet
     if effect:IsA("ParticleEmitter") or effect:IsA("Smoke") or effect:IsA("Fire")
-        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles") then
+        or effect:IsA("Trail") or effect:IsA("Beam") or effect:IsA("Sparkles")
+        or effect:IsA("PointLight") or effect:IsA("SpotLight") or effect:IsA("SurfaceLight") then
         if originalPartProps[effect] == nil then
             originalPartProps[effect] = {Enabled = effect.Enabled}
         end
         effect.Enabled = false
-    end
+
+    -- xoa hoa tiet
+    elseif effect:IsA("Decal") or effect:IsA("Texture") then
+        if originalPartProps[effect] == nil then
+            originalPartProps[effect] = {Transparency = effect.Transparency}
         end
+        effect.Transparency = 1
+
+    elseif effect:IsA("SurfaceAppearance") then
+        pcall(function() effect:Destroy() end)
+
+    elseif effect:IsA("SurfaceGui") or effect:IsA("BillboardGui") then
+        if originalPartProps[effect] == nil then
+            originalPartProps[effect] = {Enabled = effect.Enabled}
+        end
+        effect.Enabled = false
+
+    -- tat animation the gioi (khong phai player/entity)
+    elseif effect:IsA("AnimationController") or effect:IsA("Animator") then
+        pcall(function()
+            for _, t in ipairs(effect:GetPlayingAnimationTracks()) do
+                t:Stop(0)
+            end
+        end)
+    elseif effect:IsA("Animation") then
+        pcall(function() effect:Destroy() end)
+    end
+end
 
 local function restoreAntiLag()
     for obj, data in pairs(originalPartProps) do
         if obj and obj.Parent then
             pcall(function()
+                if data.Color ~= nil and obj:IsA("BasePart") then obj.Color = data.Color end
+                if data.Transparency \~= nil then obj.Transparency = data.Transparency end
                 if data.Material ~= nil then obj.Material = data.Material end
                 if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
                 if data.Reflectance ~= nil then obj.Reflectance = data.Reflectance end
@@ -1950,8 +2015,14 @@ antiLagToggle:OnChanged(function(Value)
             for _, child in ipairs(Workspace:GetDescendants()) do
                 if not antiLagActive then break end
                 if child:IsA("BasePart") then
-                    applyAntiLagToPart(child)
-                elseif child:IsA("ParticleEmitter") or child:IsA("Smoke") or child:IsA("Fire")
+    applyAntiLagToPart(child)
+elseif child:IsA("ParticleEmitter") or child:IsA("Smoke") or child:IsA("Fire")
+    or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles")
+    or child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight")
+    or child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceAppearance")
+    or child:IsA("SurfaceGui") or child:IsA("BillboardGui")
+    or child:IsA("Animator") or child:IsA("AnimationController") then
+    applyAntiLagToEffect(child)
                     or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles") then
                     applyAntiLagToEffect(child)
                 end
