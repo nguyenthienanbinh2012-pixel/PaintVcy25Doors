@@ -807,7 +807,6 @@ ndTog:OnChanged(function(v)
                 end
             end
             local h = ndChar and ndChar:FindFirstChildOfClass("Humanoid")
-            end
         end)
     else
         if ndConn then ndConn:Disconnect() ndConn = nil end
@@ -2666,16 +2665,12 @@ local function findDoorOpenRemote()
     end
     return nil
 end
-local ok = doTeleportToNextDoor()
-        pcall(function()
-            Obsidian:Notify({
-                Title = "TP",
-                Description = ok and "Da TP!" or "TP that bai",
-                Time = 2,
-            })
-        end)
+
+local function doTeleportToNextDoor()
     if not menuUnlocked then
-        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Khóa</font>",Description="<font color='#FF3232'>Nhập key trước!</font>",Time=2}) end)
+        pcall(function()
+            Obsidian:Notify({Title="TP", Description="<font color='#FF3232'>Nhap key truoc!</font>", Time=2})
+        end)
         return false
     end
     local char = LocalPlayer.Character
@@ -2683,72 +2678,100 @@ local ok = doTeleportToNextDoor()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum then return false end
+
     local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
     local targetRoom = myRoom + 1
     local rooms = Workspace:FindFirstChild("CurrentRooms")
     if not rooms then
         playAlertSound()
-        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
-        return false
-    end
-    local roomInst = rooms:FindFirstChild(tostring(targetRoom)) or rooms:FindFirstChild(tostring(targetRoom).."_")
-    if not roomInst then
-        playAlertSound()
-        pcall(function() Obsidian:Notify({Title="<font color='#FF3232'>Chưa sẵn sàng</font>",Description="<font color='#FF3232'>The current door is not loading yet, please wait.</font>",Time=2.4}) end)
-        return false
-    end
-local door = roomInst:FindFirstChild("Door", true)
-    local doorPart = nil
-    if door then
-        if door:IsA("BasePart") then
-            doorPart = door
-        else
-            doorPart = door.PrimaryPart
-                or door:FindFirstChild("Door")
-                or door:FindFirstChildWhichIsA("BasePart", true)
-        end
-    end
-    if not doorPart then
-        playAlertSound()
         pcall(function()
-            Obsidian:Notify({
-                Title = "Chua san sang",
-                Description = "Doors Chưa Load xong vui lòng chờ",
-                Time = 2.4
-            })
+            Obsidian:Notify({Title="TP", Description="Chua co CurrentRooms", Time=2})
         end)
         return false
     end
-    local targetPos = getGroundYFromPos(doorPart.Position + Vector3.new(0, 1.8, 0))
-local targetCf = CFrame.new(doorPart.Position.X, targetPos, doorPart.Position.Z)
+    local roomInst = rooms:FindFirstChild(tostring(targetRoom))
+        or rooms:FindFirstChild(tostring(targetRoom) .. "_")
+    if not roomInst then
+        playAlertSound()
+        pcall(function()
+            Obsidian:Notify({Title="TP", Description="Cua chua load", Time=2})
+        end)
+        return false
+    end
+
+    local door = roomInst:FindFirstChild("Door", true)
+    if not door then return false end
+    if door:GetAttribute("Locked") == true then
+        pcall(function()
+            Obsidian:Notify({Title="TP", Description="<font color='#FF3232'>Cua dang khoa</font>", Time=2})
+        end)
+        return false
+    end
+    local doorPart = door:IsA("BasePart") and door
+        or door.PrimaryPart
+        or door:FindFirstChild("Door")
+        or door:FindFirstChildWhichIsA("BasePart", true)
+    if not doorPart then return false end
+
+    -- dung truoc cua 3.5 stud
+    local look = doorPart.CFrame.LookVector
+    local standPos = doorPart.Position - look * 3.5
+    standPos = Vector3.new(standPos.X, doorPart.Position.Y + 1.5, standPos.Z)
+    local targetCf = CFrame.new(standPos, doorPart.Position)
+
+    local offsets = {}
+    for _, p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            offsets[p] = hrp.CFrame:ToObjectSpace(p.CFrame)
+        end
+    end
+
     hum.PlatformStand = true
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
-    local cr = getCrouchRemote()
-    local dr = findDoorOpenRemote()
-    local ok = true
-    for i = 1, 3 do
-        task.wait(0.05)
-        if cr then pcall(function() cr:FireServer(true, true) end) end
-        if dr then pcall(function() dr:FireServer() end) end
-        if char and char.Parent then
-            pcall(function() char:PivotTo(targetCf) end)
-        else
-            ok = false
-            break
+
+    -- set CFrame tat ca part 1 frame
+    hrp.CFrame = targetCf
+    for p, off in pairs(offsets) do
+        if p and p.Parent and p \~= hrp then
+            pcall(function() p.CFrame = targetCf:ToWorldSpace(off) end)
         end
     end
-    task.wait(0.15)
-    if hum and hum.Parent then hum.PlatformStand = false end
+
+    pcall(function()
+        if door:FindFirstChild("ClientOpen") then door.ClientOpen:FireServer() end
+    end)
+    pcall(function()
+        local prompt = door:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt and fireproximityprompt then fireproximityprompt(prompt) end
+    end)
+    local cr = getCrouchRemote()
+    local dr = findDoorOpenRemote()
+    if cr then pcall(function() cr:FireServer(true, true) end) end
+    if dr then pcall(function() dr:FireServer() end) end
+
+    task.delay(0.18, function()
+        if hum and hum.Parent then hum.PlatformStand = false end
+    end)
+    return true
+end
+
     return ok
 end
 
 -- Nút Teleport (NGOAI function)
 if MiscRight then
-    MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
-        doTeleportToNextDoor()
+MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
+        local ok = doTeleportToNextDoor()
+        pcall(function()
+            Obsidian:Notify({
+                Title = "TP tới cửa tiếp theo",
+                Description = ok and "Da TP!" or "TP that bai",
+                Time = 2,
+            })
+        end)
     end)
-    local autoTpToggle = MiscRight:AddToggle("<font color='#FF3232'>Auto Teleport[Bypass]</font>", {Text="Auto Teleport[Bypass]",Default=false})
+    local autoTpToggle = MiscRight:AddToggle("<font color='#FF3232'>Auto Teleport</font>", {Text="Auto Teleport",Default=false})
     autoTpToggle:OnChanged(function(v)
         autoTpActive = v
         if v then
