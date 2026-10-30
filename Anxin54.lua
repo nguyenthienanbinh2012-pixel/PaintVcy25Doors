@@ -1029,12 +1029,10 @@ local function togglePositionSpoof(enable)
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(true, true) end)
         end
-
         local cp = char:FindFirstChild("CollisionPart")
         local col = char:FindFirstChild("Collision")
         if cp then cp.CanTouch = false; cp.CanQuery = false end
         if col then col.CanTouch = false; col.CanQuery = false end
-
         local lt = char:FindFirstChild("LowerTorso")
         if lt then
             for _, m in ipairs(lt:GetChildren()) do
@@ -1103,73 +1101,6 @@ local function togglePositionSpoof(enable)
             local col4 = char:FindFirstChild("Collision")
             if cp4 then cp4.CanTouch = true; cp4.CanQuery = true end
             if col4 then col4.CanTouch = true; col4.CanQuery = true end
-        end
-        if hrp and hrp.Parent then
-            pcall(function()
-                hrp.CFrame = CFrame.new(hrp.Position.X, S.baseY or hrp.Position.Y, hrp.Position.Z)
-            end)
-        end
-        if humanoid and humanoid.Parent then
-            pcall(function() humanoid.HipHeight = 2.396 end)
-        end
-        if crouchRemote then
-            pcall(function() crouchRemote:FireServer(false, true) end)
-        end
-        destroyFloatingWidget()
-        S.baseY = nil
-    end
-            end
-        end
-        local cp = char:FindFirstChild("CollisionPart")
-        if cp then
-            for _, w in ipairs(cp:GetChildren()) do
-                if w:IsA("Weld") and w.Part1 == hrp then
-                    local cpBaseY = baseY - 0.31
-                    w.C0 = CFrame.new(w.C0.X, spoofY - cpBaseY, w.C0.Z)
-                end
-            end
-        end
-        if S.crouchConn then S.crouchConn:Disconnect() end
-        S.crouchConn = RunService.Heartbeat:Connect(function()
-            if not S.enabled then return end
-            S._last = S._last or 0
-            if tick() - S._last > 0.1 then
-                S._last = tick()
-                local cr = getCrouchRemote()
-                if cr then pcall(function() cr:FireServer(true, true) end) end
-            end
-        end)
-createFloatingWidget()
-        S.updateConn = RunService.RenderStepped:Connect(function()
-            if not S.enabled or not hrp or not hrp.Parent then return end
-            local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
-            if S.uiLabel and S.uiStroke then
-                S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
-                if relY > -1.00 then
-                    S.uiStroke.Color = Color3.fromRGB(255, 50, 50)
-                elseif relY > -2.20 then
-                    S.uiStroke.Color = Color3.fromRGB(255, 200, 0)
-                else
-                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
-                end
-            end
-        end)
-    else
-        if not S.enabled then return end
-        S.enabled = false
-        if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
-        if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
-        local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
-        local crouchRemote = getCrouchRemote()
-        if char then
-            local lt = char:FindFirstChild("LowerTorso")
-            if lt and S.c1Origin then
-                for _, m in ipairs(lt:GetChildren()) do
-                    if m:IsA("Motor6D") and m.Name == "Root" then
-                        m.C1 = S.c1Origin
-                    end
-                end
-            end
         end
         if hrp and hrp.Parent then
             pcall(function()
@@ -2733,7 +2664,7 @@ local function doTeleportToNextDoor()
     -- set CFrame tat ca part 1 frame
     hrp.CFrame = targetCf
     for p, off in pairs(offsets) do
-        if p and p.Parent and p \~= hrp then
+        if p and p.Parent and p ~= hrp then
             pcall(function() p.CFrame = targetCf:ToWorldSpace(off) end)
         end
     end
