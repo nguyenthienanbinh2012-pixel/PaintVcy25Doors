@@ -1062,8 +1062,6 @@ local function togglePositionSpoof(enable)
                 if cr then pcall(function() cr:FireServer(true, true) end) end
                 local cp3 = char:FindFirstChild("CollisionPart")
                 local col3 = char:FindFirstChild("Collision")
-                if cp3 then cp3.CanTouch = false; cp3.CanQuery = false end
-                if col3 then col3.CanTouch = false; col3.CanQuery = false end
             end
         end)
         createFloatingWidget()
