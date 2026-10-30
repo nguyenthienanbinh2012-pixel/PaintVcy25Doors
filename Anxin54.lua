@@ -930,7 +930,7 @@ local function loadPositionSpoof()
     cpClone.Name = "CollisionPartClone"
     cpClone.Size = Vector3.new(1, 1, 1)
     cpClone.Transparency = 1
-    cpClone.CanCollide = true
+    cpClone.CanCollide = false
     cpClone.CanQuery = true
     cpClone.CanTouch = true
     cpClone.Massless = true
@@ -947,7 +947,7 @@ local function loadPositionSpoof()
     ccClone.Name = "CollisionClone"
     ccClone.Size = colSize
     ccClone.Transparency = 1
-    ccClone.CanCollide = false
+    ccClone.CanCollide = true
     ccClone.CanQuery = true
     ccClone.CanTouch = true
     ccClone.Massless = true
