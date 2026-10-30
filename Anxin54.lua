@@ -1908,7 +1908,7 @@ local function applyAntiLagToPart(part)
             pcall(function() ch:Destroy() end)
         elseif ch:IsA("SpecialMesh") or ch:IsA("FileMesh") then
             pcall(function()
-                if ch.TextureId \~= nil then ch.TextureId = "" end
+                if ch.TextureId ~= nil then ch.TextureId = "" end
             end)
         elseif ch:IsA("SurfaceGui") or ch:IsA("BillboardGui") then
             if originalPartProps[ch] == nil then
@@ -1968,7 +1968,7 @@ local function restoreAntiLag()
         if obj and obj.Parent then
             pcall(function()
                 if data.Color ~= nil and obj:IsA("BasePart") then obj.Color = data.Color end
-                if data.Transparency \~= nil then obj.Transparency = data.Transparency end
+                if data.Transparency ~= nil then obj.Transparency = data.Transparency end
                 if data.Material ~= nil then obj.Material = data.Material end
                 if data.CastShadow ~= nil then obj.CastShadow = data.CastShadow end
                 if data.Reflectance ~= nil then obj.Reflectance = data.Reflectance end
@@ -2022,9 +2022,6 @@ elseif child:IsA("ParticleEmitter") or child:IsA("Smoke") or child:IsA("Fire")
     or child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceAppearance")
     or child:IsA("SurfaceGui") or child:IsA("BillboardGui")
     or child:IsA("Animator") or child:IsA("AnimationController") then
-    applyAntiLagToEffect(child)
-                    or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles") then
-                    applyAntiLagToEffect(child)
                 end
                 count = count + 1
                 if count % 50 == 0 then
@@ -2682,7 +2679,6 @@ local function doTeleportToNextDoor()
     local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
     local targetRoom = myRoom + 1
 
-    -- cho cua load toi da \~1.2s
     local roomInst = nil
     for _ = 1, 12 do
         roomInst = rooms:FindFirstChild(tostring(targetRoom))
@@ -2726,7 +2722,7 @@ local function doTeleportToNextDoor()
 
     hrp.CFrame = targetCf
     for p, off in pairs(offsets) do
-        if p and p.Parent and p \~= hrp then
+        if p and p.Parent and p ~= hrp then
             pcall(function() p.CFrame = targetCf:ToWorldSpace(off) end)
         end
     end
