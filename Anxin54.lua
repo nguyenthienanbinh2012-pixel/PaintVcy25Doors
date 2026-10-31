@@ -620,6 +620,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag","measuring instrument")
+local VisualLeft = VisualTab:AddLeftGroupbox("ESP", "paintbrush") -- icon bảng vẽ
+local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
+ESP(VisualLeft, nil, Library, Svc)
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto","wrench")
 local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
@@ -641,10 +644,6 @@ pcall(function()
             VisualTab = Tabs.Visual,
         })
     end
-end)
-local VisualLeft = VisualTab:AddLeftGroupbox("ESP", "paintbrush") -- icon bảng vẽ
-local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
-ESP(VisualLeft, nil, Library, Svc)
 
 task.spawn(function()
     pcall(function()
