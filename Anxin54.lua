@@ -1304,14 +1304,8 @@ FuncLeft:AddToggle("RemoveVoidToggle", {
     end)
 end)
 
-local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
-    Text = "Position Spoof",
-    Default = false,
-    Tooltip = "Gia mao vi tri Lua Server va thuc the",
-})
 positionSpoofToggle:OnChanged(function(Value)
     pcall(togglePositionSpoof, Value)
-end)
     if Value then
         pcall(function()
             local s = Instance.new("Sound")
@@ -1324,7 +1318,7 @@ end)
         pcall(function()
             Obsidian:Notify({
                 Title = "Position Spoof",
-                Description = "<font color='#FF3232'>Position Spoof chỉ an toàn khi đứng im hoặc di chuyển, Nhảy hay đi xuống,lên cầu thang sẽ dẫn tới cái chết</font>",
+                Description = "<font color='#FF3232'>Position Spoof chi an toan khi dung im hoac di chuyen, Nhay hay di len,xuong cau thang se dan toi cai chet</font>",
                 Time = 5,
             })
         end)
