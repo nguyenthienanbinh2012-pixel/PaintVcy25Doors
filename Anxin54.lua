@@ -364,12 +364,9 @@ local loadedLabel = InfoGroup:AddLabel("<font color='#32FF64'><b>PaintVcy1.2 Loa
 
 local noteGroup = Tabs.Info:AddRightGroupbox("Changelog")
 noteGroup:AddLabel("<font color='#FF3232'><b>PaintV1.5 Fix + Add</b></font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Add Fly</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Axial Velocity</font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Add Third Person</font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Fix Book Esp[Floors1]</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Bug Lag</font>", true)
-noteGroup:AddLabel("<font color='#FF3232'>+ Auto Start Path</font>", true)
+noteGroup:AddLabel("<font color='#FF3232'>+ Fix infinite item</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Remove Dame,Lag</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Remove Chaos visual effects</font>", true)
 noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 22/10/2026</font>", true)
@@ -632,7 +629,7 @@ local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
 local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","shield-off")
 pcall(function()
     local fn = loadstring(game:HttpGet(
-        "https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/PaintVcy25Doors/refs/heads/main/AntiPack.lua"
+        "https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/Sad_Heart54/refs/heads/main/SemiGodMode_36.lua"
     ))()
     if type(fn) == "function" then
         fn(AntiLeft, AntiRight, Obsidian, {
