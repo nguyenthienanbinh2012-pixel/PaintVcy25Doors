@@ -1016,10 +1016,20 @@ local function togglePositionSpoof(enable)
     local lower = char:FindFirstChild("LowerTorso")
     local motor = lower and lower:FindFirstChild("Root")
 
-    local entityNames = {
-        RushMoving=true, AmbushMoving=true, A60=true, A120=true,
-        BackdoorRush=true, GlitchRush=true, GlitchAmbush=true, CustomEntity=true,
+local EntityDistances = {
+        RushMoving = 85, AmbushMoving = 150, A60 = 125, A120 = 85,
+        BackdoorRush = 85, GlitchRush = 90, GlitchAmbush = 175, CustomEntity = 85,
     }
+    local function nearestEntityDist()
+        local best = math.huge
+        for _, e in ipairs(Workspace:GetChildren()) do
+            if EntityDistances[e.Name] and e.PrimaryPart then
+                local d = (hrp.Position - e.PrimaryPart.Position).Magnitude
+                if d < EntityDistances[e.Name] and d < best then best = d end
+            end
+        end
+        return best
+                end
     local function nearestEntityDist()
         local best = math.huge
         for _, e in ipairs(Workspace:GetChildren()) do
@@ -1051,7 +1061,7 @@ local function togglePositionSpoof(enable)
             if not h then return end
             S.hrp = h
             local isSpecialFloor = (Floor == "Fools" or Floor == "OldHotel")
-            local entNear = isSpecialFloor and nearestEntityDist() < 120
+            local entNear = isSpecialFloor and nearestEntityDist() < math.huge
             local spoofY = entNear and 200 or 2.328
             local ccY = entNear and 199.5 or 1.75
 
@@ -1096,7 +1106,7 @@ local function togglePositionSpoof(enable)
             end
         end)
         createFloatingWidget()
-    else
+else
         if not S.enabled then S.spoofBusy = false return end
         S.enabled = false
         if S.spoofLoop then S.spoofLoop:Disconnect() S.spoofLoop = nil end
@@ -1105,6 +1115,12 @@ local function togglePositionSpoof(enable)
         char = LocalPlayer.Character or char
         hrp = char and char:FindFirstChild("HumanoidRootPart")
         humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+        if char and hrp then
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, S.DEPTH, 0)
+        end
+        if humanoid then humanoid.HipHeight = 2.396 end
+
         if char and hrp then
             local rp = hrp.Position + Vector3.new(0, 0.18, 0)
             for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone"}) do
@@ -1114,14 +1130,12 @@ local function togglePositionSpoof(enable)
             local lt = char:FindFirstChild("LowerTorso")
             local m = lt and lt:FindFirstChild("Root")
             if m and S.c1Origin then m.C1 = S.c1Origin end
-            hrp.CFrame = hrp.CFrame * CFrame.new(0, S.DEPTH, 0)
         end
-        if humanoid then humanoid.HipHeight = 2.396 end
+
         if crouchRemote then pcall(function() crouchRemote:FireServer(false, true) end) end
         destroyFloatingWidget()
     end
     S.spoofBusy = false
-            end
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
