@@ -2455,7 +2455,9 @@ local autoPadlockActive = false
 local autoPadlockThread = nil
 local autoPadlockToggle = MiscRight:AddToggle("AutoPadlockCodeToggle", {
     Text = "Auto Padlock Code", Default = false,
-    Tooltip = "Tu dong do code va bypass o khoa room 50,Chỉ khi tìm đủ 5 Sách mới BYPASS được!"
+    Tooltip = "Tu dong do code va bypass o khoa room 50,Chi khi tim du 5 Sach moi BYPASS duoc!",
+})
+
 local function getLibraryCode()
     local bp = LocalPlayer:FindFirstChild("Backpack")
     local char = LocalPlayer.Character
