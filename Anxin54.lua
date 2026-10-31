@@ -647,68 +647,61 @@ AntiLeft:AddToggle("AntiEyesLookToggle", {
     Tooltip = "Chan dame khi nhin"
 }):OnChanged(function(v)
     antiEyesActive = v
-    if v then
-        pcall(function()
-            local mt = getrawmetatable(game)
-            if not oldNamecall then oldNamecall = mt.__namecall end
-            setreadonly(mt, false)
-            mt.__namecall = newcclosure(function(self, ...)
-                if checkcaller and checkcaller() then
-                    return oldNamecall(self, ...)
-                end
-                local method = getnamecallmethod()
-                if antiEyesActive and method == "Raycast" then
-                    local result = oldNamecall(self, ...)
-                    if result and result.Instance then
-                        local inst = result.Instance
-                        local mod = inst:FindFirstAncestorOfClass("Model") or inst
-                        if isEyesOrLook(mod.Name) or isEyesOrLook(inst.Name) then
-                            return nil
-                        end
-                    end
-                    return result
-                end
-                return oldNamecall(self, ...)
-            end)
-            setreadonly(mt, true)
-        end)
-        local function neutralize(obj)
-            if not obj or not isEyesOrLook(obj.Name) then return end
-            for _, p in ipairs(obj:GetDescendants()) do
-                pcall(function()
-                    if p:IsA("BasePart") then
-                        p.CanQuery = false
-                        p.CanTouch = false
-                        p.CanCollide = false
-                    elseif p:IsA("BillboardGui") or p:IsA("SurfaceGui") then
-                        p.Enabled = false
-                    elseif p:IsA("Sound") then
-                        p.Volume = 0
-                        p:Stop()
-                    elseif p:IsA("ParticleEmitter") or p:IsA("Beam") then
-                        p.Enabled = false
-                    end
-                end)
-            end
+    if antiEyesConn then antiEyesConn:Disconnect() antiEyesConn = nil end
+    if not v then return end
+
+    local function fireBypass()
+        local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
+            or ReplicatedStorage:FindFirstChild("EntityInfo")
+            or ReplicatedStorage:FindFirstChild("Bricks")
+            or ReplicatedStorage
+        local mr = rf:FindFirstChild("MotorReplication") or rf:FindFirstChild("MotorReplication", true)
+        if mr then
+            pcall(function() mr:FireServer(-650) end)
         end
-        for _, obj in ipairs(Workspace:GetChildren()) do
-            neutralize(obj)
-        end
-        if antiEyesConn then antiEyesConn:Disconnect() end
-        antiEyesConn = Workspace.ChildAdded:Connect(function(obj)
-            if antiEyesActive then task.defer(neutralize, obj) end
-        end)
-    else
-        if antiEyesConn then antiEyesConn:Disconnect() antiEyesConn = nil end
-        pcall(function()
-            if oldNamecall then
-                local mt = getrawmetatable(game)
-                setreadonly(mt, false)
-                mt.__namecall = oldNamecall
-                setreadonly(mt, true)
-            end
-        end)
     end
+
+    local function hasEyes()
+        return Workspace:FindFirstChild("Eyes")
+            or Workspace:FindFirstChild("Lookman")
+            or Workspace:FindFirstChild("BackdoorLookman")
+    end
+
+    -- hook namecall chan goc nhin + MotorReplication
+    pcall(function()
+        local mt = getrawmetatable(game)
+        if not oldNamecall then oldNamecall = mt.__namecall end
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            if checkcaller and checkcaller() then
+                return oldNamecall(self, ...)
+            end
+            local method = getnamecallmethod()
+            if antiEyesActive and method == "FireServer" and tostring(self.Name) == "MotorReplication" then
+                if hasEyes() then
+                    return oldNamecall(self, -650)
+                end
+            end
+            if antiEyesActive and method == "Raycast" then
+                local result = oldNamecall(self, ...)
+                if result and result.Instance then
+                    local inst = result.Instance
+                    local mod = inst:FindFirstAncestorOfClass("Model") or inst
+                    if isEyesOrLook(mod.Name) or isEyesOrLook(inst.Name) then
+                        return nil
+                    end
+                end
+                return result
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+
+    antiEyesConn = RunService.Heartbeat:Connect(function()
+        if not antiEyesActive then return end
+        if hasEyes() then fireBypass() end
+    end)
 end)
 
 AntiRight:AddToggle("AntiDupeVacuumToggle", {
@@ -1095,7 +1088,7 @@ local function createFloatingWidget()
     local frame = Instance.new("Frame")
     frame.Name = "WidgetFrame"
     frame.Size = UDim2.new(0, 150, 0, 36)
-    frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+    frame.Position = UDim2.new(0.5, -75, 0, 8)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     frame.BackgroundTransparency = 0.15
     frame.BorderSizePixel = 0
@@ -1127,34 +1120,24 @@ local function togglePositionSpoof(enable)
     S.spoofBusy = true
 
     local char = LocalPlayer.Character
-    if not char then S.spoofBusy = false return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not humanoid then S.spoofBusy = false return end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hrp or not humanoid then S.spoofBusy = false return end
 
-    S.char = char
-    S.hrp = hrp
-    S.humanoid = humanoid
-    S.loaded = true
-
+    S.char, S.hrp, S.humanoid, S.loaded = char, hrp, humanoid, true
     local crouchRemote = getCrouchRemote()
-    local lt = char:FindFirstChild("LowerTorso")
-    local rootMotor = lt and lt:FindFirstChild("Root")
+    local lower = char:FindFirstChild("LowerTorso")
+    local motor = lower and lower:FindFirstChild("Root")
 
     if enable then
         if S.enabled then S.spoofBusy = false return end
         S.enabled = true
-
-        if rootMotor and rootMotor:IsA("Motor6D") and not S.c1Origin then
-            S.c1Origin = rootMotor.C1
+        if motor and motor:IsA("Motor6D") and not S.c1Origin then
+            S.c1Origin = motor.C1
         end
-
-        -- Abysall: dich HRP xuong 1 lan
         hrp.CFrame = hrp.CFrame * CFrame.new(0, -S.DEPTH, 0)
         humanoid.HipHeight = 0.05
-        if crouchRemote then
-            pcall(function() crouchRemote:FireServer(true, true) end)
-        end
+        if crouchRemote then pcall(function() crouchRemote:FireServer(true, true) end) end
 
         if S.spoofLoop then S.spoofLoop:Disconnect() end
         S.spoofLoop = RunService.Heartbeat:Connect(function()
@@ -1163,30 +1146,23 @@ local function togglePositionSpoof(enable)
             if not c then return end
             local h = c:FindFirstChild("HumanoidRootPart")
             if not h then return end
-
-            local collision = c:FindFirstChild("Collision")
-            local collisionPart = c:FindFirstChild("CollisionPart")
-            local collisionClone = c:FindFirstChild("CollisionClone")
-            local lower = c:FindFirstChild("LowerTorso")
-            local motor = lower and lower:FindFirstChild("Root")
-
-            -- Abysall: collision bay len theo HRP moi frame (khong khoa Y)
-            local spoofY = 2.328
-            if collision and collision:IsA("BasePart") then
-                collision.Position = h.Position + Vector3.new(0, spoofY, 0)
-                collision.CanCollide = false
+            local col = c:FindFirstChild("Collision")
+            local cp = c:FindFirstChild("CollisionPart")
+            local cc = c:FindFirstChild("CollisionClone")
+            local lt = c:FindFirstChild("LowerTorso")
+            local m = lt and lt:FindFirstChild("Root")
+            if col and col:IsA("BasePart") then
+                col.Position = h.Position + Vector3.new(0, 2.328, 0)
+                col.CanCollide = false
             end
-            if collisionPart and collisionPart:IsA("BasePart") then
-                collisionPart.Position = h.Position + Vector3.new(0, spoofY, 0)
+            if cp and cp:IsA("BasePart") then
+                cp.Position = h.Position + Vector3.new(0, 2.328, 0)
             end
-            if collisionClone and collisionClone:IsA("BasePart") then
-                collisionClone.Position = h.Position + Vector3.new(0, 1.75, 0)
-                if collision then
-                    pcall(function() collisionClone.CollisionGroup = collision.CollisionGroup end)
-                end
+            if cc and cc:IsA("BasePart") then
+                cc.Position = h.Position + Vector3.new(0, 1.75, 0)
             end
-            if motor and motor:IsA("Motor6D") and S.c1Origin then
-                motor.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
+            if m and m:IsA("Motor6D") and S.c1Origin then
+                m.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
             end
         end)
 
@@ -1198,57 +1174,34 @@ local function togglePositionSpoof(enable)
                 task.wait(0.1)
             end
         end)
-
         createFloatingWidget()
-        if S.updateConn then S.updateConn:Disconnect() end
-        S.updateConn = RunService.RenderStepped:Connect(function()
-            if not S.enabled or not S.hrp then return end
-            if S.uiLabel then
-                S.uiLabel.Text = string.format("HRP.Y: %.2f", S.hrp.Position.Y)
-            end
-        end)
     else
         if not S.enabled then S.spoofBusy = false return end
         S.enabled = false
         if S.spoofLoop then S.spoofLoop:Disconnect() S.spoofLoop = nil end
         if S.crouchLoop then task.cancel(S.crouchLoop) S.crouchLoop = nil end
-        if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
 
         char = LocalPlayer.Character or char
         hrp = char and char:FindFirstChild("HumanoidRootPart")
         humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
         if char and hrp then
-            local baseY = 0.18
-            local resetPos = hrp.Position + Vector3.new(0, baseY, 0)
-            local collision = char:FindFirstChild("Collision")
-            local collisionPart = char:FindFirstChild("CollisionPart")
-            local collisionClone = char:FindFirstChild("CollisionClone")
-            if collision and collision:IsA("BasePart") then collision.Position = resetPos end
-            if collisionPart and collisionPart:IsA("BasePart") then collisionPart.Position = resetPos end
-            if collisionClone and collisionClone:IsA("BasePart") then collisionClone.Position = resetPos end
-        end
-
-        if char and S.c1Origin then
-            local lower = char:FindFirstChild("LowerTorso")
-            local motor = lower and lower:FindFirstChild("Root")
-            if motor and motor:IsA("Motor6D") then motor.C1 = S.c1Origin end
-        end
-
-        -- Abysall: day HRP len lai
-        if hrp then
+            local rp = hrp.Position + Vector3.new(0, 0.18, 0)
+            for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone"}) do
+                local p = char:FindFirstChild(n)
+                if p and p:IsA("BasePart") then p.Position = rp end
+            end
+            local lt = char:FindFirstChild("LowerTorso")
+            local m = lt and lt:FindFirstChild("Root")
+            if m and S.c1Origin then m.C1 = S.c1Origin end
             hrp.CFrame = hrp.CFrame * CFrame.new(0, S.DEPTH, 0)
         end
-        if humanoid then
-            humanoid.HipHeight = 2.396
-        end
-        if crouchRemote then
-            pcall(function() crouchRemote:FireServer(false, true) end)
-        end
+        if humanoid then humanoid.HipHeight = 2.396 end
+        if crouchRemote then pcall(function() crouchRemote:FireServer(false, true) end) end
         destroyFloatingWidget()
     end
     S.spoofBusy = false
             end
+
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
@@ -2502,109 +2455,82 @@ local autoPadlockActive = false
 local autoPadlockThread = nil
 local autoPadlockToggle = MiscRight:AddToggle("AutoPadlockCodeToggle", {
     Text = "Auto Padlock Code", Default = false,
-    Tooltip = "Tu dong do code va bypass o khoa room 50, di nhanh tuc thi"
-})
-autoPadlockToggle:OnChanged(function(Value)
-    autoPadlockActive = Value
-    if Value then
-        if not autoPadlockThread then
-            autoPadlockThread = task.spawn(function()
-                while autoPadlockActive do
-                    pcall(function()
-                        local currentRoom = LocalPlayer:GetAttribute("CurrentRoom")
-                        if currentRoom and tonumber(currentRoom) == 50 then
-                            local code = nil
-                            for _, desc in ipairs(Workspace:GetDescendants()) do
-                                if desc:IsA("StringValue") or desc:IsA("IntValue") or desc:IsA("NumberValue") then
-                                    local n = desc.Name:lower()
-                                    if n:find("code") or n:find("pass") or n:find("padlock") or n:find("password") then
-                                        code = tostring(desc.Value)
-                                        break
-                                    end
-                                end
-                            end
-                            if not code then
-                                for _, gui in ipairs(PlayerGui:GetDescendants()) do
-                                    if gui:IsA("TextLabel") or gui:IsA("TextBox") then
-                                        local t = tostring(gui.Text or ""):gsub("%D", "")
-                                        if #t == 5 then
-                                            code = t
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                            if code and #code >= 4 then
-                                for _, desc in ipairs(Workspace:GetDescendants()) do
-                                    if desc:IsA("ProximityPrompt") then
-                                        local pName = tostring(desc.Parent and desc.Parent.Name or ""):lower()
-                                        local aText = tostring(desc.ActionText or ""):lower()
-                                        if pName:find("padlock") or pName:find("lock") or aText:find("code") or aText:find("unlock") or aText:find("enter") then
-                                            pcall(function()
-                                                fireproximityprompt(desc, 0)
-                                            end)
-                                        end
-                                    end
-                                end
-                                local remotes = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
-                                for _, r in ipairs(remotes:GetDescendants()) do
-                                    if r:IsA("RemoteEvent") then
-                                        local rn = r.Name:lower()
-                                        if rn:find("padlock") or rn:find("code") or rn:find("unlock") or rn:find("door50") then
-                                            pcall(function() r:FireServer(code) end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end)
-                    task.wait(0.25)
+    Tooltip = "Tu dong do code va bypass o khoa room 50,Chỉ khi tìm đủ 5 Sách mới BYPASS được!"
+local function getLibraryCode()
+    local bp = LocalPlayer:FindFirstChild("Backpack")
+    local char = LocalPlayer.Character
+    local paper = (char and (char:FindFirstChild("LibraryHintPaper") or char:FindFirstChild("LibraryHintPaperHard")))
+        or (bp and (bp:FindFirstChild("LibraryHintPaper") or bp:FindFirstChild("LibraryHintPaperHard")))
+    if not paper or not paper:FindFirstChild("UI") then return nil end
+    local code = {"_", "_", "_", "_", "_"}
+    local perm = LocalPlayer.PlayerGui:FindFirstChild("PermUI")
+    local hints = perm and perm:FindFirstChild("Hints")
+    if not hints then return nil end
+    for _, hint in ipairs(hints:GetChildren()) do
+        if hint:IsA("ImageLabel") then
+            for _, ui in ipairs(paper.UI:GetChildren()) do
+                if ui:IsA("ImageLabel") and hint.ImageRectOffset == ui.ImageRectOffset then
+                    local idx = tonumber(ui.Name)
+                    local t = hint:FindFirstChild("TextLabel")
+                    if idx and code[idx] and t then code[idx] = t.Text end
                 end
-            end)
-        end
-    else
-        if autoPadlockThread then
-            task.cancel(autoPadlockThread)
-            autoPadlockThread = nil
+            end
         end
     end
+    local s = table.concat(code)
+    if s:find("_", 1, true) then return nil end
+    return s
+end
+
+autoPadlockToggle:OnChanged(function(Value)
+    autoPadlockActive = Value
+    if autoPadlockThread then task.cancel(autoPadlockThread) autoPadlockThread = nil end
+    if not Value then return end
+    autoPadlockThread = task.spawn(function()
+        while autoPadlockActive do
+            local code = getLibraryCode()
+            if code and tonumber(code) then
+                local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
+                local pl = rf:FindFirstChild("PL") or rf:FindFirstChild("PL", true)
+                if pl then pcall(function() pl:FireServer(code) end) end
+            end
+            task.wait(0.4)
+        end
+    end)
 end)
+    
 
 ;(function()
 local autoInteractActive = false
 local autoInteractConn = nil
 local autoInteractDebounce = false
 local autoInteractLast = 0
-local AUTO_INTERACT_IGNORE = {
+local AutoInteractBlacklist = {
     HidePrompt = true, RiftPrompt = true, StarRiftPrompt = true, InteractPrompt = true,
     ClimbPrompt = true, DonatePrompt = true, DialoguePrompt = true, RevivePrompt = true,
     EnterPrompt = true, AnimatePrompt = true, ToolEventPrompt = true, Prompt = true,
-    PropPrompt = true, TrackLever = true,
-    SeatPrompt = true, SitPrompt = true, ChairPrompt = true,
+    PropPrompt = true, TrackLever = true, SeatPrompt = true, SitPrompt = true,
 }
 
-local function isSeatPrompt(prompt, parent)
-    local pn = tostring(parent and parent.Name or ""):lower()
+local function isSeatLike(prompt, parent)
+    if not parent then return true end
+    if parent:IsA("Seat") or parent:IsA("VehicleSeat") then return true end
+    local pn = tostring(parent.Name):lower()
     local an = tostring(prompt.ActionText or ""):lower()
-    local on = tostring(prompt.ObjectText or ""):lower()
-    local nn = tostring(prompt.Name or ""):lower()
-    if parent and (parent:IsA("Seat") or parent:IsA("VehicleSeat")) then return true end
-    if pn:find("seat", 1, true) or pn:find("chair", 1, true) or pn:find("couch", 1, true)
-        or pn:find("sofa", 1, true) or pn:find("bench", 1, true) or pn:find("stool", 1, true)
-        or pn:find("bed", 1, true) then
-        return true
-    end
-    if an:find("sit", 1, true) or an:find("seat", 1, true) or an:find("ngoi", 1, true)
-        or on:find("sit", 1, true) or on:find("chair", 1, true) or nn:find("seat", 1, true) then
+    if pn:find("seat") or pn:find("chair") or pn:find("couch") or pn:find("sofa")
+        or pn:find("bench") or pn:find("bed") or an:find("sit") then
         return true
     end
     return false
-            end
+end
+
+local autoInteractActive = false
+local autoInteractConn = nil
+local autoInteractLast = 0
+local autoInteractDebounce = false
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
-    Text = "Auto Interact",
-    Default = false,
-    Tooltip = "Tu dong tuong tac ",
+    Text = "Auto Interact", Default = false,
 })
 autoInteractToggle:OnChanged(function(Value)
     autoInteractActive = Value
@@ -2612,37 +2538,44 @@ autoInteractToggle:OnChanged(function(Value)
     if not Value then return end
     autoInteractConn = RunService.Heartbeat:Connect(function()
         if not autoInteractActive or autoInteractDebounce then return end
-        local now = tick()
-        if now - autoInteractLast < (1 / 60) then return end
+        if tick() - autoInteractLast < (1 / 60) then return end
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        for _, desc in ipairs(Workspace:GetDescendants()) do
+        local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom"))
+
+        for _, prompt in ipairs(Workspace:GetDescendants()) do
             if not autoInteractActive then break end
-            if desc:IsA("ProximityPrompt") and desc.Enabled then
-                if AUTO_INTERACT_IGNORE[desc.Name] then
-                elseif desc:GetAttribute("AutoInteractIgnore") then
+            if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                if AutoInteractBlacklist[prompt.Name] then
+                elseif isSeatLike(prompt, prompt.Parent) then
+                elseif prompt:GetAttribute("AutoInteractIgnore") then
                 else
-                    local parent = desc.Parent
-                    if parent then
-                        local pn = parent.Name
-                        if pn ~= "DoorFake" and pn ~= "FakeDoor" and pn ~= "KeyObtainFake" and pn ~= "TithingPlate"
-                            and parent:GetAttribute("Locked") ~= true then
+                    local parent = prompt.Parent
+                    if parent and (parent:IsA("BasePart") or parent:IsA("Model")) then
+                        local pr = prompt:GetAttribute("ParentRoom")
+                        if pr and myRoom and tonumber(pr) ~= myRoom then
+                        else
                             local pPos
                             if parent:IsA("BasePart") then
                                 pPos = parent.Position
-                            elseif parent:IsA("Model") then
+                            else
                                 local ok, pv = pcall(function() return parent:GetPivot().Position end)
                                 if ok then pPos = pv end
                             end
-                            if pPos and (hrp.Position - pPos).Magnitude <= (desc.MaxActivationDistance or 10) then
-                                autoInteractDebounce = true
-                                autoInteractLast = tick()
-                                pcall(function()
-                                    if fireproximityprompt then fireproximityprompt(desc) end
-                                end)
-                                task.delay(0.05, function() autoInteractDebounce = false end)
-                                break
+                            local maxd = prompt.MaxActivationDistance or 10
+                            if pPos and (hrp.Position - pPos).Magnitude <= maxd then
+                                local pn = parent.Name
+                                if pn ~= "DoorFake" and pn ~= "FakeDoor" and pn ~= "KeyObtainFake"
+                                    and pn ~= "TithingPlate" and parent:GetAttribute("Locked") ~= true then
+                                    autoInteractDebounce = true
+                                    autoInteractLast = tick()
+                                    pcall(function()
+                                        if fireproximityprompt then fireproximityprompt(prompt) end
+                                    end)
+                                    task.delay(0.03, function() autoInteractDebounce = false end)
+                                    break
+                                end
                             end
                         end
                     end
@@ -2650,6 +2583,8 @@ autoInteractToggle:OnChanged(function(Value)
             end
         end
     end)
+end)
+
 end)
 local infiniteItemOn = false
 local infiniteItemConn = nil
@@ -3371,111 +3306,7 @@ end)()
             })
         end)
     end)
--- cot phai: Language (radar)
-local setLang = Tabs.Settings:AddRightGroupbox("Language")
-
-local menuLanguage = "vi"
-pcall(function()
-    if isfile and isfile("PaintCrack_Lang.txt") then
-        local v = readfile("PaintCrack_Lang.txt")
-        if v == "en" or v == "vi" then menuLanguage = v end
-    end
-end)
-
-local translateCache = {}
-local originalTexts = setmetatable({}, { __mode = "k" })
-
-local function googleTranslate(text, targetLang)
-    text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if text == "" or #text < 2 then return text end
-    if text:find("^rbxasset") or text:match("^[%d%.]+$") then return text end
-    local key = targetLang .. "|" .. text
-    if translateCache[key] then return translateCache[key] end
-    local encoded = text:gsub("([^%w %-%_%.~])", function(c)
-        return string.format("%%%02X", string.byte(c))
-    end):gsub(" ", "+")
-    local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="
-        .. targetLang .. "&dt=t&q=" .. encoded
-    local ok, res = pcall(function() return game:HttpGet(url) end)
-    if not ok or not res then return text end
-    local out = res:match('%[%[%["(.-)"%s*,')
-    if out then
-        out = out:gsub("\\n", "\n"):gsub('\\"', '"')
-        translateCache[key] = out
-        return out
-    end
-    return text
-end
-
-local function applyAutoTranslate(targetLang)
-    local roots = {}
-    pcall(function()
-        for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-            table.insert(roots, g)
-        end
-    end)
-    pcall(function()
-        for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-            table.insert(roots, g)
-        end
-    end)
-    if typeof(gethui) == "function" then
-        pcall(function() table.insert(roots, gethui()) end)
-    end
-    for _, root in ipairs(roots) do
-        pcall(function()
-            for _, inst in ipairs(root:GetDescendants()) do
-                if inst:IsA("TextLabel") or inst:IsA("TextButton") then
-                    if not originalTexts[inst] and inst.Text and #inst.Text > 0 then
-                        if not tostring(inst.Text):find("Key time:") then
-                            originalTexts[inst] = inst.Text
-                        end
-                    end
-                    local src = originalTexts[inst]
-                    if src and #src >= 2 then
-                        local tr = googleTranslate(src, targetLang)
-                        if tr and tr ~= "" then
-                            pcall(function() inst.Text = tr end)
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end
-
-local langDrop = setLang:AddDropdown("MenuLanguageDrop", {
-    Text = "Language",
-    Values = { "Tiếng Việt", "English" },
-    Default = (menuLanguage == "en") and 2 or 1,
-})
-langDrop:OnChanged(function(v)
-    if type(v) == "string" then
-        menuLanguage = (v:find("English") or v == "en") and "en" or "vi"
-    elseif type(v) == "number" then
-        menuLanguage = (v == 2) and "en" or "vi"
-    end
-end)
-
-setLang:AddLabel("Chon ngon ngu roi bam Apply (tu dong dich menu)")
-
-setLang:AddButton("Apply Language", function()
-    local code = menuLanguage
-    if code ~= "en" and code ~= "vi" then code = "vi" end
-    pcall(function()
-        if writefile then writefile("PaintCrack_Lang.txt", code) end
-    end)
-    task.spawn(function()
-        applyAutoTranslate(code)
-        pcall(function()
-            Obsidian:Notify({
-                Title = "PaintCrack",
-                Description = (code == "en") and "Language: English (auto)" or "Ngon ngu: Tieng Viet (tu dong)",
-                Time = 4,
-            })
-        end)
-    end)
-end)
+root in ipairs(roots) do
 
 task.spawn(function()
     local okT, ThemeManager = pcall(function()
@@ -3507,527 +3338,7 @@ task.spawn(function()
         warn("[PaintCrack] SaveManager load failed")
     end
 end) 
--- ========== ROOM PATH ==========
-;(function()
-local PathLeft = Tabs.Path:AddLeftGroupbox("Path")
-local PathRight = Tabs.Path:AddRightGroupbox("Auto")
 
-local showPathActive = false
-local autoPathActive = false
-local pathColor = Color3.fromRGB(255, 140, 200)
-local pathDelay = 0.0
-local pathFolder = nil
-local pathConn = nil
-local autoPathConn = nil
-local currentPathTarget = nil
-
-
-local pathAtts = {}
-local pathBeams = {}
-local pathWaypoints = {}
-local pathComputeTick = 0
-local PathfindingService = game:GetService("PathfindingService")
-
-local function getGroundY(pos, extraIgnore)
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local ignore = {LocalPlayer.Character, pathFolder}
-    if extraIgnore then
-        for _, x in ipairs(extraIgnore) do table.insert(ignore, x) end
-    end
-    params.FilterDescendantsInstances = ignore
-    local hit = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -40, 0), params)
-    if hit then return hit.Position.Y + 0.15 end
-    return pos.Y - 2.2
-end
-
-local function getNextDoor()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    local rooms = Workspace:FindFirstChild("CurrentRooms")
-    if not rooms then return nil end
-
-    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
-    local targetRoom = myRoom + 1
-
-    -- 1) Cua room tiep theo (Floors / Hotel)
-    local roomInst = rooms:FindFirstChild(tostring(targetRoom))
-        or rooms:FindFirstChild(tostring(targetRoom) .. "_")
-    if roomInst then
-        local doorModel = roomInst:FindFirstChild("Door") or roomInst:FindFirstChild("Door", true)
-        if doorModel then
-            local part = doorModel:IsA("BasePart") and doorModel
-                or doorModel.PrimaryPart
-                or doorModel:FindFirstChild("Door")
-                or doorModel:FindFirstChildWhichIsA("BasePart", true)
-            if part then return part end
-        end
-    end
-
-    -- 2) Fallback: cua gan nhat phia truoc theo huong di (HRP), KHONG theo cam
-    local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
-    if look.Magnitude < 0.05 then look = Vector3.new(0, 0, -1) else look = look.Unit end
-    local best, bestScore = nil, -1e9
-    for _, room in ipairs(rooms:GetChildren()) do
-        local rn = tonumber(room.Name)
-        if rn and rn >= myRoom then
-            local doorModel = room:FindFirstChild("Door") or room:FindFirstChild("Door", true)
-            if doorModel then
-                local part = doorModel:IsA("BasePart") and doorModel
-                    or doorModel.PrimaryPart
-                    or doorModel:FindFirstChildWhichIsA("BasePart", true)
-                if part then
-                    local off = part.Position - hrp.Position
-                    local dist = off.Magnitude
-                    if dist > 2 and dist < 250 then
-                        local flat = Vector3.new(off.X, 0, off.Z)
-                        if flat.Magnitude > 0.1 then
-                            local score = -dist + (rn - myRoom) * 100
-                            if score > bestScore then bestScore, best = score, part end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return best
-    end
-
-local pathP0, pathP1, pathBeam = nil, nil, nil
-
-local PathfindingService = game:GetService("PathfindingService")
-local lastDoorPart, lastCompute = nil, 0
-local pathWps = {}
-local function clearPathDraw()
-    if pathFolder then
-        pathFolder:Destroy()
-        pathFolder = nil
-    end
-    pathAtts = {}
-    pathBeams = {}
-end
-local function computeWps(from, to)
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 1.8,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        WaypointSpacing = 4,
-    })
-    local ok = pcall(function() path:ComputeAsync(from, to) end)
-    if ok and path.Status == Enum.PathStatus.Success then
-        local t = {}
-        for _, wp in ipairs(path:GetWaypoints()) do
-            table.insert(t, wp.Position)
-        end
-        if #t >= 2 then return t end
-    end
-    return { from, to } -- fallback thang
-end
-
- h = Workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), pr)
- local function drawWps(wps)
-    clearPathDraw()
-    if not wps or #wps < 2 then return end
-    pathFolder = Instance.new("Folder")
-    pathFolder.Name = "PaintRoomPath"
-    pathFolder.Parent = Workspace
-    for i, pos in ipairs(wps) do
-        local y = pos.Y
-        pcall(function()
-            local pr = RaycastParams.new()
-            pr.FilterDescendantsInstances = {LocalPlayer.Character, pathFolder}
-            pr.FilterType = Enum.RaycastFilterType.Exclude
-            local h = Workspace:Raycast(pos + Vector3.new(0, 5, 0), Vector3.new(0, -30, 0), pr)
-            if h then y = h.Position.Y + 0.2 end
-        end)
-        local p = Instance.new("Part")
-        p.Name = "PathNode"
-        p.Shape = Enum.PartType.Cylinder
-        p.Size = Vector3.new(0.35, 1.6, 1.6) -- cylinder: X = height
-        p.CFrame = CFrame.new(pos.X, y + 0.15, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
-        p.Anchored = true
-        p.CanCollide = false
-        p.CanQuery = false
-        p.CanTouch = false
-        p.Material = Enum.Material.Neon
-        p.Color = pathColor or Color3.fromRGB(255, 140, 200)
-        p.Transparency = 0.25
-        p.Parent = pathFolder
-    end
-end
-
-PathLeft:AddToggle("ShowPathToggle", {
-    Text = "Show Path", Default = false,
-    Tooltip = "Ve path toi cua tiep theo",
-}):OnChanged(function(v)
-    showPathActive = v
-    if not v then
-        clearPathDraw()
-        if pathConn then pathConn:Disconnect() pathConn = nil end
-        return
-    end
-    if pathConn then pathConn:Disconnect() end
-    lastDoorPart = nil
-    lastCompute = 0
-    pathConn = RunService.Heartbeat:Connect(function()
-        if not showPathActive then return end
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        local door = getNextDoor()
-        if not door then return end
-        currentPathTarget = door
-        local now = tick()
-        if door ~= lastDoorPart or now - lastCompute > 0.5 then
-            lastDoorPart, lastCompute = door, now
-            pathWps = computeWps(hrp.Position, door.Position)
-            if not pathWps or #pathWps < 2 then
-                pathWps = {hrp.Position, door.Position}
-            end
-            drawWps(pathWps)
-        end
-    end)
-end)
-
--- Path Color picker GIU nguyen neu da co; neu da xoa thi dan lai o day
-
-PathRight:AddToggle("AutoStartPathToggle", {
-    Text = "Auto Start Path", Default = false,
-    Tooltip = "Di theo path ",
-}):OnChanged(function(v)
-    autoPathActive = v
-    if not v then
-        if autoPathConn then autoPathConn:Disconnect() autoPathConn = nil end
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hum and hrp then hum:MoveTo(hrp.Position) end
-        return
-    end
-    if autoPathConn then autoPathConn:Disconnect() end
-    autoPathConn = RunService.Heartbeat:Connect(function()
-        if not autoPathActive then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
-        local door = getNextDoor()
-        if not door then return end
-        if not pathWps or #pathWps < 2 or currentPathTarget ~= door then
-            pathWps = computeWps(hrp.Position, door.Position)
-            currentPathTarget = door
-            if showPathActive then drawWps(pathWps) end
-        end
-        local goal = door.Position
-        for i = 2, #pathWps do
-            local w = pathWps[i]
-            local f = Vector3.new(w.X - hrp.Position.X, 0, w.Z - hrp.Position.Z)
-            if f.Magnitude > 2.5 then goal = w break end
-        end
-        local flat = Vector3.new(goal.X - hrp.Position.X, 0, goal.Z - hrp.Position.Z)
-        if flat.Magnitude < 2 then return end
-        hum:MoveTo(Vector3.new(goal.X, hrp.Position.Y, goal.Z))
-        hum:Move(flat.Unit, false)
-    end)
-end)
-
-PathRight:AddToggle("AutoAvoidHideToggle", {
-    Text = "Auto Avoid by hiding", Default = false,
-    Tooltip = "Tu dong tron khi entity tới + Auto trốn theo path",
-}):OnChanged(function(on)
-    autoAvoidActive = on
-    if autoAvoidConn then autoAvoidConn:Disconnect() autoAvoidConn = nil end
-    if not on then return end
-    local function onEntity(obj)
-        if not autoAvoidActive or not obj then return end
-        local n = string.lower(obj.Name)
-        local hit = false
-        for k in pairs(ENTITY_MARK) do
-            if n:find(k, 1, true) then hit = true break end
-        end
-        if not hit then return end
-        tryHide()
-        local anc
-        anc = obj.AncestryChanged:Connect(function(_, parent)
-            if not parent then
-                if anc then anc:Disconnect() end
-                tryExitHide()
-            end
-        end)
-    end
-    autoAvoidConn = Workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Model") then
-            task.defer(onEntity, obj)
-        end
-    end)
-end)
-
-PathRight:AddSlider("PathDelaySlider", {
-    Text = "Arrive Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Compact = true,
-}):OnChanged(function(v) pathDelay = v end)
-end)()
--- ========== MISC: Make the entity fall ==========
-;(function()
-local entityFallOn = false
-local tracked = {}
-local selectedEntities = {}
-local FALL_SPEED = -3
-local HOLD_TIME = 0.8
-local TRIGGER_DIST = 30
-local RELEASE_DEPTH = -60
-local STATE = { TRACKING = 1, ANCHORED = 2, FALLING = 3, RELEASED = 4 }
-local lockedParts = {}
-local visualContainer = nil
-local heartConn = nil
-local descConn = nil
-
-local ENTITY_OPTIONS = {"Rush", "Ambush", "AroXmbush", "Blitz", "A-120", "A-90"}
-
-local function playToggleSound()
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://3318713980"
-        s.Volume = 8
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        task.delay(3, function() if s then s:Destroy() end end)
-    end)
-end
-
-local function isSelectedEntity(obj)
-    if not obj then return false end
-    local nameLower = tostring(obj.Name or ""):lower()
-    for sel, on in pairs(selectedEntities) do
-        if on and nameLower:find(sel:lower(), 1, true) then return true end
-    end
-    return false
-end
-
-local function createVisual(obj)
-    local hl = Instance.new("Highlight")
-    hl.FillColor = Color3.fromRGB(255, 40, 90)
-    hl.OutlineColor = Color3.fromRGB(255, 200, 0)
-    hl.FillTransparency = 0.5
-    hl.OutlineTransparency = 0.1
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = obj
-    if not visualContainer then
-        visualContainer = Instance.new("Folder")
-        visualContainer.Name = "EntityFallVisuals"
-        visualContainer.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
-    hl.Parent = visualContainer
-    return hl
-end
-
-local function createAnchorAndWeld(obj)
-    local parts = obj:IsA("BasePart") and {obj} or obj:GetDescendants()
-    local rootPart = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart", true)) or obj
-    if not rootPart then return nil end
-
-    local anchor = Instance.new("Part")
-    anchor.Name = "EntityFall_Anchor"
-    anchor.Size = Vector3.new(1, 1, 1)
-    anchor.Transparency = 1
-    anchor.CanCollide = false
-    anchor.Anchored = true
-    anchor.CFrame = rootPart.CFrame
-    anchor.Parent = Workspace
-
-    for _, p in ipairs(parts) do
-        if p:IsA("BasePart") then
-            pcall(function()
-                p.Anchored = false
-                p.CanCollide = false
-                p.Massless = true
-                p.AssemblyLinearVelocity = Vector3.zero
-                p.AssemblyAngularVelocity = Vector3.zero
-                for _, child in ipairs(p:GetChildren()) do
-                    if child:IsA("AlignPosition") or child:IsA("AlignOrientation") or child:IsA("BodyPosition") or child:IsA("BodyVelocity") then
-                        child:Destroy()
-                    end
-                end
-                local weld = Instance.new("WeldConstraint")
-                weld.Part0 = p
-                weld.Part1 = anchor
-                weld.Parent = p
-            end)
-            lockedParts[p] = true
-        end
-    end
-
-    local hum = obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid")
-    if hum then
-        pcall(function()
-            hum.PlatformStand = true
-            hum.WalkSpeed = 0
-            hum.JumpPower = 0
-            hum:ChangeState(Enum.HumanoidStateType.Physics)
-        end)
-    end
-    return anchor
-end
-
-local function removeFall(obj)
-    local r = tracked[obj]
-    if not r then return end
-    tracked[obj] = nil
-    if r.obj and r.obj.Parent then
-        local parts = r.obj:IsA("BasePart") and {r.obj} or r.obj:GetDescendants()
-        for _, p in ipairs(parts) do
-            if p:IsA("BasePart") then
-                lockedParts[p] = nil
-                pcall(function() p.Anchored = false end)
-            end
-        end
-        local hum = r.obj:IsA("Model") and r.obj:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                hum.PlatformStand = false
-                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end)
-        end
-    end
-    if r.anchorPart then pcall(function() r.anchorPart:Destroy() end) end
-    if r.visual and r.visual.Parent then r.visual:Destroy() end
-end
-
-local function makeFall(obj)
-    if not obj or tracked[obj] or not isSelectedEntity(obj) then return end
-    tracked[obj] = {
-        obj = obj,
-        visual = createVisual(obj),
-        state = STATE.TRACKING,
-        stateTime = 0,
-        anchorPos = nil,
-        basePivot = nil,
-        fallTime = 0,
-        anchorPart = nil,
-    }
-end
-
-local function processObject(obj)
-    if not entityFallOn or not obj:IsA("Model") or tracked[obj] or not isSelectedEntity(obj) then return end
-    local center = obj:GetPivot().Position
-    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if myHrp and (center - myHrp.Position).Magnitude <= 500 then
-        makeFall(obj)
-    end
-end
-
-local function initialScan()
-    local function scan(container)
-        for _, obj in ipairs(container:GetChildren()) do
-            if obj:IsA("Model") then processObject(obj) end
-            if obj:IsA("Folder") or obj:IsA("Model") then pcall(scan, obj) end
-        end
-    end
-    pcall(scan, Workspace)
-end
-
-local function startFallLoop()
-    if heartConn then heartConn:Disconnect() end
-    heartConn = RunService.Heartbeat:Connect(function(dt)
-        if not entityFallOn then return end
-        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local myPos = myHrp and myHrp.Position
-        if not myPos then return end
-
-        for obj, r in pairs(tracked) do
-            if not obj.Parent then
-                removeFall(obj)
-            else
-                local currentCenter = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
-                local dist = (currentCenter - myPos).Magnitude
-
-                if r.state == STATE.TRACKING then
-                    if dist <= TRIGGER_DIST then
-                        r.state = STATE.ANCHORED
-                        r.stateTime = 0
-                        r.basePivot = obj:IsA("Model") and obj:GetPivot() or obj.CFrame
-                        r.anchorPart = createAnchorAndWeld(obj)
-                        r.anchorPos = currentCenter
-                    end
-                elseif r.state == STATE.ANCHORED then
-                    r.stateTime = r.stateTime + dt
-                    if r.anchorPart then r.anchorPart.CFrame = r.basePivot end
-                    if r.stateTime >= HOLD_TIME then
-                        r.state = STATE.FALLING
-                        r.fallTime = 0
-                    end
-                elseif r.state == STATE.FALLING then
-                    r.fallTime = r.fallTime + dt
-                    local yOffset = math.abs(FALL_SPEED) * r.fallTime
-                    local targetY = r.anchorPos.Y - yOffset
-                    local rotPart = r.basePivot - r.basePivot.Position
-                    local newCFrame = CFrame.new(r.anchorPos.X, targetY, r.anchorPos.Z) * rotPart
-                    if r.anchorPart then r.anchorPart.CFrame = newCFrame end
-                    if (targetY - myPos.Y) < RELEASE_DEPTH then
-                        r.state = STATE.RELEASED
-                        removeFall(obj)
-                    end
-                end
-            end
-        end
-    end)
-
-    if descConn then descConn:Disconnect() end
-    descConn = Workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Model") then processObject(obj) end
-    end)
-end
-
-local function stopFallLoop()
-    if heartConn then heartConn:Disconnect(); heartConn = nil end
-    if descConn then descConn:Disconnect(); descConn = nil end
-    for obj in pairs(tracked) do removeFall(obj) end
-    tracked = {}
-end
-
-local fallGroup = Tabs.Misc:AddLeftGroupbox("Entity Fall")
-fallGroup:AddLabel("<font color='#FF3232'>Make the entity fall</font>", true)
-
-local entityDrop = fallGroup:AddDropdown("EntityFallSelect", {
-    Text = "Chọn entity rơi",
-    Values = ENTITY_OPTIONS,
-    Multi = true,
-    Default = {},
-    Tooltip = "Mặc định không con nào bị rơi",
-})
-entityDrop:OnChanged(function(v)
-    selectedEntities = {}
-    if type(v) == "table" then
-        for _, name in pairs(v) do
-            if type(name) == "string" then selectedEntities[name] = true end
-        end
-    end
-end)
-
-fallGroup:AddToggle("MakeEntityFallToggle", {
-    Text = "<font color='#FF3232'>Make the entity fall</font>",
-    Default = false,
-}):OnChanged(function(v)
-    playToggleSound()
-    entityFallOn = v
-    if v then
-        pcall(function()
-            Obsidian:Notify({
-                Title = "PaintCrack",
-                Description = "Làm thực thể rơi xuống chỉ là ẢO không thực sự,chỉ giúp đỡ kinh sợ!",
-                Time = 5
-            })
-        end)
-        startFallLoop()
-        initialScan()
-    else
-        stopFallLoop()
-    end
-end)
-
-fallGroup:AddLabel("<font color='#AAAAAA'>Chỉ ẢO - giúp bớt kinh sợ</font>", true)
-end)()
 local chaosRemoveActive = false
 local chaosConn = nil
 
