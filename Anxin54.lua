@@ -628,132 +628,21 @@ local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
 ;(function()
 local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
 local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","Shield-off")
-local antiEyesActive = false
-local antiDupeActive = false
-local antiEyesConn = nil
-local oldNamecall = nil
-local function isEyesOrLook(name)
-    local n = tostring(name or ""):lower()
-    return n:find("eyes", 1, true) or n:find("lookman", 1, true) or n:find("look_man", 1, true)
-end
-
-local function isDupeOrVacuum(name)
-    local n = tostring(name or ""):lower()
-    return n:find("dupe", 1, true) or n:find("vacuum", 1, true) or n:find("fake", 1, true)
-end
-
-AntiLeft:AddToggle("AntiEyesLookToggle", {
-    Text = "Anti Eyes & LookMan", Default = false,
-    Tooltip = "Chan dame khi nhin"
-}):OnChanged(function(v)
-    antiEyesActive = v
-    if antiEyesConn then antiEyesConn:Disconnect() antiEyesConn = nil end
-    if not v then return end
-
-    local function fireBypass()
-        local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
-            or ReplicatedStorage:FindFirstChild("EntityInfo")
-            or ReplicatedStorage:FindFirstChild("Bricks")
-            or ReplicatedStorage
-        local mr = rf:FindFirstChild("MotorReplication") or rf:FindFirstChild("MotorReplication", true)
-        if mr then
-            pcall(function() mr:FireServer(-650) end)
-        end
+local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
+local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","shield-off")
+pcall(function()
+    local fn = loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/PaintVcy25Doors/refs/heads/main/AntiPack.lua"
+    ))()
+    if type(fn) == "function" then
+        fn(AntiLeft, AntiRight, Obsidian, {
+            Workspace = Workspace,
+            RunService = RunService,
+            ReplicatedStorage = ReplicatedStorage,
+            Players = Players,
+            LocalPlayer = LocalPlayer,
+        })
     end
-
-    local function hasEyes()
-        return Workspace:FindFirstChild("Eyes")
-            or Workspace:FindFirstChild("Lookman")
-            or Workspace:FindFirstChild("BackdoorLookman")
-    end
-
-    -- hook namecall chan goc nhin + MotorReplication
-    pcall(function()
-        local mt = getrawmetatable(game)
-        if not oldNamecall then oldNamecall = mt.__namecall end
-        setreadonly(mt, false)
-        mt.__namecall = newcclosure(function(self, ...)
-            if checkcaller and checkcaller() then
-                return oldNamecall(self, ...)
-            end
-            local method = getnamecallmethod()
-            if antiEyesActive and method == "FireServer" and tostring(self.Name) == "MotorReplication" then
-                if hasEyes() then
-                    return oldNamecall(self, -650)
-                end
-            end
-            if antiEyesActive and method == "Raycast" then
-                local result = oldNamecall(self, ...)
-                if result and result.Instance then
-                    local inst = result.Instance
-                    local mod = inst:FindFirstAncestorOfClass("Model") or inst
-                    if isEyesOrLook(mod.Name) or isEyesOrLook(inst.Name) then
-                        return nil
-                    end
-                end
-                return result
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end)
-
-    antiEyesConn = RunService.Heartbeat:Connect(function()
-        if not antiEyesActive then return end
-        if hasEyes() then fireBypass() end
-    end)
-end)
-
-AntiRight:AddToggle("AntiDupeVacuumToggle", {
-    Text = "Anti Dupe & Vacuum", Default = false,
-    Tooltip = "Chan tuong tac cua gia / vacuum"
-}):OnChanged(function(v)
-    antiDupeActive = v
-    if v then
-        task.spawn(function()
-            while antiDupeActive do
-                pcall(function()
-                    for _, obj in ipairs(Workspace:GetDescendants()) do
-                        if obj:IsA("ProximityPrompt") then
-                            local par = obj.Parent
-                            local n = (par and par.Name or "") .. " " .. (obj.ActionText or "")
-                            if isDupeOrVacuum(n) or isDupeOrVacuum(obj.ObjectText) then
-                                obj.Enabled = false
-                                obj.MaxActivationDistance = 0
-                            end
-                        end
-                        if obj:IsA("BasePart") and isDupeOrVacuum(obj.Name) then
-                            obj.CanTouch = false
-                            obj.CanQuery = false
-                        end
-                        local mod = obj:IsA("Model") and obj or nil
-                        if mod and isDupeOrVacuum(mod.Name) then
-                            for _, p in ipairs(mod:GetDescendants()) do
-                                if p:IsA("BasePart") then
-                                    p.CanTouch = false
-                                    p.CanQuery = false
-                                elseif p:IsA("ProximityPrompt") then
-                                    p.Enabled = false
-                                end
-                            end
-                        end
-                    end
-                end)
-                task.wait(0.35)
-            end
-        end)
-    end
-
-    pcall(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://3318713980"
-        sound.Volume = 5
-        sound.Parent = game:GetService("SoundService")
-        sound:Play()
-        task.delay(1.5, function()
-            if sound then sound:Destroy() end
-        end)
-    end)
 end)
 
 task.spawn(function()
