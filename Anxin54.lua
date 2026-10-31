@@ -638,6 +638,7 @@ pcall(function()
             Players = Players,
             LocalPlayer = LocalPlayer,
             MiscTab = Tabs.Misc,
+            VisualTab = Tabs.Visual,
         })
     end
 end)
