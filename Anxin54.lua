@@ -49,7 +49,7 @@ local Window = Obsidian:CreateWindow({
     Size = UDim2.new(0, 720, 0, 410),
     Center = true,
     AutoShow = true,
-    MenuFadeTime = 0.8
+    MenuFadeTime = 0.8,
     Footer = "https://discord.gg/3eHTX99Zz",
 })
 pcall(function()
