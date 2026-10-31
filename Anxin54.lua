@@ -618,11 +618,22 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if enableJumpOn then applyCanJump(char) end
     if enableSlideOn then applyCanSlide(char) end
 end)
-local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
-local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag","measuring instrument")
-local VisualLeft = VisualTab:AddLeftGroupbox("ESP", "paintbrush") -- icon bảng vẽ
-local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
-ESP(VisualLeft, nil, Library, Svc)
+
+local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual Effects", "eye")
+local VisualRight = Tabs.Visual:AddRightGroupbox("ESP", "paintbrush")
+pcall(function()
+    local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
+    if type(ESPModule) == "function" then
+        ESPModule(VisualRight, nil, Obsidian, {
+            Workspace = Workspace,
+            RunService = RunService,
+            Players = Players,
+            LocalPlayer = LocalPlayer,
+            ReplicatedStorage = ReplicatedStorage,
+            Camera = Workspace.CurrentCamera,
+        })
+    end
+end)
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
 local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto","wrench")
 local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
