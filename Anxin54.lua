@@ -979,47 +979,34 @@ end
 
 local function psMainLoop()
     if PS.conn then PS.conn:Disconnect() PS.conn = nil end
-    PS.conn = RunService.RenderStepped:Connect(function()
+    PS.conn = RunService.Heartbeat:Connect(function()
         if not PS.on then return end
         local char = LocalPlayer.Character
         if not char then return end
+
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then return end
 
+        local lt = char:FindFirstChild("LowerTorso")
+        local root = lt and lt:FindFirstChild("Root")
         local Collision = char:FindFirstChild("Collision")
         local CollisionPart = char:FindFirstChild("CollisionPart")
         local CollisionClone = char:FindFirstChild("CollisionClone") or char:FindFirstChild("CollisionPartClone")
 
-        if tick() - PS.lastCrouch > 0.1 then
-            PS.lastCrouch = tick()
-            local cr = psGetCrouch()
-            if cr then pcall(function() cr:FireServer(true, true) end) end
-        end
+        hum.HipHeight = 0.05
 
-        if Collision then
-            Collision.CanCollide = false
-            local cc = Collision:FindFirstChild("CollisionCrouch")
-            if cc then cc.CanCollide = false end
-        end
-
-        local lt = char:FindFirstChild("LowerTorso")
-        local root = lt and lt:FindFirstChild("Root")
-        if root and root:IsA("Motor6D") then
-            if not PS.c1Origin then PS.c1Origin = root.C1 end
+        if root and PS.c1Origin then
             root.C1 = PS.c1Origin * CFrame.new(0, -2.346, 0)
         end
 
-        local SpoofY = 2.328
-        if Collision and Collision:IsA("BasePart") then
-            Collision.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
+        local spoofY = 2.328
+        if Collision then
+            Collision.Position = hrp.Position + Vector3.new(0, spoofY, 0)
+            Collision.CanCollide = false
         end
-        if CollisionPart and CollisionPart:IsA("BasePart") then
-            CollisionPart.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
-        end
-
-        if Collision and Collision:FindFirstChild("CollisionCrouch") then
-            Collision.CollisionCrouch.Position = hrp.Position + Vector3.new(0, 1.328, 0)
+        if CollisionPart then
+            CollisionPart.Position = hrp.Position + Vector3.new(0, spoofY, 0)
         end
         if CollisionClone and CollisionClone:IsA("BasePart") then
             if Collision then
@@ -1028,6 +1015,13 @@ local function psMainLoop()
             CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
             local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
             if ccc then ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0) end
+        end
+
+        local now = tick()
+        if now - (PS.lastCrouch or 0) > 0.12 then
+            PS.lastCrouch = now
+            local cr = psGetCrouch()
+            if cr then pcall(function() cr:FireServer(true, true) end) end
         end
 
         if PS.label then
@@ -1048,14 +1042,17 @@ local function togglePositionSpoof(Value)
     if Value then
         if PS.on then return end
         PS.on = true
+
         local lt = char:FindFirstChild("LowerTorso")
         local root = lt and lt:FindFirstChild("Root")
         if root and root:IsA("Motor6D") and not PS.c1Origin then
             PS.c1Origin = root.C1
         end
+
         hrp.CFrame = hrp.CFrame * CFrame.new(0, -2.346, 0)
         hum.HipHeight = 0.05
         if cr then pcall(function() cr:FireServer(true, true) end) end
+
         psCreateUI()
         psMainLoop()
         psNotify(true)
@@ -1072,6 +1069,7 @@ local function togglePositionSpoof(Value)
             local p = char:FindFirstChild(n)
             if p and p:IsA("BasePart") then p.Position = rp end
         end
+
         local lt = char:FindFirstChild("LowerTorso")
         local root = lt and lt:FindFirstChild("Root")
         if root and PS.c1Origin then root.C1 = PS.c1Origin end
