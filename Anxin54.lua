@@ -637,6 +637,7 @@ pcall(function()
             ReplicatedStorage = ReplicatedStorage,
             Players = Players,
             LocalPlayer = LocalPlayer,
+            MiscTab = Tabs.Misc,
         })
     end
 end)
