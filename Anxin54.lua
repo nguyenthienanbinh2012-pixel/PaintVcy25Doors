@@ -50,6 +50,7 @@ local Window = Obsidian:CreateWindow({
     Center = true,
     AutoShow = true,
     MenuFadeTime = 0.8
+    Footer = "https://discord.gg/3eHTX99Zz",
 })
 pcall(function()
     Obsidian.Scheme.AccentColor  = Color3.fromRGB(255, 140, 175)
@@ -625,8 +626,6 @@ local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
 ;(function()
 local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
 local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","Shield-off")
-local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
-local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","shield-off")
 pcall(function()
     local fn = loadstring(game:HttpGet(
         "https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/Sad_Heart54/refs/heads/main/SemiGodMode_36.lua"
@@ -1015,12 +1014,28 @@ local function togglePositionSpoof(enable)
     local lower = char:FindFirstChild("LowerTorso")
     local motor = lower and lower:FindFirstChild("Root")
 
+    local entityNames = {
+        RushMoving=true, AmbushMoving=true, A60=true, A120=true,
+        BackdoorRush=true, GlitchRush=true, GlitchAmbush=true, CustomEntity=true,
+    }
+    local function nearestEntityDist()
+        local best = math.huge
+        for _, e in ipairs(Workspace:GetChildren()) do
+            if entityNames[e.Name] and e.PrimaryPart then
+                local d = (hrp.Position - e.PrimaryPart.Position).Magnitude
+                if d < best then best = d end
+            end
+        end
+        return best
+    end
+
     if enable then
         if S.enabled then S.spoofBusy = false return end
         S.enabled = true
         if motor and motor:IsA("Motor6D") and not S.c1Origin then
             S.c1Origin = motor.C1
         end
+        -- dich HRP xuong 1 lan (Abysall)
         hrp.CFrame = hrp.CFrame * CFrame.new(0, -S.DEPTH, 0)
         humanoid.HipHeight = 0.05
         if crouchRemote then pcall(function() crouchRemote:FireServer(true, true) end) end
@@ -1032,23 +1047,41 @@ local function togglePositionSpoof(enable)
             if not c then return end
             local h = c:FindFirstChild("HumanoidRootPart")
             if not h then return end
+            S.hrp = h
+
+            -- entity gan -> Collision +200 (Abysall SpoofOffset)
+            local entNear = nearestEntityDist() < 120
+            local spoofY = entNear and 200 or 2.328
+
             local col = c:FindFirstChild("Collision")
             local cp = c:FindFirstChild("CollisionPart")
             local cc = c:FindFirstChild("CollisionClone")
             local lt = c:FindFirstChild("LowerTorso")
             local m = lt and lt:FindFirstChild("Root")
+
             if col and col:IsA("BasePart") then
-                col.Position = h.Position + Vector3.new(0, 2.328, 0)
+                col.Position = h.Position + Vector3.new(0, spoofY, 0)
                 col.CanCollide = false
             end
             if cp and cp:IsA("BasePart") then
-                cp.Position = h.Position + Vector3.new(0, 2.328, 0)
+                cp.Position = h.Position + Vector3.new(0, spoofY, 0)
             end
             if cc and cc:IsA("BasePart") then
-                cc.Position = h.Position + Vector3.new(0, 1.75, 0)
+                cc.Position = h.Position + Vector3.new(0, entNear and 199.5 or 1.75, 0)
             end
             if m and m:IsA("Motor6D") and S.c1Origin then
                 m.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
+            end
+
+            -- widget: do do lech C1 / entity mode
+            if S.uiLabel and S.uiStroke then
+                local show = entNear and -200 or -S.DEPTH
+                S.uiLabel.Text = string.format("HRP.Y: %.2f", show)
+                if entNear then
+                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
+                else
+                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
+                end
             end
         end)
 
@@ -1087,7 +1120,6 @@ local function togglePositionSpoof(enable)
     end
     S.spoofBusy = false
             end
-
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
