@@ -472,31 +472,182 @@ IndexLeft:AddSlider("JumpPowerSlider", {
         end
     end
 end)
+IndexLeft:AddLabel("<font color='#FFAA00'>⚠ Enable Jumping/Sliding có thể bị anticheat phát hiện trong một số floor.</font>", true)
 
-IndexLeft:AddToggle("InfJumpToggle", {
-    Text = "Infinity Jump", Default = false,
+local enableJumpOn = false
+local oldJumpValue = nil
+local enableSlideOn = false
+local oldSlideValue = nil
+local infiniteJumpsOn = false
+local infJumpConn1 = nil
+local infJumpConn2 = nil
+local isTyping = false
+local indexAutoInteractOn = false
+local indexAutoInteractConn = nil
+local lastInteractFire = 0
+local interactDebounce = false
+local interactIgnoreList = {
+    HidePrompt = true, RiftPrompt = true, StarRiftPrompt = true, InteractPrompt = true,
+    ClimbPrompt = true, DonatePrompt = true, DialoguePrompt = true, RevivePrompt = true,
+    EnterPrompt = true, AnimatePrompt = true, ToolEventPrompt = true, Prompt = true,
+    PropPrompt = true, TrackLever = true,
+}
+
+local function applyCanJump(char)
+    if not char then return end
+    pcall(function()
+        if oldJumpValue == nil then
+            oldJumpValue = char:GetAttribute("CanJump")
+        end
+        char:SetAttribute("CanJump", true)
+    end)
+end
+
+local function applyCanSlide(char)
+    if not char then return end
+    pcall(function()
+        if oldSlideValue == nil then
+            oldSlideValue = char:GetAttribute("CanSlide")
+        end
+        char:SetAttribute("CanSlide", true)
+    end)
+end
+
+IndexLeft:AddToggle("EnableJumpToggle", {
+    Text = "Enable Jumping",
+    Default = false,
 }):OnChanged(function(v)
-    infJumpOn = v
-    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
-    if not v then return end
-    infJumpConn = UserInputService.JumpRequest:Connect(function()
-        if not infJumpOn then return end
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hum then return end
-        pcall(function()
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            if hrp then
-                local vy = jumpPowerOn and (jumpPowerVal * 0.35) or 40
-                hrp.AssemblyLinearVelocity = Vector3.new(
-                    hrp.AssemblyLinearVelocity.X,
-                    math.max(hrp.AssemblyLinearVelocity.Y, vy),
-                    hrp.AssemblyLinearVelocity.Z
-                )
+    enableJumpOn = v
+    local char = LocalPlayer.Character
+    if v then
+        applyCanJump(char)
+        if infJumpConn1 then else end
+        task.spawn(function()
+            while enableJumpOn do
+                local c = LocalPlayer.Character
+                if c then pcall(function() c:SetAttribute("CanJump", true) end) end
+                task.wait(0.1)
             end
         end)
+    else
+        if char and oldJumpValue \~= nil then
+            pcall(function() char:SetAttribute("CanJump", oldJumpValue) end)
+        end
+        oldJumpValue = nil
+    end
+end)
+
+IndexLeft:AddToggle("EnableSlideToggle", {
+    Text = "Enable Sliding",
+    Default = false,
+}):OnChanged(function(v)
+    enableSlideOn = v
+    local char = LocalPlayer.Character
+    if v then
+        applyCanSlide(char)
+        task.spawn(function()
+            while enableSlideOn do
+                local c = LocalPlayer.Character
+                if c then pcall(function() c:SetAttribute("CanSlide", true) end) end
+                task.wait(0.1)
+            end
+        end)
+    else
+        if char and oldSlideValue \~= nil then
+            pcall(function() char:SetAttribute("CanSlide", oldSlideValue) end)
+        end
+        oldSlideValue = nil
+    end
+end)
+
+IndexLeft:AddToggle("InfiniteJumpsToggle", {
+    Text = "Infinite Jumps",
+    Default = false,
+}):OnChanged(function(v)
+    infiniteJumpsOn = v
+    if infJumpConn1 then infJumpConn1:Disconnect() infJumpConn1 = nil end
+    if infJumpConn2 then infJumpConn2:Disconnect() infJumpConn2 = nil end
+    if not v then return end
+
+    pcall(function()
+        UserInputService.TextBoxFocused:Connect(function() isTyping = true end)
+        UserInputService.TextBoxFocusReleased:Connect(function() isTyping = false end)
     end)
+
+    infJumpConn1 = UserInputService.InputBegan:Connect(function(input, gp)
+        if not infiniteJumpsOn or gp or isTyping then return end
+        if input.KeyCode == Enum.KeyCode.Space then
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+        end
+    end)
+
+    pcall(function()
+        local btn = LocalPlayer.PlayerGui:FindFirstChild("MainUI")
+            and LocalPlayer.PlayerGui.MainUI:FindFirstChild("MainFrame")
+            and LocalPlayer.PlayerGui.MainUI.MainFrame:FindFirstChild("MobileButtons")
+            and LocalPlayer.PlayerGui.MainUI.MainFrame.MobileButtons:FindFirstChild("JumpButton")
+        if btn then
+            infJumpConn2 = btn.MouseButton1Down:Connect(function()
+                if not infiniteJumpsOn then return end
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+            end)
+        end
+    end)
+end)
+
+IndexLeft:AddToggle("IndexAutoInteractToggle", {
+    Text = "Auto Interact",
+    Default = false,
+}):OnChanged(function(v)
+    indexAutoInteractOn = v
+    if indexAutoInteractConn then indexAutoInteractConn:Disconnect() indexAutoInteractConn = nil end
+    if not v then return end
+    indexAutoInteractConn = RunService.Heartbeat:Connect(function()
+        if not indexAutoInteractOn or interactDebounce then return end
+        local now = tick()
+        if now - lastInteractFire < (1 / 60) then return end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        for _, desc in ipairs(Workspace:GetDescendants()) do
+            if not indexAutoInteractOn then break end
+            if desc:IsA("ProximityPrompt") and desc.Enabled then
+                local name = desc.Name
+                if interactIgnoreList[name] then continue end
+                if desc:GetAttribute("AutoInteractIgnore") then continue end
+                local parent = desc.Parent
+                if not parent then continue end
+                local pn = parent.Name
+                if pn == "DoorFake" or pn == "FakeDoor" or pn == "KeyObtainFake" or pn == "TithingPlate" then continue end
+                if parent:GetAttribute("Locked") == true then continue end
+                local pPos
+                if parent:IsA("BasePart") then
+                    pPos = parent.Position
+                elseif parent:IsA("Model") then
+                    local ok, pv = pcall(function() return parent:GetPivot().Position end)
+                    if ok then pPos = pv end
+                end
+                if pPos and (hrp.Position - pPos).Magnitude <= (desc.MaxActivationDistance or 8) then
+                    interactDebounce = true
+                    lastInteractFire = tick()
+                    pcall(function()
+                        if fireproximityprompt then fireproximityprompt(desc) end
+                    end)
+                    task.wait(0.05)
+                    interactDebounce = false
+                    break
+                end
+            end
+        end
+    end)
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    if enableJumpOn then applyCanJump(char) end
+    if enableSlideOn then applyCanSlide(char) end
 end)
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual")
 local VisualRight = Tabs.Visual:AddRightGroupbox("Lighting & Lag","measuring instrument")
@@ -887,6 +1038,7 @@ local S = {
     char = nil, hrp = nil, humanoid = nil, loaded = false, enabled = false,
     baseY = nil, DEPTH = 2.346, c1Origin = nil, crouchConn = nil,
     uiWidget = nil, uiLabel = nil, uiStroke = nil, updateConn = nil,
+    spoofBusy = false, spoofBaseY = nil, spoofLoop = nil, crouchLoop = nil,
 }
 
 local function loadPositionSpoof()
@@ -2434,109 +2586,165 @@ end)
 
 ;(function()
 local autoInteractActive = false
-local autoInteractThread = nil
-local autoInteractRange = 8
-local autoInteractCooldown = setmetatable({}, {__mode = "k"})
-local INTERACT_BLACKLIST = {
-    bed = true, seat = true, chair = true, armchair = true,
-    couch = true, sofa = true, stool = true, bench = true,
-    closet = true, wardrobe = true, hide = true, locker = true,
-    painting = true, picture = true, art = true, canvas = true,
-    frame = true, poster = true, image = true, photo = true,
+local autoInteractConn = nil
+local autoInteractDebounce = false
+local autoInteractLast = 0
+local AUTO_INTERACT_IGNORE = {
+    HidePrompt = true, RiftPrompt = true, StarRiftPrompt = true, InteractPrompt = true,
+    ClimbPrompt = true, DonatePrompt = true, DialoguePrompt = true, RevivePrompt = true,
+    EnterPrompt = true, AnimatePrompt = true, ToolEventPrompt = true, Prompt = true,
+    PropPrompt = true, TrackLever = true,
 }
 
-local function isInteractBlacklisted(prompt, parent)
-    local pName = tostring(parent and parent.Name or ""):lower()
-    local aText = tostring(prompt.ActionText or ""):lower()
-    local oText = tostring(prompt.ObjectText or ""):lower()
-    for key, _ in pairs(INTERACT_BLACKLIST) do
-        if pName:find(key, 1, true) or aText:find(key, 1, true) or oText:find(key, 1, true) then
-            return true
+local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
+    Text = "Auto Interact",
+    Default = false,
+    Tooltip = "Tu dong tuong tac ",
+})
+autoInteractToggle:OnChanged(function(Value)
+    autoInteractActive = Value
+    if autoInteractConn then autoInteractConn:Disconnect() autoInteractConn = nil end
+    if not Value then return end
+    autoInteractConn = RunService.Heartbeat:Connect(function()
+        if not autoInteractActive or autoInteractDebounce then return end
+        local now = tick()
+        if now - autoInteractLast < (1 / 60) then return end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        for _, desc in ipairs(Workspace:GetDescendants()) do
+            if not autoInteractActive then break end
+            if desc:IsA("ProximityPrompt") and desc.Enabled then
+                if AUTO_INTERACT_IGNORE[desc.Name] then
+                elseif desc:GetAttribute("AutoInteractIgnore") then
+                else
+                    local parent = desc.Parent
+                    if parent then
+                        local pn = parent.Name
+                        if pn ~= "DoorFake" and pn ~= "FakeDoor" and pn ~= "KeyObtainFake" and pn \~= "TithingPlate"
+                            and parent:GetAttribute("Locked") ~= true then
+                            local pPos
+                            if parent:IsA("BasePart") then
+                                pPos = parent.Position
+                            elseif parent:IsA("Model") then
+                                local ok, pv = pcall(function() return parent:GetPivot().Position end)
+                                if ok then pPos = pv end
+                            end
+                            if pPos and (hrp.Position - pPos).Magnitude <= (desc.MaxActivationDistance or 10) then
+                                autoInteractDebounce = true
+                                autoInteractLast = tick()
+                                pcall(function()
+                                    if fireproximityprompt then fireproximityprompt(desc) end
+                                end)
+                                task.delay(0.05, function() autoInteractDebounce = false end)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
         end
+    end)
+end)
+local infiniteItemOn = false
+local infiniteItemConn = nil
+local infiniteItemPickConn = nil
+local infiniteItemSelected = { ["Lockpick"] = true }
+local INF_ITEM_NAMES = {
+    ["Lockpick"] = true,
+    ["Lock Pick"] = true,
+    ["Skeleton Key"] = true,
+    ["SkeletonKey"] = true,
+    ["Shears"] = true,
+    ["Multitool"] = true,
+}
+
+local function getDropRemote()
+    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
+    return rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
+end
+
+local function toolMatches(tool)
+    if not tool then return false end
+    local n = tostring(tool.Name)
+    if infiniteItemSelected[n] then return true end
+    for sel in pairs(infiniteItemSelected) do
+        if n:lower():find(tostring(sel):lower(), 1, true) then return true end
     end
     return false
 end
 
-local function preparePrompt(prompt)
-    pcall(function()
-        prompt.Enabled = true
-        prompt.HoldDuration = 0
-        prompt.RequiresLineOfSight = false
-        -- KHONG tang MaxActivationDistance (tranh nut hien xa)
+local infItemGroup = Tabs.Misc:AddLeftGroupbox("Infinite Item", "package")
+infItemGroup:AddLabel("<font color='#FF3232'>Vô hạn item (Drop + nhặt lại) — chỉ item vứt được</font>", true)
+infItemGroup:AddDropdown("InfiniteItemSelect", {
+    Text = "Chon item",
+    Values = { "Lockpick", "Skeleton Key", "Shears", "Multitool" },
+    Multi = true,
+    Default = { "Lockpick" },
+}):OnChanged(function(v)
+    infiniteItemSelected = {}
+    if type(v) == "table" then
+        for k, val in pairs(v) do
+            if val == true and type(k) == "string" then
+                infiniteItemSelected[k] = true
+            elseif type(val) == "string" then
+                infiniteItemSelected[val] = true
+            end
+        end
+    end
+end)
+
+infItemGroup:AddToggle("InfiniteItemToggle", {
+    Text = "<font color='#FF3232'>Infinite Item</font>",
+    Default = false,
+}):OnChanged(function(v)
+    infiniteItemOn = v
+    if infiniteItemConn then infiniteItemConn:Disconnect() infiniteItemConn = nil end
+    if infiniteItemPickConn then infiniteItemPickConn:Disconnect() infiniteItemPickConn = nil end
+    if not v then return end
+
+    local drops = Workspace:FindFirstChild("Drops") or Workspace
+
+    infiniteItemPickConn = drops.ChildAdded:Connect(function(obj)
+        if not infiniteItemOn then return end
+        task.defer(function()
+            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt and fireproximityprompt then
+                pcall(function() fireproximityprompt(prompt) end)
+            end
+        end)
     end)
-end
 
-local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
-    Text = "Auto Interact", Default = false,
-    Tooltip = "Tu dong tuong tac"
-})
+    infiniteItemConn = RunService.Heartbeat:Connect(function()
+        if not infiniteItemOn then return end
+        -- giu nhe, chi dam bao toggle con song
+    end)
 
-autoInteractToggle:OnChanged(function(Value)
-    autoInteractActive = Value
-    if Value then
-        if not autoInteractThread then
-            autoInteractThread = task.spawn(function()
-                while autoInteractActive do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                        if not hrp then return end
-                        local pos = hrp.Position
-                        local rooms = Workspace:FindFirstChild("CurrentRooms")
-                        local roots = {}
-                        if rooms then
-                            table.insert(roots, rooms)
-                        else
-                            table.insert(roots, Workspace)
-                        end
-                        for _, root in ipairs(roots) do
-                            for _, desc in ipairs(root:GetDescendants()) do
-                                if desc:IsA("ProximityPrompt") and desc.Enabled then
-                                    local parent = desc.Parent
-                                    if parent and not isInteractBlacklisted(desc, parent) then
-                                        local pPos = nil
-                                        if parent:IsA("BasePart") then
-                                            pPos = parent.Position
-                                        elseif parent:IsA("Attachment") and parent.Parent then
-                                            pPos = parent.WorldPosition
-                                        elseif parent:IsA("Model") then
-                                            local pp = parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart")
-                                            if pp then pPos = pp.Position end
-                                        end
-                                        if pPos and (pos - pPos).Magnitude <= autoInteractRange then
-                                            preparePrompt(desc)
-                                            local now = tick()
-                                            if not autoInteractCooldown[desc] or (now - autoInteractCooldown[desc] > 0.09) then
-                                                autoInteractCooldown[desc] = now
-                                                pcall(function()
-                                                    if fireproximityprompt then
-                                                        fireproximityprompt(desc)
-                                                    end
-                                                end)
-                                                pcall(function()
-                                                    -- fallback mot so executor
-                                                    if fireproximityprompt then
-                                                        fireproximityprompt(desc, 1)
-                                                    end
-                                                end)
-                                            end
-                                        end
-                                    end
-                                end
+    -- Hook: khi dung tool, drop + pick
+    task.spawn(function()
+        while infiniteItemOn do
+            local char = LocalPlayer.Character
+            local bag = LocalPlayer:FindFirstChild("Backpack")
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if tool and toolMatches(tool) then
+                local drop = getDropRemote()
+                if drop then
+                    pcall(function() drop:FireServer(tool) end)
+                    task.wait(0.08)
+                    local dfolder = Workspace:FindFirstChild("Drops")
+                    if dfolder then
+                        for _, d in ipairs(dfolder:GetChildren()) do
+                            local prompt = d:FindFirstChildWhichIsA("ProximityPrompt", true)
+                            if prompt and fireproximityprompt then
+                                pcall(function() fireproximityprompt(prompt) end)
                             end
                         end
-                    end)
-                    task.wait(0.1)
+                    end
                 end
-            end)
+            end
+            task.wait(0.15)
         end
-    else
-        if autoInteractThread then
-            task.cancel(autoInteractThread)
-            autoInteractThread = nil
-        end
-        autoInteractCooldown = setmetatable({}, {__mode = "k"})
-    end
+    end)
 end)
 local reachState = { reachMultiplier = 1.5 }
 
