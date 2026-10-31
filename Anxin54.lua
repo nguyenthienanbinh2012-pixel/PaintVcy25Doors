@@ -885,252 +885,194 @@ local function lockInputs(lock)
     end
 end
 
-local S = {
-    char = nil, hrp = nil, humanoid = nil, loaded = false, enabled = false,
-    baseY = nil, DEPTH = 2.346, c1Origin = nil, crouchConn = nil,
-    uiWidget = nil, uiLabel = nil, uiStroke = nil, updateConn = nil,
-    spoofBusy = false, spoofBaseY = nil, spoofLoop = nil, crouchLoop = nil,
+local PS = {
+    on = false,
+    c1Origin = nil,
+    conn = nil,
+    lastCrouch = 0,
+    ui = nil,
+    label = nil,
+    stroke = nil,
 }
 
-local function loadPositionSpoof()
-    if S.loaded then return end
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart", 10)
-    local humanoid = char:WaitForChild("Humanoid", 10)
-    if not hrp or not humanoid then return end
-    S.char = char; S.hrp = hrp; S.humanoid = humanoid
-    local t0 = tick()
-    while tick() - t0 < 5 do
-        if humanoid.FloorMaterial ~= Enum.Material.Air then break end
-        task.wait(0.1)
+local function psNotify(on)
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 8
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(2.2, function() if s then s:Destroy() end end)
+    end)
+    if on then
+        pcall(function()
+            Obsidian:Notify({
+                Title = "Position Spoof",
+                Description = "<font color='#FF3232'>Position Spoof chi an toan khi dung im hoac di chuyen, Nhay hay di cau thang se dan toi cai chet</font>",
+                Time = 2.2,
+            })
+        end)
     end
-    task.wait(0.3)
-    for _, n in ipairs({"CollisionPart", "Collision"}) do
-        local p = char:FindFirstChild(n)
-        if p and p:IsA("BasePart") then p.CanCollide = false end
-    end
-    hrp.Anchored = true
-    hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + S.DEPTH, hrp.Position.Z)
-    task.wait(0.05)
-    hrp.Anchored = false
-    humanoid.HipHeight = 2.396
-    local t1 = tick()
-    while tick() - t1 < 3 do
-        if math.abs(hrp.Position.Y) < 1 then break end
-        task.wait(0.05)
-    end
-    task.wait(0.3)
-    local crouchRemote = getCrouchRemote()
-    if crouchRemote then
-        pcall(function() crouchRemote:FireServer(true, true) end)
-    end
-    task.wait(0.3)
-    for _, n in ipairs({"CollisionPartClone", "CollisionClone"}) do
-        local old = char:FindFirstChild(n)
-        if old then old:Destroy() end
-    end
-    local cpClone = Instance.new("Part")
-    cpClone.Name = "CollisionPartClone"
-    cpClone.Size = Vector3.new(1, 1, 1)
-    cpClone.Transparency = 1
-    cpClone.CanCollide = false
-    cpClone.CanQuery = true
-    cpClone.CanTouch = true
-    cpClone.Massless = true
-    cpClone.Anchored = false
-    cpClone.Parent = char
-    pcall(function() cpClone.CollisionGroup = "Player" end)
-    local w1 = Instance.new("Weld")
-    w1.Part0 = cpClone; w1.Part1 = hrp
-    w1.C0 = CFrame.new(0, 0.271744013, 0); w1.C1 = CFrame.new()
-    w1.Parent = cpClone
-    local collision = char:FindFirstChild("Collision")
-    local colSize = collision and collision.Size or Vector3.new(5.5, 3, 3)
-    local ccClone = Instance.new("Part")
-    ccClone.Name = "CollisionClone"
-    ccClone.Size = colSize
-    ccClone.Transparency = 1
-    ccClone.CanCollide = true
-    ccClone.CanQuery = true
-    ccClone.CanTouch = true
-    ccClone.Massless = true
-    ccClone.Anchored = false
-    ccClone.Parent = char
-    pcall(function() ccClone.CollisionGroup = "Player" end)
-    local w2 = Instance.new("Weld")
-    w2.Part0 = ccClone; w2.Part1 = hrp
-    w2.C0 = CFrame.new(0, 0.0905, 0); w2.C1 = CFrame.new()
-    w2.Parent = ccClone
-    local cpOrig = char:FindFirstChild("CollisionPart")
-    if cpOrig then char.PrimaryPart = cpOrig end
-    S.loaded = true
 end
 
-local function createFloatingWidget()
-    if S.uiWidget then return end
+local function psDestroyUI()
+    if PS.ui then pcall(function() PS.ui:Destroy() end) end
+    PS.ui, PS.label, PS.stroke = nil, nil, nil
+end
+
+local function psCreateUI()
+    if PS.ui then return end
     local gui = Instance.new("ScreenGui")
     gui.Name = "SpoofWidgetGui"
     gui.ResetOnSpawn = false
     gui.DisplayOrder = 200
     local frame = Instance.new("Frame")
-    frame.Name = "WidgetFrame"
     frame.Size = UDim2.new(0, 150, 0, 36)
-    frame.Position = UDim2.new(0.5, -75, 0, 8)
+    frame.Position = UDim2.new(0.5, -75, 0, 2)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     frame.BackgroundTransparency = 0.15
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Draggable = true
-    frame.ZIndex = 500
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 18); corner.Parent = frame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 18)
     local stroke = Instance.new("UIStroke")
-    stroke.Name = "WidgetStroke"; stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(255, 50, 50); stroke.Parent = frame
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(50, 255, 100)
+    stroke.Parent = frame
     local label = Instance.new("TextLabel")
-    label.Name = "WidgetLabel"
     label.Size = UDim2.new(1, -10, 1, 0)
     label.Position = UDim2.new(0, 5, 0, 0)
     label.BackgroundTransparency = 1
-    label.Text = "HRP.Y: 0.00"
+    label.Text = "HRP.Y: -2.35"
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
     label.TextSize = 13
     label.Font = Enum.Font.Code
-    label.ZIndex = 501; label.Parent = frame
-    gui.Parent = PlayerGui
+    label.Parent = frame
     frame.Parent = gui
-    S.uiWidget = gui; S.uiLabel = label; S.uiStroke = stroke
+    gui.Parent = PlayerGui
+    PS.ui, PS.label, PS.stroke = gui, label, stroke
 end
 
-local function togglePositionSpoof(enable)
-    if S.spoofBusy then return end
-    S.spoofBusy = true
+local function psGetCrouch()
+    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
+        or ReplicatedStorage:FindFirstChild("EntityInfo")
+        or ReplicatedStorage:FindFirstChild("Bricks")
+        or ReplicatedStorage
+    return rf:FindFirstChild("Crouch") or rf:FindFirstChild("Crouch", true)
+end
 
+local function psMainLoop()
+    if PS.conn then PS.conn:Disconnect() PS.conn = nil end
+    PS.conn = RunService.RenderStepped:Connect(function()
+        if not PS.on then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        local Collision = char:FindFirstChild("Collision")
+        local CollisionPart = char:FindFirstChild("CollisionPart")
+        local CollisionClone = char:FindFirstChild("CollisionClone") or char:FindFirstChild("CollisionPartClone")
+
+        if tick() - PS.lastCrouch > 0.1 then
+            PS.lastCrouch = tick()
+            local cr = psGetCrouch()
+            if cr then pcall(function() cr:FireServer(true, true) end) end
+        end
+
+        if Collision then
+            Collision.CanCollide = false
+            local cc = Collision:FindFirstChild("CollisionCrouch")
+            if cc then cc.CanCollide = false end
+        end
+
+        local lt = char:FindFirstChild("LowerTorso")
+        local root = lt and lt:FindFirstChild("Root")
+        if root and root:IsA("Motor6D") then
+            if not PS.c1Origin then PS.c1Origin = root.C1 end
+            root.C1 = PS.c1Origin * CFrame.new(0, -2.346, 0)
+        end
+
+        local SpoofY = 2.328
+        if Collision and Collision:IsA("BasePart") then
+            Collision.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
+        end
+        if CollisionPart and CollisionPart:IsA("BasePart") then
+            CollisionPart.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
+        end
+
+        if Collision and Collision:FindFirstChild("CollisionCrouch") then
+            Collision.CollisionCrouch.Position = hrp.Position + Vector3.new(0, 1.328, 0)
+        end
+        if CollisionClone and CollisionClone:IsA("BasePart") then
+            if Collision then
+                pcall(function() CollisionClone.CollisionGroup = Collision.CollisionGroup end)
+            end
+            CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
+            local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
+            if ccc then ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0) end
+        end
+
+        if PS.label then
+            PS.label.Text = string.format("HRP.Y: %.2f", -2.346)
+            if PS.stroke then PS.stroke.Color = Color3.fromRGB(50, 255, 100) end
+        end
+    end)
+end
+
+local function togglePositionSpoof(Value)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hrp or not humanoid then S.spoofBusy = false return end
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hrp or not hum then return end
 
-    S.char, S.hrp, S.humanoid, S.loaded = char, hrp, humanoid, true
-    local crouchRemote = getCrouchRemote()
-    local lower = char:FindFirstChild("LowerTorso")
-    local motor = lower and lower:FindFirstChild("Root")
-local EntityDistances = {
-        RushMoving = 85, AmbushMoving = 150, A60 = 125, A120 = 85,
-        BackdoorRush = 85, GlitchRush = 90, GlitchAmbush = 175, CustomEntity = 85,
-    }
-    local function nearestEntityDist()
-        local best = math.huge
-        for _, e in ipairs(Workspace:GetChildren()) do
-            if EntityDistances[e.Name] and e.PrimaryPart then
-                local d = (hrp.Position - e.PrimaryPart.Position).Magnitude
-                if d < EntityDistances[e.Name] and d < best then best = d end
-            end
+    local cr = psGetCrouch()
+
+    if Value then
+        if PS.on then return end
+        PS.on = true
+        local lt = char:FindFirstChild("LowerTorso")
+        local root = lt and lt:FindFirstChild("Root")
+        if root and root:IsA("Motor6D") and not PS.c1Origin then
+            PS.c1Origin = root.C1
         end
-        return best
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, -2.346, 0)
+        hum.HipHeight = 0.05
+        if cr then pcall(function() cr:FireServer(true, true) end) end
+        psCreateUI()
+        psMainLoop()
+        psNotify(true)
+    else
+        if not PS.on then return end
+        PS.on = false
+        if PS.conn then PS.conn:Disconnect() PS.conn = nil end
+
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, 2.346, 0)
+        hum.HipHeight = 2.396
+
+        local rp = hrp.Position + Vector3.new(0, 0.18, 0)
+        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+            local p = char:FindFirstChild(n)
+            if p and p:IsA("BasePart") then p.Position = rp end
+        end
+        local lt = char:FindFirstChild("LowerTorso")
+        local root = lt and lt:FindFirstChild("Root")
+        if root and PS.c1Origin then root.C1 = PS.c1Origin end
+
+        if cr then pcall(function() cr:FireServer(false, true) end) end
+        psDestroyUI()
     end
+end
 
-    if enable then
-        if S.enabled then S.spoofBusy = false return end
-        S.enabled = true
-        if motor and motor:IsA("Motor6D") and not S.c1Origin then
-            S.c1Origin = motor.C1
-        end
-        -- dich HRP xuong 1 lan (Abysall)
-        hrp.CFrame = hrp.CFrame * CFrame.new(0, -S.DEPTH, 0)
-        humanoid.HipHeight = 0.05
-        if crouchRemote then pcall(function() crouchRemote:FireServer(true, true) end) end
-
-        if S.spoofLoop then S.spoofLoop:Disconnect() end
-        S.spoofLoop = RunService.Heartbeat:Connect(function()
-            if not S.enabled then return end
-            local c = LocalPlayer.Character
-            if not c then return end
-            local h = c:FindFirstChild("HumanoidRootPart")
-            if not h then return end
-            S.hrp = h
-            local isSpecialFloor = (Floor == "Fools" or Floor == "OldHotel")
-            local entNear = isSpecialFloor and nearestEntityDist() < math.huge
-            local spoofY = entNear and 200 or 2.328
-            local ccY = entNear and 199.5 or 1.75
-
-            local col = c:FindFirstChild("Collision")
-            local cp = c:FindFirstChild("CollisionPart")
-            local cc = c:FindFirstChild("CollisionClone")
-            local lt = c:FindFirstChild("LowerTorso")
-            local m = lt and lt:FindFirstChild("Root")
-
-            if col and col:IsA("BasePart") then
-                col.Position = h.Position + Vector3.new(0, spoofY, 0)
-                col.CanCollide = false
-            end
-            if cp and cp:IsA("BasePart") then
-                cp.Position = h.Position + Vector3.new(0, spoofY, 0)
-            end
-            if cc and cc:IsA("BasePart") then
-                cc.Position = h.Position + Vector3.new(0, entNear and 199.5 or 1.75, 0)
-            end
-            if m and m:IsA("Motor6D") and S.c1Origin then
-                m.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
-            end
-
-            -- widget: do do lech C1 / entity mode
-            if S.uiLabel and S.uiStroke then
-                local show = entNear and -200 or -S.DEPTH
-                S.uiLabel.Text = string.format("HRP.Y: %.2f", show)
-                if entNear then
-                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
-                else
-                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
-                end
-            end
-        end)
-
-        if S.crouchLoop then task.cancel(S.crouchLoop) end
-        S.crouchLoop = task.spawn(function()
-            while S.enabled do
-                local cr = getCrouchRemote()
-                if cr then pcall(function() cr:FireServer(true, true) end) end
-                task.wait(0.1)
-            end
-        end)
-        createFloatingWidget()
-else
-        if not S.enabled then S.spoofBusy = false return end
-        S.enabled = false
-        if S.spoofLoop then S.spoofLoop:Disconnect() S.spoofLoop = nil end
-        if S.crouchLoop then task.cancel(S.crouchLoop) S.crouchLoop = nil end
-
-        char = LocalPlayer.Character or char
-        hrp = char and char:FindFirstChild("HumanoidRootPart")
-        humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
-        if char and hrp then
-            hrp.CFrame = hrp.CFrame * CFrame.new(0, S.DEPTH, 0)
-        end
-        if humanoid then humanoid.HipHeight = 2.396 end
-
-        if char and hrp then
-            local rp = hrp.Position + Vector3.new(0, 0.18, 0)
-            for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone"}) do
-                local p = char:FindFirstChild(n)
-                if p and p:IsA("BasePart") then p.Position = rp end
-            end
-            local lt = char:FindFirstChild("LowerTorso")
-            local m = lt and lt:FindFirstChild("Root")
-            if m and S.c1Origin then m.C1 = S.c1Origin end
-        end
-
-        if crouchRemote then pcall(function() crouchRemote:FireServer(false, true) end) end
-        destroyFloatingWidget()
-    end
-    S.spoofBusy = false
-    end
-
-task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
-    S.loaded = false
-    task.delay(1, loadPositionSpoof)
+    PS.c1Origin = nil
+    if PS.on then
+        task.delay(1, function()
+            PS.on = false
+            togglePositionSpoof(true)
+        end)
+    end
 end)
 
 local axialActive = false
@@ -1363,11 +1305,13 @@ FuncLeft:AddToggle("RemoveVoidToggle", {
 end)
 
 local positionSpoofToggle = FuncLeft:AddToggle("PositionSpoofToggle", {
-    Text = "Position Spoof", Default = false,
-    Tooltip = "Gia mao vi tri",
+    Text = "Position Spoof",
+    Default = false,
+    Tooltip = "Gia mao vi tri Lua Server va thuc the",
 })
 positionSpoofToggle:OnChanged(function(Value)
     pcall(togglePositionSpoof, Value)
+end)
     if Value then
         pcall(function()
             local s = Instance.new("Sound")
@@ -3389,7 +3333,6 @@ Obsidian:OnUnload(function()
     if seeThroughConn then seeThroughConn:Disconnect() end
     if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
     if remoteThreadVel then task.cancel(remoteThreadVel) end
-    if bookEspToggle and bookEspToggle.Value then bookEspToggle:SetValue(false) end
     table.clear(velocitySavedCanCollide)
     table.clear(noClipSavedCanCollide)
     table.clear(weirdSaved)
