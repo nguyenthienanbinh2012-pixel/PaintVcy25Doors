@@ -491,6 +491,7 @@ local interactIgnoreList = {
     ClimbPrompt = true, DonatePrompt = true, DialoguePrompt = true, RevivePrompt = true,
     EnterPrompt = true, AnimatePrompt = true, ToolEventPrompt = true, Prompt = true,
     PropPrompt = true, TrackLever = true,
+    SeatPrompt = true, SitPrompt = true, ChairPrompt = true,
 }
 
 local function applyCanJump(char)
@@ -530,7 +531,7 @@ IndexLeft:AddToggle("EnableJumpToggle", {
             end
         end)
     else
-        if char and oldJumpValue \~= nil then
+        if char and oldJumpValue ~= nil then
             pcall(function() char:SetAttribute("CanJump", oldJumpValue) end)
         end
         oldJumpValue = nil
@@ -553,7 +554,7 @@ IndexLeft:AddToggle("EnableSlideToggle", {
             end
         end)
     else
-        if char and oldSlideValue \~= nil then
+        if char and oldSlideValue ~= nil then
             pcall(function() char:SetAttribute("CanSlide", oldSlideValue) end)
         end
         oldSlideValue = nil
@@ -1159,63 +1160,86 @@ local function destroyFloatingWidget()
 end
 
 local function togglePositionSpoof(enable)
+    if S.spoofBusy then return end
+    S.spoofBusy = true
+
     if enable then
         if not S.loaded then
             pcall(loadPositionSpoof)
             task.wait(0.35)
         end
-        if S.enabled then return end
+        if S.enabled then S.spoofBusy = false return end
         if not S.hrp or not S.humanoid then
             pcall(loadPositionSpoof)
             task.wait(0.35)
         end
-        if not S.hrp or not S.humanoid then return end
-        S.enabled = true
-        local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
+        if not S.hrp or not S.humanoid then S.spoofBusy = false return end
+
+        local char = S.char
+        local hrp = S.hrp
+        local humanoid = S.humanoid
         local crouchRemote = getCrouchRemote()
-        local baseY = hrp.Position.Y
-        local spoofY = baseY - S.DEPTH
-        S.baseY = baseY
-        hrp.CFrame = CFrame.new(hrp.Position.X, spoofY, hrp.Position.Z)
-        humanoid.HipHeight = 0.05
+
+        S.spoofBaseY = hrp.Position.Y
+        S.baseY = S.spoofBaseY
+        S.enabled = true
+
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(true, true) end)
         end
+
+        hrp.CFrame = CFrame.new(hrp.Position.X, S.spoofBaseY - S.DEPTH, hrp.Position.Z)
+        humanoid.HipHeight = 0.05
+
         local lt = char:FindFirstChild("LowerTorso")
         if lt then
             for _, m in ipairs(lt:GetChildren()) do
                 if m:IsA("Motor6D") and m.Name == "Root" then
-                    S.c1Origin = m.C1
-                    m.C1 = CFrame.new(S.c1Origin.X, S.c1Origin.Y - S.DEPTH, S.c1Origin.Z)
+                    if not S.c1Origin then S.c1Origin = m.C1 end
+                    m.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
                     break
                 end
             end
         end
-        local cp2 = char:FindFirstChild("CollisionPart")
-        if cp2 then
-            for _, w in ipairs(cp2:GetChildren()) do
-                if w:IsA("Weld") and w.Part1 == hrp then
-                    local cpBaseY = baseY - 0.31
-                    w.C0 = CFrame.new(w.C0.X, spoofY - cpBaseY, w.C0.Z)
+
+        if S.spoofLoop then S.spoofLoop:Disconnect() end
+        S.spoofLoop = RunService.Heartbeat:Connect(function()
+            if not S.enabled then return end
+            local c = LocalPlayer.Character
+            if not c then return end
+            local h = c:FindFirstChild("HumanoidRootPart")
+            if not h then return end
+            local collision = c:FindFirstChild("Collision")
+            local collisionPart = c:FindFirstChild("CollisionPart")
+            local collisionClone = c:FindFirstChild("CollisionClone")
+            if collision and collision:IsA("BasePart") then
+                collision.Position = h.Position + Vector3.new(0, 2.328, 0)
+            end
+            if collisionPart and collisionPart:IsA("BasePart") then
+                collisionPart.Position = h.Position + Vector3.new(0, 2.328, 0)
+            end
+            if collisionClone and collisionClone:IsA("BasePart") then
+                collisionClone.Position = h.Position + Vector3.new(0, 1.75, 0)
+                if collision then
+                    pcall(function() collisionClone.CollisionGroup = collision.CollisionGroup end)
                 end
             end
-        end
-        if S.crouchConn then S.crouchConn:Disconnect() end
-        S.crouchConn = RunService.Heartbeat:Connect(function()
-            if not S.enabled then return end
-            S._last = S._last or 0
-            if tick() - S._last > 0.1 then
-                S._last = tick()
+        end)
+
+        if S.crouchLoop then task.cancel(S.crouchLoop) end
+        S.crouchLoop = task.spawn(function()
+            while S.enabled do
                 local cr = getCrouchRemote()
                 if cr then pcall(function() cr:FireServer(true, true) end) end
-                local cp3 = char:FindFirstChild("CollisionPart")
-                local col3 = char:FindFirstChild("Collision")
+                task.wait(0.1)
             end
         end)
+
         createFloatingWidget()
+        if S.updateConn then S.updateConn:Disconnect() end
         S.updateConn = RunService.RenderStepped:Connect(function()
-            if not S.enabled or not hrp or not hrp.Parent then return end
-            local relY = hrp.Position.Y - (S.baseY or hrp.Position.Y)
+            if not S.enabled or not S.hrp or not S.hrp.Parent then return end
+            local relY = S.hrp.Position.Y - (S.spoofBaseY or S.hrp.Position.Y)
             if S.uiLabel and S.uiStroke then
                 S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
                 if relY > -1.00 then
@@ -1228,41 +1252,55 @@ local function togglePositionSpoof(enable)
             end
         end)
     else
-        if not S.enabled then return end
+        if not S.enabled then S.spoofBusy = false return end
         S.enabled = false
+        if S.spoofLoop then S.spoofLoop:Disconnect() S.spoofLoop = nil end
+        if S.crouchLoop then task.cancel(S.crouchLoop) S.crouchLoop = nil end
         if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
         if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
-        local char = S.char; local hrp = S.hrp; local humanoid = S.humanoid
+
+        local char = S.char
+        local hrp = S.hrp
+        local humanoid = S.humanoid
         local crouchRemote = getCrouchRemote()
-        if char then
+
+        if char and hrp then
+            local resetPos = hrp.Position + Vector3.new(0, 0.18, 0)
+            local collision = char:FindFirstChild("Collision")
+            local collisionPart = char:FindFirstChild("CollisionPart")
+            local collisionClone = char:FindFirstChild("CollisionClone")
+            if collision and collision:IsA("BasePart") then collision.Position = resetPos end
+            if collisionPart and collisionPart:IsA("BasePart") then collisionPart.Position = resetPos end
+            if collisionClone and collisionClone:IsA("BasePart") then collisionClone.Position = resetPos end
+        end
+
+        if char and S.c1Origin then
             local lt = char:FindFirstChild("LowerTorso")
-            if lt and S.c1Origin then
+            if lt then
                 for _, m in ipairs(lt:GetChildren()) do
                     if m:IsA("Motor6D") and m.Name == "Root" then
                         m.C1 = S.c1Origin
                     end
                 end
             end
-            local cp4 = char:FindFirstChild("CollisionPart")
-            local col4 = char:FindFirstChild("Collision")
-            if cp4 then cp4.CanTouch = true; cp4.CanQuery = true end
-            if col4 then col4.CanTouch = true; col4.CanQuery = true end
         end
+
         if hrp and hrp.Parent then
-            pcall(function()
-                hrp.CFrame = CFrame.new(hrp.Position.X, S.baseY or hrp.Position.Y, hrp.Position.Z)
-            end)
+            local by = S.spoofBaseY or S.baseY or hrp.Position.Y
+            hrp.CFrame = CFrame.new(hrp.Position.X, by, hrp.Position.Z)
         end
         if humanoid and humanoid.Parent then
-            pcall(function() humanoid.HipHeight = 2.396 end)
+            humanoid.HipHeight = 2.396
         end
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(false, true) end)
         end
         destroyFloatingWidget()
         S.baseY = nil
+        S.spoofBaseY = nil
     end
-    end
+    S.spoofBusy = false
+            end
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
@@ -2594,7 +2632,26 @@ local AUTO_INTERACT_IGNORE = {
     ClimbPrompt = true, DonatePrompt = true, DialoguePrompt = true, RevivePrompt = true,
     EnterPrompt = true, AnimatePrompt = true, ToolEventPrompt = true, Prompt = true,
     PropPrompt = true, TrackLever = true,
+    SeatPrompt = true, SitPrompt = true, ChairPrompt = true,
 }
+
+local function isSeatPrompt(prompt, parent)
+    local pn = tostring(parent and parent.Name or ""):lower()
+    local an = tostring(prompt.ActionText or ""):lower()
+    local on = tostring(prompt.ObjectText or ""):lower()
+    local nn = tostring(prompt.Name or ""):lower()
+    if parent and (parent:IsA("Seat") or parent:IsA("VehicleSeat")) then return true end
+    if pn:find("seat", 1, true) or pn:find("chair", 1, true) or pn:find("couch", 1, true)
+        or pn:find("sofa", 1, true) or pn:find("bench", 1, true) or pn:find("stool", 1, true)
+        or pn:find("bed", 1, true) then
+        return true
+    end
+    if an:find("sit", 1, true) or an:find("seat", 1, true) or an:find("ngoi", 1, true)
+        or on:find("sit", 1, true) or on:find("chair", 1, true) or nn:find("seat", 1, true) then
+        return true
+    end
+    return false
+            end
 
 local autoInteractToggle = MiscRight:AddToggle("AutoInteractToggle", {
     Text = "Auto Interact",
@@ -2621,7 +2678,7 @@ autoInteractToggle:OnChanged(function(Value)
                     local parent = desc.Parent
                     if parent then
                         local pn = parent.Name
-                        if pn ~= "DoorFake" and pn ~= "FakeDoor" and pn ~= "KeyObtainFake" and pn \~= "TithingPlate"
+                        if pn ~= "DoorFake" and pn ~= "FakeDoor" and pn ~= "KeyObtainFake" and pn ~= "TithingPlate"
                             and parent:GetAttribute("Locked") ~= true then
                             local pPos
                             if parent:IsA("BasePart") then
