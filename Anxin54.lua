@@ -1209,7 +1209,6 @@ local function startAxial()
     end)
 end
 
-local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
 local AXIAL_SPEED = 3.75
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
@@ -1619,45 +1618,6 @@ end)
 FuncRight:AddSlider("SpeedBypassSlider", {
     Text = "Speed Val", Default = 30, Min = 1, Max = 125, Rounding = 1, Compact = true
 }):OnChanged(function(Value) targetWalkSpeed = Value end)
-
-local paintEspToggle = VisualLeft:AddToggle("PaintEspToggle", {
-    Text = "Paint ESP", Default = false, Tooltip = "Load PaintDoorsVisual"
-})
-local paintEspLoaded = false
-paintEspToggle:OnChanged(function(Value)
-    if Value then
-        if not paintEspLoaded then
-            pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/PaintDoorsVisual/refs/heads/main/VisualEspDoors.lua"))()
-            end)
-            paintEspLoaded = true
-        end
-    else
-        pcall(function()
-            local cg = game:GetService("CoreGui")
-            for _, gui in ipairs(cg:GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    local n = gui.Name:lower()
-                    if n:find("paint") or n:find("visual") or n:find("esp") then
-                        gui:Destroy()
-                    end
-                end
-            end
-            local pg = LocalPlayer:FindFirstChild("PlayerGui")
-            if pg then
-                for _, gui in ipairs(pg:GetChildren()) do
-                    if gui:IsA("ScreenGui") then
-                        local n = gui.Name:lower()
-                        if n:find("paint") or n:find("visual") or n:find("esp") then
-                            gui:Destroy()
-                        end
-                    end
-                end
-            end
-        end)
-        paintEspLoaded = false
-    end
-end)
 
 local seeThroughActive = false
 local seeThroughVal = 0.5
@@ -2333,23 +2293,24 @@ autoInteractToggle:OnChanged(function(Value)
     end)
 end)
 
-local infiniteItemOn = false
-local infiniteItemConn = nil
-local infiniteItemPickConn = nil
-local infiniteItemSelected = { ["Lockpick"] = true }
-local INF_ITEM_NAMES = {
-    ["Lockpick"] = true,
-    ["Lock Pick"] = true,
-    ["Skeleton Key"] = true,
-    ["SkeletonKey"] = true,
-    ["Shears"] = true,
-    ["Multitool"] = true,
-}
+;(function()
+local infItemGroup = Tabs.Misc:AddLeftGroupbox("Infinite Item", "package")
+infItemGroup:AddLabel("<font color='#FF3232'>Vô hạn item (Drop + nhặt lại) — chỉ item vứt được</font>", true)
 
-local function getDropRemote()
-    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
-    return rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
-end
+local infiniteItemOn = false
+local infiniteItemSelected = { ["Lockpick"] = true }
+local dropHookConn = nil
+
+-- Danh sách item hỗ trợ
+local INF_ITEM_NAMES = {
+    ["Lockpick"]     = true,
+    ["Lock Pick"]    = true,
+    ["Skeleton Key"] = true,
+    ["SkeletonKey"]  = true,
+    ["Shears"]       = true,
+    ["Multitool"]    = true,
+    ["Crucifix"]     = true,
+}
 
 local function toolMatches(tool)
     if not tool then return false end
@@ -2361,11 +2322,9 @@ local function toolMatches(tool)
     return false
 end
 
-local infItemGroup = Tabs.Misc:AddLeftGroupbox("Infinite Item", "package")
-infItemGroup:AddLabel("<font color='#FF3232'>Vô hạn item (Drop + nhặt lại) — chỉ item vứt được</font>", true)
 infItemGroup:AddDropdown("InfiniteItemSelect", {
     Text = "Chon item",
-    Values = { "Lockpick", "Skeleton Key", "Shears", "Multitool" },
+    Values = { "Lockpick", "Skeleton Key", "Shears", "Multitool", "Crucifix" },
     Multi = true,
     Default = { "Lockpick" },
 }):OnChanged(function(v)
@@ -2381,44 +2340,156 @@ infItemGroup:AddDropdown("InfiniteItemSelect", {
     end
 end)
 
+-- Hàm nhặt lại item vừa rơi (dùng fireproximityprompt, fallback InputHold)
+local function pickupDroppedItem(itemName, timeout)
+    timeout = timeout or 2
+    local startT = tick()
+    while tick() - startT < timeout do
+        local drops = Workspace:FindFirstChild("Drops")
+        if drops then
+            for _, d in ipairs(drops:GetChildren()) do
+                if d.Name == itemName then
+                    local prompt = d:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if prompt then
+                        if fireproximityprompt then
+                            pcall(function() fireproximityprompt(prompt) end)
+                        else
+                            pcall(function()
+                                prompt:InputHoldBegin()
+                                task.wait(0.05)
+                                prompt:InputHoldEnd()
+                            end)
+                        end
+                        return true
+                    end
+                end
+            end
+        end
+        task.wait(0.05)
+    end
+    return false
+end
+
 infItemGroup:AddToggle("InfiniteItemToggle", {
     Text = "<font color='#FF3232'>Infinite Item</font>",
     Default = false,
 }):OnChanged(function(v)
     infiniteItemOn = v
-    if infiniteItemConn then infiniteItemConn:Disconnect() infiniteItemConn = nil end
+
+    -- Ngắt hook cũ
+    if dropHookConn then
+        pcall(function() dropHookConn:Disconnect() end)
+        dropHookConn = nil
+    end
+
     if not v then return end
 
-    infiniteItemConn = game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
+    -- Cách 1: Hook DropItem:FireServer bằng hookmetamethod (giống Abysall)
+    if hookmetamethod and getnamecallmethod and newcclosure then
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "FireServer" and self.Name == "DropItem" and infiniteItemOn then
+                local args = { ... }
+                local tool = args[1]
+                if tool and tool:IsA("Tool") and toolMatches(tool) then
+                    -- Cho phép drop bình thường
+                    local result = oldNamecall(self, ...)
+                    -- Sau đó nhặt lại ngay
+                    local itemName = tool.Name
+                    task.spawn(function()
+                        task.wait(0.08)
+                        pickupDroppedItem(itemName, 1.5)
+                    end)
+                    return result
+                end
+            end
+            return oldNamecall(self, ...)
+        end))
+        -- Lưu lại để có thể unhook khi tắt
+        dropHookConn = {
+            Disconnect = function()
+                pcall(function()
+                    if restorefunction then
+                        restorefunction(oldNamecall)
+                    end
+                end)
+            end
+        }
+        return
+    end
+
+    -- Cách 2 (fallback): Dùng ProximityPromptService.PromptTriggered như cũ, nhưng nhặt lại ngay
+    dropHookConn = game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
         if not infiniteItemOn then return end
         local char = LocalPlayer.Character
         if not char then return end
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool or not toolMatches(tool) then return end
 
-        local drops = Workspace:FindFirstChild("Drops")
         local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
         local dropRemote = rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
         if not dropRemote then return end
 
-        -- chi 1 lan: cho Drops.ChildAdded roi drop
-        local conn
-        conn = drops and drops.ChildAdded:Connect(function(obj)
-            if conn then conn:Disconnect() end
-            task.defer(function()
-                local p = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
-                    or obj:FindFirstChild("ModulePrompt", true)
-                if p and fireproximityprompt then
-                    pcall(function() fireproximityprompt(p) end)
-                end
-            end)
-        end)
+        local itemName = tool.Name
         pcall(function() dropRemote:FireServer(tool) end)
-        task.delay(1, function()
-            if conn then conn:Disconnect() end
+        task.spawn(function()
+            task.wait(0.1)
+            pickupDroppedItem(itemName, 1.5)
         end)
     end)
 end)
+
+local InfCrucfixTable = {
+    RushMoving   = 90,
+    AmbushMoving = 160,
+    A60          = 140,
+    A120         = 99,
+    GlitchRush   = 150,
+    GlitchAmbush = 110,
+}
+
+local infCrucifixToggle = infItemGroup:AddToggle("InfCrucifixToggle", {
+    Text = "<font color='#FF3232'>Infinite Crucifix</font>",
+    Default = false,
+    Tooltip = "Thánh giá vô hạn .Chỉ khi FPS cao mượt mới tăng cơ hội sửa dụng nó!"
+})
+
+infCrucifixToggle:OnChanged(function(v)
+    if not v then return end
+    task.spawn(function()
+        while infCrucifixToggle.Value do
+            local char = LocalPlayer.Character
+            local tool = char and char:FindFirstChild("Crucifix")
+            if tool then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local origin = hrp.Position
+                    for _, entity in pairs(Workspace:GetChildren()) do
+                        local maxRange = InfCrucfixTable[entity.Name]
+                        if maxRange and entity.PrimaryPart then
+                            local dist = (origin - entity.PrimaryPart.Position).Magnitude
+                            if dist < maxRange + 40 then
+                                local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
+                                local dropRemote = rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
+                                if dropRemote then
+                                    pcall(function() dropRemote:FireServer(tool) end)
+                                    task.spawn(function()
+                                        task.wait(0.1)
+                                        pickupDroppedItem("Crucifix", 1.5)
+                                    end)
+                                end
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(0.15)
+        end
+    end)
+end)
+end)()
 
 local reachState = { reachMultiplier = 1.5 }
 
