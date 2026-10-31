@@ -457,22 +457,39 @@ IndexLeft:AddToggle("JumpPowerToggle", {
     end
 end)
 
+IndexLeft:AddToggle("JumpPowerToggle", {
+    Text = "JumpPower", Default = false,
+}):OnChanged(function(v)
+    jumpPowerOn = v
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    pcall(function()
+        if char then char:SetAttribute("CanJump", true) end
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        hum.UseJumpPower = true
+        hum.JumpPower = v and jumpPowerVal or 50
+        hum.JumpHeight = v and math.clamp(jumpPowerVal / 5, 7.2, 50) or 7.2
+    end)
+end)
+
 IndexLeft:AddSlider("JumpPowerSlider", {
     Text = "Jump Power", Default = 50, Min = 50, Max = 250, Rounding = 0, Compact = true,
 }):OnChanged(function(v)
     jumpPowerVal = v
-    if jumpPowerOn then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                hum.UseJumpPower = true
-                hum.JumpPower = v
-                hum.JumpHeight = v / 5
-            end)
-        end
-    end
+    if not jumpPowerOn then return end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    pcall(function()
+        if char then char:SetAttribute("CanJump", true) end
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        hum.UseJumpPower = true
+        hum.JumpPower = v
+        hum.JumpHeight = math.clamp(v / 5, 7.2, 50)
+    end)
 end)
-IndexLeft:AddLabel("<font color='#FFAA00'>⚠ Enable Jumping/Sliding có thể bị anticheat phát hiện trong một số floor.</font>", true)
+IndexLeft:AddLabel("<font color='#FFAA00'> Enable Jumping/Sliding có thể bị anticheat phát hiện trong một số floor.</font>", true)
 
 local enableJumpOn = false
 local oldJumpValue = nil
@@ -594,53 +611,6 @@ IndexLeft:AddToggle("InfiniteJumpsToggle", {
                 local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 if hum then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end
             end)
-        end
-    end)
-end)
-
-IndexLeft:AddToggle("IndexAutoInteractToggle", {
-    Text = "Auto Interact",
-    Default = false,
-}):OnChanged(function(v)
-    indexAutoInteractOn = v
-    if indexAutoInteractConn then indexAutoInteractConn:Disconnect() indexAutoInteractConn = nil end
-    if not v then return end
-    indexAutoInteractConn = RunService.Heartbeat:Connect(function()
-        if not indexAutoInteractOn or interactDebounce then return end
-        local now = tick()
-        if now - lastInteractFire < (1 / 60) then return end
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        for _, desc in ipairs(Workspace:GetDescendants()) do
-            if not indexAutoInteractOn then break end
-            if desc:IsA("ProximityPrompt") and desc.Enabled then
-                local name = desc.Name
-                if interactIgnoreList[name] then continue end
-                if desc:GetAttribute("AutoInteractIgnore") then continue end
-                local parent = desc.Parent
-                if not parent then continue end
-                local pn = parent.Name
-                if pn == "DoorFake" or pn == "FakeDoor" or pn == "KeyObtainFake" or pn == "TithingPlate" then continue end
-                if parent:GetAttribute("Locked") == true then continue end
-                local pPos
-                if parent:IsA("BasePart") then
-                    pPos = parent.Position
-                elseif parent:IsA("Model") then
-                    local ok, pv = pcall(function() return parent:GetPivot().Position end)
-                    if ok then pPos = pv end
-                end
-                if pPos and (hrp.Position - pPos).Magnitude <= (desc.MaxActivationDistance or 8) then
-                    interactDebounce = true
-                    lastInteractFire = tick()
-                    pcall(function()
-                        if fireproximityprompt then fireproximityprompt(desc) end
-                    end)
-                    task.wait(0.05)
-                    interactDebounce = false
-                    break
-                end
-            end
         end
     end)
 end)
@@ -1152,54 +1122,38 @@ local function createFloatingWidget()
     S.uiWidget = gui; S.uiLabel = label; S.uiStroke = stroke
 end
 
-local function destroyFloatingWidget()
-    if S.uiWidget then
-        S.uiWidget:Destroy()
-        S.uiWidget = nil; S.uiLabel = nil; S.uiStroke = nil
-    end
-end
-
 local function togglePositionSpoof(enable)
     if S.spoofBusy then return end
     S.spoofBusy = true
 
+    local char = LocalPlayer.Character
+    if not char then S.spoofBusy = false return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then S.spoofBusy = false return end
+
+    S.char = char
+    S.hrp = hrp
+    S.humanoid = humanoid
+    S.loaded = true
+
+    local crouchRemote = getCrouchRemote()
+    local lt = char:FindFirstChild("LowerTorso")
+    local rootMotor = lt and lt:FindFirstChild("Root")
+
     if enable then
-        if not S.loaded then
-            pcall(loadPositionSpoof)
-            task.wait(0.35)
-        end
         if S.enabled then S.spoofBusy = false return end
-        if not S.hrp or not S.humanoid then
-            pcall(loadPositionSpoof)
-            task.wait(0.35)
-        end
-        if not S.hrp or not S.humanoid then S.spoofBusy = false return end
-
-        local char = S.char
-        local hrp = S.hrp
-        local humanoid = S.humanoid
-        local crouchRemote = getCrouchRemote()
-
-        S.spoofBaseY = hrp.Position.Y
-        S.baseY = S.spoofBaseY
         S.enabled = true
 
-        if crouchRemote then
-            pcall(function() crouchRemote:FireServer(true, true) end)
+        if rootMotor and rootMotor:IsA("Motor6D") and not S.c1Origin then
+            S.c1Origin = rootMotor.C1
         end
 
-        hrp.CFrame = CFrame.new(hrp.Position.X, S.spoofBaseY - S.DEPTH, hrp.Position.Z)
+        -- Abysall: dich HRP xuong 1 lan
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, -S.DEPTH, 0)
         humanoid.HipHeight = 0.05
-
-        local lt = char:FindFirstChild("LowerTorso")
-        if lt then
-            for _, m in ipairs(lt:GetChildren()) do
-                if m:IsA("Motor6D") and m.Name == "Root" then
-                    if not S.c1Origin then S.c1Origin = m.C1 end
-                    m.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
-                    break
-                end
-            end
+        if crouchRemote then
+            pcall(function() crouchRemote:FireServer(true, true) end)
         end
 
         if S.spoofLoop then S.spoofLoop:Disconnect() end
@@ -1209,20 +1163,30 @@ local function togglePositionSpoof(enable)
             if not c then return end
             local h = c:FindFirstChild("HumanoidRootPart")
             if not h then return end
+
             local collision = c:FindFirstChild("Collision")
             local collisionPart = c:FindFirstChild("CollisionPart")
             local collisionClone = c:FindFirstChild("CollisionClone")
+            local lower = c:FindFirstChild("LowerTorso")
+            local motor = lower and lower:FindFirstChild("Root")
+
+            -- Abysall: collision bay len theo HRP moi frame (khong khoa Y)
+            local spoofY = 2.328
             if collision and collision:IsA("BasePart") then
-                collision.Position = h.Position + Vector3.new(0, 2.328, 0)
+                collision.Position = h.Position + Vector3.new(0, spoofY, 0)
+                collision.CanCollide = false
             end
             if collisionPart and collisionPart:IsA("BasePart") then
-                collisionPart.Position = h.Position + Vector3.new(0, 2.328, 0)
+                collisionPart.Position = h.Position + Vector3.new(0, spoofY, 0)
             end
             if collisionClone and collisionClone:IsA("BasePart") then
                 collisionClone.Position = h.Position + Vector3.new(0, 1.75, 0)
                 if collision then
                     pcall(function() collisionClone.CollisionGroup = collision.CollisionGroup end)
                 end
+            end
+            if motor and motor:IsA("Motor6D") and S.c1Origin then
+                motor.C1 = S.c1Origin * CFrame.new(0, -S.DEPTH, 0)
             end
         end)
 
@@ -1238,17 +1202,9 @@ local function togglePositionSpoof(enable)
         createFloatingWidget()
         if S.updateConn then S.updateConn:Disconnect() end
         S.updateConn = RunService.RenderStepped:Connect(function()
-            if not S.enabled or not S.hrp or not S.hrp.Parent then return end
-            local relY = S.hrp.Position.Y - (S.spoofBaseY or S.hrp.Position.Y)
-            if S.uiLabel and S.uiStroke then
-                S.uiLabel.Text = string.format("HRP.Y: %.2f", relY)
-                if relY > -1.00 then
-                    S.uiStroke.Color = Color3.fromRGB(255, 50, 50)
-                elseif relY > -2.20 then
-                    S.uiStroke.Color = Color3.fromRGB(255, 200, 0)
-                else
-                    S.uiStroke.Color = Color3.fromRGB(50, 255, 100)
-                end
+            if not S.enabled or not S.hrp then return end
+            if S.uiLabel then
+                S.uiLabel.Text = string.format("HRP.Y: %.2f", S.hrp.Position.Y)
             end
         end)
     else
@@ -1256,16 +1212,15 @@ local function togglePositionSpoof(enable)
         S.enabled = false
         if S.spoofLoop then S.spoofLoop:Disconnect() S.spoofLoop = nil end
         if S.crouchLoop then task.cancel(S.crouchLoop) S.crouchLoop = nil end
-        if S.crouchConn then S.crouchConn:Disconnect() S.crouchConn = nil end
         if S.updateConn then S.updateConn:Disconnect() S.updateConn = nil end
 
-        local char = S.char
-        local hrp = S.hrp
-        local humanoid = S.humanoid
-        local crouchRemote = getCrouchRemote()
+        char = LocalPlayer.Character or char
+        hrp = char and char:FindFirstChild("HumanoidRootPart")
+        humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
         if char and hrp then
-            local resetPos = hrp.Position + Vector3.new(0, 0.18, 0)
+            local baseY = 0.18
+            local resetPos = hrp.Position + Vector3.new(0, baseY, 0)
             local collision = char:FindFirstChild("Collision")
             local collisionPart = char:FindFirstChild("CollisionPart")
             local collisionClone = char:FindFirstChild("CollisionClone")
@@ -1275,29 +1230,22 @@ local function togglePositionSpoof(enable)
         end
 
         if char and S.c1Origin then
-            local lt = char:FindFirstChild("LowerTorso")
-            if lt then
-                for _, m in ipairs(lt:GetChildren()) do
-                    if m:IsA("Motor6D") and m.Name == "Root" then
-                        m.C1 = S.c1Origin
-                    end
-                end
-            end
+            local lower = char:FindFirstChild("LowerTorso")
+            local motor = lower and lower:FindFirstChild("Root")
+            if motor and motor:IsA("Motor6D") then motor.C1 = S.c1Origin end
         end
 
-        if hrp and hrp.Parent then
-            local by = S.spoofBaseY or S.baseY or hrp.Position.Y
-            hrp.CFrame = CFrame.new(hrp.Position.X, by, hrp.Position.Z)
+        -- Abysall: day HRP len lai
+        if hrp then
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, S.DEPTH, 0)
         end
-        if humanoid and humanoid.Parent then
+        if humanoid then
             humanoid.HipHeight = 2.396
         end
         if crouchRemote then
             pcall(function() crouchRemote:FireServer(false, true) end)
         end
         destroyFloatingWidget()
-        S.baseY = nil
-        S.spoofBaseY = nil
     end
     S.spoofBusy = false
             end
@@ -2757,52 +2705,39 @@ infItemGroup:AddToggle("InfiniteItemToggle", {
 }):OnChanged(function(v)
     infiniteItemOn = v
     if infiniteItemConn then infiniteItemConn:Disconnect() infiniteItemConn = nil end
-    if infiniteItemPickConn then infiniteItemPickConn:Disconnect() infiniteItemPickConn = nil end
     if not v then return end
 
-    local drops = Workspace:FindFirstChild("Drops") or Workspace
-
-    infiniteItemPickConn = drops.ChildAdded:Connect(function(obj)
+    infiniteItemConn = game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt)
         if not infiniteItemOn then return end
-        task.defer(function()
-            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
-            if prompt and fireproximityprompt then
-                pcall(function() fireproximityprompt(prompt) end)
-            end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local tool = char:FindFirstChildOfClass("Tool")
+        if not tool or not toolMatches(tool) then return end
+
+        local drops = Workspace:FindFirstChild("Drops")
+        local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
+        local dropRemote = rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
+        if not dropRemote then return end
+
+        -- chi 1 lan: cho Drops.ChildAdded roi drop
+        local conn
+        conn = drops and drops.ChildAdded:Connect(function(obj)
+            if conn then conn:Disconnect() end
+            task.defer(function()
+                local p = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    or obj:FindFirstChild("ModulePrompt", true)
+                if p and fireproximityprompt then
+                    pcall(function() fireproximityprompt(p) end)
+                end
+            end)
+        end)
+        pcall(function() dropRemote:FireServer(tool) end)
+        task.delay(1, function()
+            if conn then conn:Disconnect() end
         end)
     end)
-
-    infiniteItemConn = RunService.Heartbeat:Connect(function()
-        if not infiniteItemOn then return end
-        -- giu nhe, chi dam bao toggle con song
-    end)
-
-    -- Hook: khi dung tool, drop + pick
-    task.spawn(function()
-        while infiniteItemOn do
-            local char = LocalPlayer.Character
-            local bag = LocalPlayer:FindFirstChild("Backpack")
-            local tool = char and char:FindFirstChildOfClass("Tool")
-            if tool and toolMatches(tool) then
-                local drop = getDropRemote()
-                if drop then
-                    pcall(function() drop:FireServer(tool) end)
-                    task.wait(0.08)
-                    local dfolder = Workspace:FindFirstChild("Drops")
-                    if dfolder then
-                        for _, d in ipairs(dfolder:GetChildren()) do
-                            local prompt = d:FindFirstChildWhichIsA("ProximityPrompt", true)
-                            if prompt and fireproximityprompt then
-                                pcall(function() fireproximityprompt(prompt) end)
-                            end
-                        end
-                    end
-                end
-            end
-            task.wait(0.15)
-        end
-    end)
 end)
+
 local reachState = { reachMultiplier = 1.5 }
 
 local function checkDoorOpen(door)
@@ -3387,48 +3322,6 @@ weirdToggle:OnChanged(function(Value)
         weirdSaved = {}
     end
 end)
-
-local footMusicToggle = MiscLeft:AddToggle("NoFootMusicToggle", {
-    Text = "No Foot Music[50]", Default = false, Tooltip = "An tieng buoc chan"
-})
-local footMusicConn = nil
-local footMusicActive = false
-footMusicToggle:OnChanged(function(Value)
-    footMusicActive = Value
-    if Value then
-        if not footMusicConn then
-            footMusicConn = Workspace.DescendantAdded:Connect(function(desc)
-                if not footMusicActive then return end
-                if desc:IsA("Sound") then
-                    local n = desc.Name:lower()
-                    if n:find("footstep") or n:find("walk") or n:find("step")
-                    or n:find("running") or n:find("sprint") then
-                        desc.Volume = 0
-                        pcall(function() desc:Stop() end)
-                    end
-                end
-            end)
-        end
-        local char = LocalPlayer.Character
-        if char then
-            for _, desc in ipairs(char:GetDescendants()) do
-                if desc:IsA("Sound") then
-                    local n = desc.Name:lower()
-                    if n:find("footstep") or n:find("walk") or n:find("step")
-                    or n:find("running") or n:find("sprint") then
-                        desc.Volume = 0
-                        pcall(function() desc:Stop() end)
-                    end
-                end
-            end
-        end
-    else
-        if footMusicConn then
-            footMusicConn:Disconnect()
-            footMusicConn = nil
-        end
-    end
-end)
 end)()
 
     local setLeft = Tabs.Settings:AddLeftGroupbox("Menu")
@@ -3473,7 +3366,7 @@ end)()
         pcall(function()
             Obsidian:Notify({
                 Title = "PaintCrack",
-                Description = "Thong bao thu nghiem thanh cong!",
+                Description = "Thong bao thu nghiem thanh cong!Success notification",
                 Time = 4
             })
         end)
