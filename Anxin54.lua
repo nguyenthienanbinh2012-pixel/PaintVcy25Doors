@@ -642,6 +642,9 @@ pcall(function()
         })
     end
 end)
+local VisualLeft = VisualTab:AddLeftGroupbox("ESP", "paintbrush") -- icon bảng vẽ
+local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
+ESP(VisualLeft, nil, Library, Svc)
 
 task.spawn(function()
     pcall(function()
