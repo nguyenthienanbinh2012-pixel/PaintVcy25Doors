@@ -441,38 +441,40 @@ local jumpPowerOn = false
 local infJumpOn = false
 local infJumpConn = nil
 
-IndexLeft:AddToggle("JumpPowerToggle", {
-    Text = "JumpPower", Default = false,
-}):OnChanged(function(v)
-    jumpPowerOn = v
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        pcall(function()
-            hum.UseJumpPower = true
-            hum.JumpPower = v and jumpPowerVal or 50
-            hum.JumpHeight = v and (jumpPowerVal / 5) or 7.2
-        end)
-    end
-end)
+
+local jumpPowerOn = false
+local jumpPowerVal = 50
 
 IndexLeft:AddToggle("JumpPowerToggle", {
-    Text = "JumpPower", Default = false,
+    Text = "JumpPower",
+    Default = false,
 }):OnChanged(function(v)
     jumpPowerOn = v
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    pcall(function()
-        if char then char:SetAttribute("CanJump", true) end
-        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        hum.UseJumpPower = true
-        hum.JumpPower = v and jumpPowerVal or 50
-        hum.JumpHeight = v and math.clamp(jumpPowerVal / 5, 7.2, 50) or 7.2
+    task.spawn(function()
+        while jumpPowerOn do
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                pcall(function()
+                    char:SetAttribute("CanJump", true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                    hum.UseJumpPower = true
+                    hum.JumpPower = jumpPowerVal
+                    hum.JumpHeight = math.clamp(jumpPowerVal / 5, 7.2, 50)
+                end)
+            end
+            task.wait(0.08)
+        end
     end)
 end)
 
 IndexLeft:AddSlider("JumpPowerSlider", {
-    Text = "Jump Power", Default = 50, Min = 50, Max = 250, Rounding = 0, Compact = true,
+    Text = "Jump Power",
+    Default = 50,
+    Min = 50,
+    Max = 250,
+    Rounding = 0,
+    Compact = true,
 }):OnChanged(function(v)
     jumpPowerVal = v
     if not jumpPowerOn then return end
@@ -480,13 +482,14 @@ IndexLeft:AddSlider("JumpPowerSlider", {
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
     pcall(function()
-        if char then char:SetAttribute("CanJump", true) end
+        char:SetAttribute("CanJump", true)
         hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
         hum.UseJumpPower = true
         hum.JumpPower = v
         hum.JumpHeight = math.clamp(v / 5, 7.2, 50)
     end)
 end)
+
 IndexLeft:AddLabel("<font color='#FFAA00'> Enable Jumping/Sliding có thể bị anticheat phát hiện trong một số floor.</font>", true)
 
 local enableJumpOn = false
@@ -1209,23 +1212,19 @@ local function startAxial()
 end
 
 local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
+local AXIAL_SPEED = 3.75
+
+local axialToggle = FuncLeft:AddToggle("AxialVelocityToggle", {
     Text = "<font color='#C4A574'>Axial Velocity</font>",
     Default = false,
-    Tooltip = "Don tho - xuyen theo cam,tranh game keo lui lai",
+    Tooltip = "Don tho - xuyen theo cam, tranh game keo lui lai",
 })
-local axialSlider = FuncLeft:AddSlider("Axial Speed", {
-    Text = "Toc do Don Tho",
-    Default = 4,
-    Min = 1,
-    Max = 6,
-    Rounding = 1,
-    Compact = true,
-})
-axialSlider:OnChanged(function(v) axialSpeed = v end)
+
 axialToggle:OnChanged(function(Value)
     if Value then
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum then axialHumBackup = { ws = hum.WalkSpeed, jp = hum.JumpPower } end
+        axialSpeed = AXIAL_SPEED
         startAxial()
     else
         stopAxial()
@@ -1699,67 +1698,6 @@ local function buildWardrobeCache()
     cacheBuilt = true
 end
 
-local seeThroughToggle = VisualLeft:AddToggle("SeeThroughHidingToggle", {
-    Text = "See-through while hiding", Default = false,
-    Tooltip = "Chi lam mo tu khi nhan vat thuc su dang tron ben trong"
-})
-local seeThroughSlider = VisualLeft:AddSlider("SeeThroughSlider", {
-    Text = "Opacity Val", Default = 0.5, Min = 0.1, Max = 1.0, Rounding = 1, Compact = true
-})
-seeThroughSlider:OnChanged(function(v) seeThroughVal = v end)
-seeThroughToggle:OnChanged(function(Value)
-    seeThroughActive = Value
-    if Value then
-        if not cacheBuilt then
-            task.spawn(buildWardrobeCache)
-        end
-        seeThroughConn = RunService.Heartbeat:Connect(function()
-            if not seeThroughActive then return end
-            seeThroughTick = seeThroughTick + 1
-            if seeThroughTick % 30 ~= 0 then return end
-
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-            local hrp = char.HumanoidRootPart
-
-            local isHiding = false
-            pcall(function()
-                local hiding = char:GetAttribute("Hiding") or char:GetAttribute("IsHiding")
-                if hiding then isHiding = true end
-            end)
-            if not isHiding then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Sit then isHiding = true end
-            end
-
-            for _, data in ipairs(cachedWardrobes) do
-                local near = (hrp.Position - data.position).Magnitude < 4.5
-                local shouldFade = isHiding and near
-                for _, p in ipairs(data.parts) do
-                    if p and p.Parent then
-                        p.Transparency = shouldFade and seeThroughVal or 0
-                    end
-                end
-            end
-        end)
-    else
-        if seeThroughConn then
-            seeThroughConn:Disconnect()
-            seeThroughConn = nil
-        end
-        for _, data in ipairs(cachedWardrobes) do
-            for _, p in ipairs(data.parts) do
-                if p and p.Parent then
-                    p.Transparency = 0
-                end
-            end
-        end
-        cachedWardrobes = {}
-        cacheBuilt = false
-        seeThroughTick = 0
-    end
-end)
-
 local fullBrightConn = nil
 local fullBrightActive = false
 local fullBrightLevel = 2
@@ -2110,76 +2048,6 @@ noShakeToggle:OnChanged(function(Value)
     end
 end)
 
-local noJumpScareActive = false
-local noJumpScareConn = nil
-local noJumpScareDescConn = nil
-local JUMP_KEYS = {"jumpscare","screech","glitch","static","vignette","flash","blind","darkness","hideoverlay","locker","scare","death","dying","eyes","dread","timothy","a-90","a90","figure","seek","chase","running","red","blood","screen","overlay","damage","hurt","scary"}
-local noJumpScareToggle = VisualRight:AddToggle("NoJumpScareToggle", {
-    Text = "No JumpScare", Default = false,
-    Tooltip = "Bo qua doan cat canh kinh di"
-})
-noJumpScareToggle:OnChanged(function(Value)
-    noJumpScareActive = Value
-    if Value then
-    local function cleanGui(obj)
-    if not obj then return end
-    local n = tostring(obj.Name or ""):lower()
-    for _, k in ipairs(JUMP_KEYS) do
-        if n:find(k, 1, true) then
-            pcall(function()
-                if obj:IsA("ScreenGui") then
-                    obj.Enabled = false
-                elseif obj:IsA("GuiObject") then
-                    obj.Visible = false
-                    obj.BackgroundTransparency = 1
-                    if obj:IsA("ImageLabel") then obj.ImageTransparency = 1 end
-                elseif obj:IsA("Sound") then
-                    obj.Volume = 0
-                    obj:Stop()
-                elseif obj:IsA("ColorCorrectionEffect") or obj:IsA("BlurEffect") then
-                    obj.Enabled = false
-                end
-            end)
-            return
-        end
-    end
-                end
-        for _, gui in ipairs(PlayerGui:GetDescendants()) do
-            cleanGui(gui)
-        end
-        for _, obj in ipairs(Lighting:GetChildren()) do
-            cleanGui(obj)
-        end
-        noJumpScareDescConn = PlayerGui.DescendantAdded:Connect(function(desc)
-            if not noJumpScareActive then return end
-            task.defer(function() cleanGui(desc) end)
-        end)
-        noJumpScareConn = RunService.Heartbeat:Connect(function()
-            if not noJumpScareActive then return end
-            pcall(function()
-                for _, gui in ipairs(PlayerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") then
-                        local n = gui.Name:lower()
-                        for _, k in ipairs(JUMP_KEYS) do
-                            if n:find(k, 1, true) then
-                                gui.Enabled = false
-                                break
-                            end
-                        end
-                    end
-                end
-            end)
-        end)
-    else
-        if noJumpScareConn then noJumpScareConn:Disconnect() noJumpScareConn = nil end
-        if noJumpScareDescConn then noJumpScareDescConn:Disconnect() noJumpScareDescConn = nil end
-    end
-end)
-
-local removeEntityActive = false
-local removeEntityConn = nil
-local removeEntityDescConn = nil
-
 -- key match trong ten model (lower)
 local ENTITY_KEYS = {
     ["Screech"] = {"screech"},
@@ -2240,7 +2108,7 @@ pcall(function()
     end)
 end)
 AntiLeft:AddToggle("RemoveEntityToggle", {
-    Text = "Remove Entity & Dame cua chúng", Default = false,
+    Text = "Remove Entity&No Dame", Default = false,
 }):OnChanged(function(v)
     if v then
         startRemoveEntity()
@@ -3324,12 +3192,9 @@ Obsidian:OnUnload(function()
     if velocityConn then velocityConn:Disconnect() end
     if speedConn then speedConn:Disconnect() end
     if noClipActive and noClipToggle then noClipToggle:SetValue(false) end
-    if footMusicActive and footMusicToggle then footMusicToggle:SetValue(false) end
     if antiLagDescConn then antiLagDescConn:Disconnect() end
     if noShakeConn then noShakeConn:Disconnect() end
     if noShakeOffsetConn then noShakeOffsetConn:Disconnect() end
-    if noJumpScareConn then noJumpScareConn:Disconnect() end
-    if noJumpScareDescConn then noJumpScareDescConn:Disconnect() end
     if removeEntityConn then task.cancel(removeEntityConn) end
     if removeEntityDescConn then removeEntityDescConn:Disconnect() end
     if removeEntityGCConn then removeEntityGCConn:Disconnect() end
@@ -3342,9 +3207,6 @@ Obsidian:OnUnload(function()
     if weirdConn then weirdConn:Disconnect() end
     if weirdAnimConn then weirdAnimConn:Disconnect() end
     if fullBrightConn then fullBrightConn:Disconnect() end
-    if seeThroughConn then seeThroughConn:Disconnect() end
-    if remoteThreadSpeed then task.cancel(remoteThreadSpeed) end
-    if remoteThreadVel then task.cancel(remoteThreadVel) end
     table.clear(velocitySavedCanCollide)
     table.clear(noClipSavedCanCollide)
     table.clear(weirdSaved)
