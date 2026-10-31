@@ -2587,7 +2587,6 @@ autoInteractToggle:OnChanged(function(Value)
     end)
 end)
 
-end)
 local infiniteItemOn = false
 local infiniteItemConn = nil
 local infiniteItemPickConn = nil
@@ -3308,7 +3307,6 @@ end)()
             })
         end)
     end)
-root in ipairs(roots) do
 
 task.spawn(function()
     local okT, ThemeManager = pcall(function()
