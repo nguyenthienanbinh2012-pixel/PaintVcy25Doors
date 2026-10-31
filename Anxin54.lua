@@ -1015,7 +1015,6 @@ local function togglePositionSpoof(enable)
     local crouchRemote = getCrouchRemote()
     local lower = char:FindFirstChild("LowerTorso")
     local motor = lower and lower:FindFirstChild("Root")
-
 local EntityDistances = {
         RushMoving = 85, AmbushMoving = 150, A60 = 125, A120 = 85,
         BackdoorRush = 85, GlitchRush = 90, GlitchAmbush = 175, CustomEntity = 85,
@@ -1026,16 +1025,6 @@ local EntityDistances = {
             if EntityDistances[e.Name] and e.PrimaryPart then
                 local d = (hrp.Position - e.PrimaryPart.Position).Magnitude
                 if d < EntityDistances[e.Name] and d < best then best = d end
-            end
-        end
-        return best
-                end
-    local function nearestEntityDist()
-        local best = math.huge
-        for _, e in ipairs(Workspace:GetChildren()) do
-            if entityNames[e.Name] and e.PrimaryPart then
-                local d = (hrp.Position - e.PrimaryPart.Position).Magnitude
-                if d < best then best = d end
             end
         end
         return best
@@ -1136,6 +1125,7 @@ else
         destroyFloatingWidget()
     end
     S.spoofBusy = false
+    end
 
 task.spawn(loadPositionSpoof)
 LocalPlayer.CharacterAdded:Connect(function()
