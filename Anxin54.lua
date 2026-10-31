@@ -1048,10 +1048,10 @@ local function togglePositionSpoof(enable)
             local h = c:FindFirstChild("HumanoidRootPart")
             if not h then return end
             S.hrp = h
-
-            -- entity gan -> Collision +200 (Abysall SpoofOffset)
-            local entNear = nearestEntityDist() < 120
+            local isSpecialFloor = (Floor == "Fools" or Floor == "OldHotel")
+            local entNear = isSpecialFloor and nearestEntityDist() < 120
             local spoofY = entNear and 200 or 2.328
+            local ccY = entNear and 199.5 or 1.75
 
             local col = c:FindFirstChild("Collision")
             local cp = c:FindFirstChild("CollisionPart")
