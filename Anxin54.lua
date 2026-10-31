@@ -2006,15 +2006,23 @@ noShakeToggle:OnChanged(function(Value)
     end
 end)
 
--- key match trong ten model (lower)
+;(function()
+local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
+
+-- Forward declaration (fix call nil)
+local startRemoveEntity, stopRemoveEntity
+local removeEntityActive = false
+local removeEntityConn = nil
+local removeEntityDescConn = nil
+
 local ENTITY_KEYS = {
-    ["Screech"] = {"screech"},
-    ["Timothy"] = {"timothy"},
-    ["A-90"] = {"a-90", "a90", "a_90"},
-    ["Glitch Errors"] = {"glitch", "error", "glitcherror"},
-    ["Haste"] = {"haste"},
-    ["Halt"] = {"halt"},
-    ["Dread"] = {"dread"},
+    ["Screech"]        = {"screech"},
+    ["Timothy"]        = {"timothy"},
+    ["A-90"]           = {"a-90", "a90", "a_90"},
+    ["Glitch Errors"]  = {"glitch", "error", "glitcherror"},
+    ["Haste"]          = {"haste"},
+    ["Halt"]           = {"halt"},
+    ["Dread"]          = {"dread"},
 }
 
 local selectedRemove = {
@@ -2041,42 +2049,8 @@ local function matchEntity(name)
     return false
 end
 
-
--- Obsidian: multi dropdown neu co; neu khong dung tung toggle
-pcall(function()
-    AntiLeft:AddDropdown("RemoveEntityList", {
-        Text = "Entities to Remove",
-        Values = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
-        Multi = true,
-        Default = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
-    }):OnChanged(function(val)
-        -- val: table { [name]=true } hoac array tuy ban Obsidian
-        for k in pairs(selectedRemove) do
-            selectedRemove[k] = false
-        end
-        if type(val) == "table" then
-            for k, v in pairs(val) do
-                if v == true and ENTITY_KEYS[k] then
-                    selectedRemove[k] = true
-                elseif type(k) == "number" and type(v) == "string" and ENTITY_KEYS[v] then
-                    selectedRemove[v] = true
-                end
-            end
-        end
-    end)
-end)
-AntiLeft:AddToggle("RemoveEntityToggle", {
-    Text = "Remove Entity&No Dame", Default = false,
-}):OnChanged(function(v)
-    if v then
-        startRemoveEntity()
-    else
-        stopRemoveEntity()
-    end
-end)
-
 local removedFunctions = {}
-local function tryHookDamageFuncs()
+function tryHookDamageFuncs()
     if next(removedFunctions) then return end
     pcall(function()
         for _, v in ipairs(getgc(true)) do
@@ -2084,7 +2058,8 @@ local function tryHookDamageFuncs()
                 local info = debug.getinfo(v)
                 if info and info.name then
                     local n = tostring(info.name):lower()
-                    if n:find("screech") or n:find("bite") or n:find("damage") or n:find("takeDamage") or n:find("applyDamage") then
+                    if n:find("screech") or n:find("bite") or n:find("damage")
+                        or n:find("takedamage") or n:find("applydamage") then
                         removedFunctions[v] = true
                     end
                 end
@@ -2092,22 +2067,24 @@ local function tryHookDamageFuncs()
         end
     end)
 end
-local function stopRemoveEntity()
+
+function stopRemoveEntity()
     removeEntityActive = false
     if removeEntityConn then
-        task.cancel(removeEntityConn)
+        pcall(function() task.cancel(removeEntityConn) end)
         removeEntityConn = nil
     end
     if removeEntityDescConn then
-        removeEntityDescConn:Disconnect()
+        pcall(function() removeEntityDescConn:Disconnect() end)
         removeEntityDescConn = nil
     end
 end
 
-local function startRemoveEntity()
+function startRemoveEntity()
     stopRemoveEntity()
     removeEntityActive = true
     tryHookDamageFuncs()
+
     removeEntityDescConn = Workspace.DescendantAdded:Connect(function(desc)
         if not removeEntityActive then return end
         if matchEntity(desc.Name) then
@@ -2128,6 +2105,7 @@ local function startRemoveEntity()
             end)
         end
     end)
+
     removeEntityConn = task.spawn(function()
         while removeEntityActive do
             pcall(function()
@@ -2151,12 +2129,43 @@ local function anySelected()
     return false
 end
 
--- Gắn lại dropdown: chon entity = bat remove, bo het = tat
+-- Dropdown chọn entity
 pcall(function()
-    -- neu da AddDropdown o tren, chi can goi start khi load
-    if anySelected() then startRemoveEntity() end
+    AntiLeft:AddDropdown("RemoveEntityList", {
+        Text = "Entities to Remove",
+        Values = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
+        Multi = true,
+        Default = {"Screech", "Timothy", "A-90", "Glitch Errors", "Haste", "Halt", "Dread"},
+    }):OnChanged(function(val)
+        for k in pairs(selectedRemove) do
+            selectedRemove[k] = false
+        end
+        if type(val) == "table" then
+            for k, v in pairs(val) do
+                if v == true and ENTITY_KEYS[k] then
+                    selectedRemove[k] = true
+                elseif type(k) == "number" and type(v) == "string" and ENTITY_KEYS[v] then
+                    selectedRemove[v] = true
+                end
+            end
+        end
+        if removeEntityActive then
+            startRemoveEntity()
+        end
+    end)
+end)
+
+AntiLeft:AddToggle("RemoveEntityToggle", {
+    Text = "Remove Entity&No Dame", Default = false,
+}):OnChanged(function(v)
+    if v then
+        if startRemoveEntity then startRemoveEntity() end
+    else
+        if stopRemoveEntity then stopRemoveEntity() end
+    end
 end)
 end)()
+
 local autoPadlockActive = false
 local autoPadlockThread = nil
 local autoPadlockToggle = MiscRight:AddToggle("AutoPadlockCodeToggle", {
