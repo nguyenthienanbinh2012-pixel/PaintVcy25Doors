@@ -624,7 +624,7 @@ pcall(function()
     local okGet, src = pcall(function()
         return game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua")
     end)
-    if not okGet or type(src) \~= "string" then
+    if not okGet or type(src) ~= "string" then
         warn("[ESP] HttpGet fail")
         return
     end
@@ -1147,7 +1147,7 @@ local function psStep()
         CollisionCrouch.CanCollide = false
     end
 
-    if CollisionPart and CollisionPart \~= Collision and CollisionPart:IsA("BasePart") then
+    if CollisionPart and CollisionPart ~= Collision and CollisionPart:IsA("BasePart") then
         CollisionPart.Position = hrp.Position + Vector3.new(0, 2.328, 0)
         CollisionPart.CanCollide = false
     end
