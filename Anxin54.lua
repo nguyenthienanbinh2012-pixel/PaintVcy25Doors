@@ -2562,7 +2562,7 @@ local function pickupItemAsync(itemName, toolId, timeout)
 end
 
 local function handleInfiniteItemPrompt(prompt, player)
-    if player \~= LocalPlayer then return end
+    if player ~= LocalPlayer then return end
     if not infiniteItemOn then return end
     if not prompt or infItemDebounce[prompt] then return end
 
@@ -2572,7 +2572,7 @@ local function handleInfiniteItemPrompt(prompt, player)
     local isDoorLock = prompt.Name == "UnlockPrompt"
         and parent.Name == "Lock"
         and parent.Parent
-        and parent.Parent:GetAttribute("Opened") \~= true
+        and parent.Parent:GetAttribute("Opened") ~= true
 
     local isSkeletonDoor = prompt.Name == "SkullPrompt"
         and parent.Name == "SkullLock"
@@ -3778,7 +3778,7 @@ setBypass:AddSlider("AC_MaxSlopeAngle", {
     Compact = true,
     Tooltip = "Chi ap dung khi method Ms Paint 2",
 }):OnChanged(function(v)
-    if acStripMethod(methodSelected) \~= "Ms Paint 2" then return end
+    if acStripMethod(methodSelected) ~= "Ms Paint 2" then return end
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
