@@ -646,7 +646,7 @@ pcall(function()
 
     if type(ESPModule) == "function" then
         local okCall, callErr = pcall(function()
-            ESPModule(VisualRight, nil, Obsidian, {
+            ESPModule(VisualLeft, nil, Obsidian, {
                 Workspace = Workspace,
                 RunService = RunService,
                 Players = Players,
