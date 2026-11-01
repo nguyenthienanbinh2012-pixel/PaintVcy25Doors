@@ -622,8 +622,14 @@ local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual Effects", "eye")
 local VisualRight = Tabs.Visual:AddRightGroupbox("ESP", "paintbrush")
 
 pcall(function()
-    local src = game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua")
-    -- sửa lỗi \\~= thành \~=
+    local okGet, src = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua")
+    end)
+    if not okGet or type(src) \~= "string" then
+        warn("[ESP] HttpGet fail")
+        return
+    end
+
     src = src:gsub("\\\~=", "\~=")
     src = src:gsub("\\\~", "\~")
 
@@ -633,61 +639,91 @@ pcall(function()
         return
     end
 
-    local ok, ESPModule = pcall(fn)
-    if not ok then
+    local okRun, ESPModule = pcall(fn)
+    if not okRun then
         warn("[ESP] run error:", ESPModule)
         return
     end
 
     if type(ESPModule) == "function" then
-        ESPModule(VisualRight, nil, Obsidian, {
-            Workspace = Workspace,
-            RunService = RunService,
-            Players = Players,
-            LocalPlayer = LocalPlayer,
-            ReplicatedStorage = ReplicatedStorage,
-            Camera = Workspace.CurrentCamera,
-        })
+        local okCall, callErr = pcall(function()
+            ESPModule(VisualRight, nil, Obsidian, {
+                Workspace = Workspace,
+                RunService = RunService,
+                Players = Players,
+                LocalPlayer = LocalPlayer,
+                ReplicatedStorage = ReplicatedStorage,
+                Camera = Workspace.CurrentCamera,
+            })
+        end)
+        if not okCall then
+            warn("[ESP] call error:", callErr)
+        end
     else
         warn("[ESP] module khong phai function")
     end
 end)
+
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
-local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto","wrench")
-local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact","hand")
-;(function()
-local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity","shield")
-local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap","Shield-off")
+local MiscRight = Tabs.Misc:AddRightGroupbox("Utility & Auto", "wrench")
+local MiscInteract = Tabs.Misc:AddLeftGroupbox("Interact", "hand")
+
+local AntiLeft = Tabs.Anti:AddLeftGroupbox("Anti Entity", "shield")
+local AntiRight = Tabs.Anti:AddRightGroupbox("Anti Trap", "Shield-off")
+
 pcall(function()
-    local fn = loadstring(game:HttpGet(
-        "https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/Sad_Heart54/refs/heads/main/SemiGodMode_36.lua"
-    ))()
-    if type(fn) == "function" then
-        fn(AntiLeft, AntiRight, Obsidian, {
-            Workspace = Workspace,
-            RunService = RunService,
-            ReplicatedStorage = ReplicatedStorage,
-            Players = Players,
-            LocalPlayer = LocalPlayer,
-            MiscTab = Tabs.Misc,
-            VisualTab = Tabs.Visual,
-        })
+    local okGet, src = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/Sad_Heart54/refs/heads/main/SemiGodMode_36.lua")
+    end)
+    if not okGet or type(src) \~= "string" then
+        warn("[Anti] HttpGet fail")
+        return
     end
+
+    local fn, err = loadstring(src)
+    if not fn then
+        warn("[Anti] loadstring error:", err)
+        return
+    end
+
+    local okRun, mod = pcall(fn)
+    if not okRun then
+        warn("[Anti] run error:", mod)
+        return
+    end
+
+    if type(mod) == "function" then
+        local okCall, callErr = pcall(function()
+            mod(AntiLeft, AntiRight, Obsidian, {
+                Workspace = Workspace,
+                RunService = RunService,
+                ReplicatedStorage = ReplicatedStorage,
+                Players = Players,
+                LocalPlayer = LocalPlayer,
+                MiscTab = Tabs.Misc,
+                VisualTab = Tabs.Visual,
+            })
+        end)
+        if not okCall then
+            warn("[Anti] call error:", callErr)
+        end
+    end
+end)
 
 task.spawn(function()
     pcall(function()
-        local thumb = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-        InfoGroup:AddImage("Avatar", {
-            Image = thumb,
-            Height = 110,
-            Tooltip = "Your Avatar"
-        })
-    end)
-end)
-
-RunService.Heartbeat:Connect(function()
-    pcall(function()
-        if playerInfoLabel then playerInfoLabel:SetText("Player: " .. LocalPlayer.Name) end
+        local thumb = Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size420x420
+        )
+        if InfoGroup.AddImage then
+            InfoGroup:AddImage("Avatar", {
+                Image = thumb,
+                Height = 110,
+                Tooltip = "Your Avatar"
+            })
+        end
     end)
 end)
 
