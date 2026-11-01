@@ -84,7 +84,6 @@ local Tabs = {
     Misc = Window:AddTab("Misc", "door-open"),
     Anti = Window:AddTab("Anti", "skull"),
     Settings = Window:AddTab("Settings", "cog"),
-    Path = Window:AddTab("Room Path", "footprints"),
     }
 local function setTabsLocked(locked)
     for name, tab in pairs(Tabs) do
@@ -675,7 +674,7 @@ pcall(function()
     local okGet, src = pcall(function()
         return game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/Sad_Heart54/refs/heads/main/SemiGodMode_36.lua")
     end)
-    if not okGet or type(src) \~= "string" then
+    if not okGet or type(src) ~= "string" then
         warn("[Anti] HttpGet fail")
         return
     end
