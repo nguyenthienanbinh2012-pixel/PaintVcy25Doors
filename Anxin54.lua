@@ -943,7 +943,7 @@ local function psEnsureCollisionClone(char)
     clone = collision:Clone()
     clone.Name = "CollisionClone"
     clone.Massless = true
-    clone.CanCollide = false
+    clone.CanCollide = true
     clone.CanTouch = false
     clone.CanQuery = false
     local cc = clone:FindFirstChild("CollisionCrouch")
@@ -971,50 +971,6 @@ local function psNotify(on)
         end)
     end
 end
-
-local function psDestroyUI()
-    if PS.ui then pcall(function() PS.ui:Destroy() end) end
-    PS.ui, PS.label, PS.stroke = nil, nil, nil
-end
-
-local function psCreateUI()
-    if PS.ui then return end
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "SpoofWidgetGui"
-    gui.ResetOnSpawn = false
-    gui.DisplayOrder = 200
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 150, 0, 36)
-    frame.Position = UDim2.new(0.5, -75, 0, 2)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    frame.BackgroundTransparency = 0.15
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 18)
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(50, 255, 100)
-    stroke.Parent = frame
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "HRP.Y: -2.35"
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 13
-    label.Font = Enum.Font.Code
-    label.Parent = frame
-    frame.Parent = gui
-    gui.Parent = PlayerGui
-    PS.ui, PS.label, PS.stroke = gui, label, stroke
-end
-
-local function psDisable()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local cr = psGetCrouch()
 
     PS.on = false
     if PS.conn then PS.conn:Disconnect() PS.conn = nil end
@@ -1045,7 +1001,6 @@ local function psDisable()
     if cr then pcall(function() cr:FireServer(false, true) end) end
     PS.c1Origin = nil
     PS.hipOrigin = nil
-    psDestroyUI()
 end
 
 local function psStep()
@@ -1093,7 +1048,7 @@ local function psStep()
 
     if CollisionClone and CollisionClone:IsA("BasePart") then
         CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
-        CollisionClone.CanCollide = false
+        CollisionClone.CanCollide = true
         if Collision then
             pcall(function() CollisionClone.CollisionGroup = Collision.CollisionGroup end)
         end
@@ -1114,11 +1069,6 @@ local function psStep()
         if cr then pcall(function() cr:FireServer(true, true) end) end
     end
 
-    if PS.label then
-        PS.label.Text = string.format("HRP.Y: %.2f", -2.346)
-        if PS.stroke then PS.stroke.Color = Color3.fromRGB(50, 255, 100) end
-    end
-end
 
 local function psEnable()
     if PS.on then return end
@@ -1155,7 +1105,6 @@ local function psEnable()
     if cr then pcall(function() cr:FireServer(true, true) end) end
 
     PS.on = true
-    psCreateUI()
     if PS.conn then PS.conn:Disconnect() end
     PS.conn = RunService.Heartbeat:Connect(psStep)
     psNotify(true)
