@@ -403,22 +403,6 @@ IndexLeft:AddToggle("JumpPowerToggle", {
     end)
 end)
 
-local jumpPowerVal = 50
-local jumpPowerOn = false
-local infJumpOn = false
-local infJumpConn = nil
-
-local function applyJumpPower()
-    if not jumpPowerOn then return end
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    pcall(function()
-        hum.UseJumpPower = true
-        hum.JumpPower = jumpPowerVal
-    end)
-end
-
 IndexLeft:AddToggle("JumpPowerToggle", {
     Text = "JumpPower",
     Default = false,
