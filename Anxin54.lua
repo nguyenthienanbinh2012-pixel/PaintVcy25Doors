@@ -379,6 +379,16 @@ local jumpPowerVal = 50
 local jumpPowerOn = false
 local infJumpOn = false
 local infJumpConn = nil
+local function applyJumpPower()
+    if not jumpPowerOn then return end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    pcall(function()
+        hum.UseJumpPower = true
+        hum.JumpPower = jumpPowerVal
+    end)
+    end
 
 IndexLeft:AddToggle("JumpPowerToggle", {
     Text = "JumpPower",
@@ -1112,42 +1122,36 @@ local function psStep()
         CollisionPart.CanCollide = false
     end
 if CollisionClone and CollisionClone:IsA("BasePart") then
-    CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
-    CollisionClone.CanCollide = false
-    if Collision then
-        pcall(function()
-            CollisionClone.CollisionGroup = Collision.CollisionGroup
-        end)
-    end
-    local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
-    if ccc and ccc:IsA("BasePart") then
-        ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
-        ccc.CanCollide = true
-        if CollisionCrouch then
+        CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
+        CollisionClone.CanCollide = false
+        if Collision then
             pcall(function()
-                ccc.CollisionGroup = CollisionCrouch.CollisionGroup
+                CollisionClone.CollisionGroup = Collision.CollisionGroup
             end)
         end
-    end
-end
-
-for _, p in ipairs(char:GetChildren()) do
-    if p:IsA("BasePart") then
-        p.CanCollide = false
-    end
-end
-hrp.CanCollide = false
-
-local cr = psGetCrouch()
-if cr then
-    pcall(function() cr:FireServer(true, true) end)
-        end
+        local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
+        if ccc and ccc:IsA("BasePart") then
+            ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
+            ccc.CanCollide = true
             if CollisionCrouch then
                 pcall(function()
                     ccc.CollisionGroup = CollisionCrouch.CollisionGroup
                 end)
             end
         end
+    end
+
+    for _, p in ipairs(char:GetChildren()) do
+        if p:IsA("BasePart") then
+            p.CanCollide = false
+        end
+    end
+    hrp.CanCollide = false
+
+    local cr = psGetCrouch()
+    if cr then
+        pcall(function() cr:FireServer(true, true) end)
+    end
     end
 
     local now = tick()
