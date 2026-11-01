@@ -620,8 +620,25 @@ end)
 
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual Effects", "eye")
 local VisualRight = Tabs.Visual:AddRightGroupbox("ESP", "paintbrush")
+
 pcall(function()
-    local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua"))()
+    local src = game:HttpGet("https://raw.githubusercontent.com/nguyenthienanbinh2012-pixel/AutoDoors13/refs/heads/main/HeartDOORS54.lua")
+    -- sửa lỗi \\~= thành \~=
+    src = src:gsub("\\\~=", "\~=")
+    src = src:gsub("\\\~", "\~")
+
+    local fn, err = loadstring(src)
+    if not fn then
+        warn("[ESP] loadstring error:", err)
+        return
+    end
+
+    local ok, ESPModule = pcall(fn)
+    if not ok then
+        warn("[ESP] run error:", ESPModule)
+        return
+    end
+
     if type(ESPModule) == "function" then
         ESPModule(VisualRight, nil, Obsidian, {
             Workspace = Workspace,
@@ -631,6 +648,8 @@ pcall(function()
             ReplicatedStorage = ReplicatedStorage,
             Camera = Workspace.CurrentCamera,
         })
+    else
+        warn("[ESP] module khong phai function")
     end
 end)
 local MiscLeft = Tabs.Misc:AddLeftGroupbox("Stealth")
