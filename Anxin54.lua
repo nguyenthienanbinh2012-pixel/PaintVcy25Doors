@@ -896,9 +896,10 @@ local PS = {
     hipOrigin = nil,
     conn = nil,
     lastCrouch = 0,
-    ui = nil,
-    label = nil,
-    stroke = nil,
+    savedCollision = nil,
+    savedCollisionPart = nil,
+    savedHrpCanCollide = nil,
+    savedCollisionClone = false,
 }
 
 local function psIsLegacyFloor()
@@ -965,19 +966,32 @@ local function psNotify(on)
         pcall(function()
             Obsidian:Notify({
                 Title = "Position Spoof",
-                Description = "<font color='#FF3232'>Chi an toan khi dung im / di chuyen. Nhay / cau thang de chet</font>",
+                Description = "<font color='#FF3232'>Chỉ An toàn khi đứng im hoặc di chuyển Khi Nhảy,Leo cầu thang Sẽ dẫn đến cái chết</font>",
                 Time = 2.2,
             })
         end)
     end
 end
 
+local function psDisable()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local cr = psGetCrouch()
+
     PS.on = false
-    if PS.conn then PS.conn:Disconnect() PS.conn = nil end
+    if PS.conn then
+        PS.conn:Disconnect()
+        PS.conn = nil
+    end
 
     if hrp then
         hrp.CFrame = hrp.CFrame * CFrame.new(0, 2.346, 0)
-        hrp.CanCollide = true
+        if PS.savedHrpCanCollide ~= nil then
+            hrp.CanCollide = PS.savedHrpCanCollide
+        else
+            hrp.CanCollide = true
+        end
     end
     if hum then
         hum.HipHeight = PS.hipOrigin or 2.396
@@ -985,22 +999,64 @@ end
 
     if char then
         local rp = hrp and (hrp.Position + Vector3.new(0, 0.18, 0))
-        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
-            local p = char:FindFirstChild(n)
-            if p and p:IsA("BasePart") and rp then
-                p.Position = rp
+
+        local col = char:FindFirstChild("Collision")
+        if col and col:IsA("BasePart") and rp then
+            col.Position = rp
+            if PS.savedCollision then
+                col.CanCollide = PS.savedCollision.CanCollide
+                col.CanTouch = PS.savedCollision.CanTouch
+                col.CanQuery = PS.savedCollision.CanQuery
+            else
+                col.CanCollide = true
             end
         end
+
+        local colP = char:FindFirstChild("CollisionPart")
+        if colP and colP:IsA("BasePart") and colP ~= col and rp then
+            colP.Position = rp
+            if PS.savedCollisionPart then
+                colP.CanCollide = PS.savedCollisionPart.CanCollide
+                colP.CanTouch = PS.savedCollisionPart.CanTouch
+                colP.CanQuery = PS.savedCollisionPart.CanQuery
+            else
+                colP.CanCollide = true
+            end
+        end
+
+        local clone = char:FindFirstChild("CollisionClone")
+        if clone then
+            if not PS.savedCollisionClone then
+                clone:Destroy()
+            else
+                if rp then clone.Position = rp end
+                clone.CanCollide = false
+            end
+        end
+
         local lt = char:FindFirstChild("LowerTorso")
         local root = lt and lt:FindFirstChild("Root")
         if root and PS.c1Origin then
             root.C1 = PS.c1Origin
         end
+
+        local cc = col and col:FindFirstChild("CollisionCrouch")
+        if cc and cc:IsA("BasePart") and hrp then
+            cc.Position = hrp.Position + Vector3.new(0, -0.982, 0)
+            cc.CanCollide = false
+        end
     end
 
-    if cr then pcall(function() cr:FireServer(false, true) end) end
+    if cr then
+        pcall(function() cr:FireServer(false, true) end)
+    end
+
     PS.c1Origin = nil
     PS.hipOrigin = nil
+    PS.savedCollision = nil
+    PS.savedCollisionPart = nil
+    PS.savedHrpCanCollide = nil
+    PS.savedCollisionClone = false
 end
 
 local function psStep()
@@ -1050,14 +1106,18 @@ local function psStep()
         CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
         CollisionClone.CanCollide = true
         if Collision then
-            pcall(function() CollisionClone.CollisionGroup = Collision.CollisionGroup end)
+            pcall(function()
+                CollisionClone.CollisionGroup = Collision.CollisionGroup
+            end)
         end
         local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
         if ccc and ccc:IsA("BasePart") then
             ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
             ccc.CanCollide = false
             if CollisionCrouch then
-                pcall(function() ccc.CollisionGroup = CollisionCrouch.CollisionGroup end)
+                pcall(function()
+                    ccc.CollisionGroup = CollisionCrouch.CollisionGroup
+                end)
             end
         end
     end
@@ -1066,9 +1126,11 @@ local function psStep()
     if now - (PS.lastCrouch or 0) > 0.1 then
         PS.lastCrouch = now
         local cr = psGetCrouch()
-        if cr then pcall(function() cr:FireServer(true, true) end) end
+        if cr then
+            pcall(function() cr:FireServer(true, true) end)
+        end
     end
-
+end
 
 local function psEnable()
     if PS.on then return end
@@ -1094,6 +1156,26 @@ local function psEnable()
         PS.c1Origin = root.C1
     end
     PS.hipOrigin = hum.HipHeight
+    PS.savedHrpCanCollide = hrp.CanCollide
+
+    local col = char:FindFirstChild("Collision")
+    if col and col:IsA("BasePart") then
+        PS.savedCollision = {
+            CanCollide = col.CanCollide,
+            CanTouch = col.CanTouch,
+            CanQuery = col.CanQuery,
+        }
+    end
+    local colP = char:FindFirstChild("CollisionPart")
+    if colP and colP:IsA("BasePart") and colP ~= col then
+        PS.savedCollisionPart = {
+            CanCollide = colP.CanCollide,
+            CanTouch = colP.CanTouch,
+            CanQuery = colP.CanQuery,
+        }
+    end
+
+    PS.savedCollisionClone = char:FindFirstChild("CollisionClone") ~= nil
 
     psEnsureCollisionClone(char)
 
@@ -1102,7 +1184,9 @@ local function psEnable()
     hum.HipHeight = 0.05
 
     local cr = psGetCrouch()
-    if cr then pcall(function() cr:FireServer(true, true) end) end
+    if cr then
+        pcall(function() cr:FireServer(true, true) end)
+    end
 
     PS.on = true
     if PS.conn then PS.conn:Disconnect() end
@@ -1122,7 +1206,13 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.delay(0.8, function()
         PS.c1Origin = nil
         PS.hipOrigin = nil
-        pcall(function() psEnsureCollisionClone(char) end)
+        PS.savedCollision = nil
+        PS.savedCollisionPart = nil
+        PS.savedHrpCanCollide = nil
+        PS.savedCollisionClone = false
+        pcall(function()
+            psEnsureCollisionClone(char)
+        end)
         if PS.on then
             PS.on = false
             togglePositionSpoof(true)
@@ -1131,7 +1221,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 if LocalPlayer.Character then
-    pcall(function() psEnsureCollisionClone(LocalPlayer.Character) end)
+    pcall(function()
+        psEnsureCollisionClone(LocalPlayer.Character)
+    end)
     end
 
 local axialActive = false
