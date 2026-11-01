@@ -1152,7 +1152,6 @@ if CollisionClone and CollisionClone:IsA("BasePart") then
     if cr then
         pcall(function() cr:FireServer(true, true) end)
     end
-    end
 
     local now = tick()
     if now - (PS.lastCrouch or 0) > 0.1 then
@@ -2654,6 +2653,7 @@ task.spawn(function()
         end
     end)
 end)
+end
 
 infItemGroup:AddToggle("InfiniteItemToggle", {
     Text = "<font color='#FF3232'>Infinite Item</font>",
