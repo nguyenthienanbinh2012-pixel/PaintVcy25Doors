@@ -959,8 +959,6 @@ local function psEnsureCollisionClone(char)
     clone.CanCollide = true
     clone.CanTouch = false
     clone.CanQuery = false
-    local cc = clone:FindFirstChild("CollisionCrouch")
-    if cc then cc:Destroy() end
     clone.Parent = char
     return clone
 end
@@ -1113,19 +1111,37 @@ local function psStep()
         CollisionPart.Position = hrp.Position + Vector3.new(0, 2.328, 0)
         CollisionPart.CanCollide = false
     end
-
-    if CollisionClone and CollisionClone:IsA("BasePart") then
-        CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
-        CollisionClone.CanCollide = true
-        if Collision then
+if CollisionClone and CollisionClone:IsA("BasePart") then
+    CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
+    CollisionClone.CanCollide = false
+    if Collision then
+        pcall(function()
+            CollisionClone.CollisionGroup = Collision.CollisionGroup
+        end)
+    end
+    local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
+    if ccc and ccc:IsA("BasePart") then
+        ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
+        ccc.CanCollide = true
+        if CollisionCrouch then
             pcall(function()
-                CollisionClone.CollisionGroup = Collision.CollisionGroup
+                ccc.CollisionGroup = CollisionCrouch.CollisionGroup
             end)
         end
-        local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
-        if ccc and ccc:IsA("BasePart") then
-            ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
-            ccc.CanCollide = false
+    end
+end
+
+for _, p in ipairs(char:GetChildren()) do
+    if p:IsA("BasePart") then
+        p.CanCollide = false
+    end
+end
+hrp.CanCollide = false
+
+local cr = psGetCrouch()
+if cr then
+    pcall(function() cr:FireServer(true, true) end)
+        end
             if CollisionCrouch then
                 pcall(function()
                     ccc.CollisionGroup = CollisionCrouch.CollisionGroup
@@ -2581,21 +2597,59 @@ local function handleInfiniteItemPrompt(prompt, player)
     local toolId = tool:GetAttribute("ID") or tool:GetAttribute("Tool_ID")
     local dropRemote = getDropRemote()
 
-    task.spawn(function()
-        if isChestBox then task.wait(0.15) end
-        if dropRemote then
-            pcall(function() dropRemote:FireServer(tool) end)
+task.spawn(function()
+    if isChestBox then task.wait(0.15) end
+
+    local drops = Workspace:FindFirstChild("Drops")
+    local conn
+    local finished = false
+
+    local function finish()
+        if finished then return end
+        finished = true
+        if conn then
+            pcall(function() conn:Disconnect() end)
+            conn = nil
         end
-        local t0 = tick()
-        while tool.Parent and tick() - t0 < 2 do
-            task.wait(0.05)
-        end
-        task.wait(0.15)
-        pickupItemAsync(itemName, toolId, 3)
         task.wait(0.2)
         infItemDebounce[prompt] = nil
+    end
+
+    if drops then
+        conn = drops.ChildAdded:Connect(function(newDrop)
+            if finished then return end
+            if newDrop.Name \~= itemName then return end
+            if toolId \~= nil then
+                local id = newDrop:GetAttribute("ID") or newDrop:GetAttribute("Tool_ID")
+                if id \~= nil and id \~= toolId then return end
+            end
+
+            local mp = newDrop:FindFirstChild("ModulePrompt")
+                or newDrop:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+            if mp and fireproximityprompt then
+                pcall(function() fireproximityprompt(mp) end)
+            end
+            if fireproximityprompt then
+                pcall(function() fireproximityprompt(prompt) end)
+            end
+            finish()
+        end)
+    end
+
+    if dropRemote then
+        pcall(function() dropRemote:FireServer(tool) end)
+    end
+
+    task.delay(2, function()
+        if not finished then
+            if fireproximityprompt then
+                pcall(function() fireproximityprompt(prompt) end)
+            end
+            finish()
+        end
     end)
-end
+end)
 
 infItemGroup:AddToggle("InfiniteItemToggle", {
     Text = "<font color='#FF3232'>Infinite Item</font>",
