@@ -370,67 +370,6 @@ noteGroup:AddLabel("<font color='#FF3232'>+ Fix infinite item</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Fix Remove Dame,Lag</font>", true)
 noteGroup:AddLabel("<font color='#FF3232'>+ Add Remove Chaos visual effects</font>", true)
 noteGroup:AddLabel("<font color='#32FF64'>Thời điểm Fix + Add: 22/10/2026</font>", true)
-local checkGroup = Tabs.Info:AddRightGroupbox("Check System")
-
-local checkPlayerLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Player: Đang quét...</font>", true)
-local checkRoomLabel = checkGroup:AddLabel("<font color='#32FF64'>Check Room: Đang quét...</font>", true)
-local checkAntiCheatLabel = checkGroup:AddLabel("<font color='#32FF64'><b>Check Anti Cheat: 0% (Ping: 0ms)</b></font>", true)
-
-checkGroup:AddButton("Check Player", function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hum and hrp then
-            local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-            checkPlayerLabel:SetText(string.format("<font color='#32FF64'>Check Player: HP %d | Speed %d | Ping %dms</font>", math.floor(hum.Health), math.floor(hum.WalkSpeed), ping))
-        end
-    end
-end)
-
-checkGroup:AddButton("Check Room", function()
-    local currentRoom = LocalPlayer:GetAttribute("CurrentRoom")
-    local inGame = LocalPlayer:GetAttribute("InGame")
-    checkRoomLabel:SetText(string.format("<font color='#32FF64'>Check Room: Room %s | Status: %s</font>", tostring(currentRoom or "Lobby"), tostring(inGame or "Sảnh")))
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        
-        pcall(function()
-            local riskScore = 0
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-            if ping > 250 then riskScore = riskScore + 50
-            elseif ping > 150 then riskScore = riskScore + 30
-            elseif ping > 80 then riskScore = riskScore + 10 end
-            
-            if hrp and hum then
-                if hrp.AssemblyLinearVelocity.Magnitude > 50 then riskScore = riskScore + 30 end
-                if hum.WalkSpeed > 30 then riskScore = riskScore + 15 end
-                if hum.PlatformStand or char:FindFirstChild("PaintFlyAttachment") then riskScore = riskScore + 20 end
-                
-                if not _G.LastCheckPos then _G.LastCheckPos = hrp.Position end
-                if (hrp.Position - _G.LastCheckPos).Magnitude > 50 then riskScore = riskScore + 40 end
-                _G.LastCheckPos = hrp.Position
-            end
-            
-            riskScore = math.clamp(riskScore, 0, 100)
-            
-            if riskScore > 60 then
-                checkAntiCheatLabel:SetText(string.format("<font color='#FF0000'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
-            elseif riskScore > 30 then
-                checkAntiCheatLabel:SetText(string.format("<font color='#FFAA00'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
-            else
-                checkAntiCheatLabel:SetText(string.format("<font color='#32FF64'><b>Check Anti Cheat: %d%% (Ping: %dms)</b></font>", riskScore, ping))
-            end
-        end)
-    end
-end)
-
 local FuncLeft = Tabs.Function:AddLeftGroupbox("Movement")
 local FuncRight = Tabs.Function:AddRightGroupbox("Exploits","Flame")
 local IndexLeft = Tabs.Function:AddLeftGroupbox("Index")
@@ -618,7 +557,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 local VisualLeft = Tabs.Visual:AddLeftGroupbox("Visual Effects", "eye")
-local VisualRight = Tabs.Visual:AddRightGroupbox("ESP", "paintbrush")
+local VisualRight = Tabs.Visual:AddRightGroupbox("Light", "Sun")
 
 pcall(function()
     local okGet, src = pcall(function()
