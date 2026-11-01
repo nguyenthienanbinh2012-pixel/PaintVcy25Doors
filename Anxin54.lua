@@ -2618,10 +2618,10 @@ task.spawn(function()
     if drops then
         conn = drops.ChildAdded:Connect(function(newDrop)
             if finished then return end
-            if newDrop.Name \~= itemName then return end
-            if toolId \~= nil then
+            if newDrop.Name ~= itemName then return end
+            if toolId ~= nil then
                 local id = newDrop:GetAttribute("ID") or newDrop:GetAttribute("Tool_ID")
-                if id \~= nil and id \~= toolId then return end
+                if id ~= nil and id ~= toolId then return end
             end
 
             local mp = newDrop:FindFirstChild("ModulePrompt")
