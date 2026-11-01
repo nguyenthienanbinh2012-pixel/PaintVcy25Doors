@@ -3454,6 +3454,338 @@ chaosToggle:OnChanged(function(on)
         end)
     end)
 end)
+-- ========== Anti-Cheat Bypass (Settings Left) ==========
+local methodSelected = "Abysall Hub"
+local anticheatConnections = {}
+local Globals = rawget(getgenv(), "PaintGlobals") or {}
+getgenv().PaintGlobals = Globals
+Globals.AnticheatDisabled = Globals.AnticheatDisabled or false
+
+local function playNotifySound()
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://3318713980"
+        s.Volume = 10
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        task.delay(4, function()
+            if s then s:Destroy() end
+        end)
+    end)
+end
+
+local function acNotifySuccess(methodName)
+    playNotifySound()
+    pcall(function()
+        Obsidian:Notify({
+            Title = "🛡️ Anticheat Bypassed",
+            Description = tostring(methodName) .. " — Anticheat disabled successfully.",
+            Time = 5,
+        })
+    end)
+end
+
+local function acNotifyFail(msg)
+    playNotifySound()
+    pcall(function()
+        Obsidian:Notify({
+            Title = "💔 Anticheat Bypass Failed",
+            Description = msg or "Could not disable anticheat. Make sure you are in Mines and near a ladder.",
+            Time = 5,
+        })
+    end)
+end
+
+local function acIsMines()
+    local gd = ReplicatedStorage:FindFirstChild("GameData")
+    local floor = gd and gd:FindFirstChild("Floor")
+    return floor and tostring(floor.Value) == "Mines"
+end
+
+local function acDisconnectAll()
+    for _, c in pairs(anticheatConnections) do
+        pcall(function()
+            if c and c.Disconnect then c:Disconnect() end
+        end)
+    end
+    table.clear(anticheatConnections)
+end
+
+local function acGetRemotes()
+    return ReplicatedStorage:FindFirstChild("RemotesFolder")
+        or ReplicatedStorage:FindFirstChild("EntityInfo")
+        or ReplicatedStorage:FindFirstChild("Bricks")
+        or ReplicatedStorage
+end
+
+local function acResetClimbRemote()
+    local rf = acGetRemotes()
+    local climb = rf:FindFirstChild("ClimbLadder") or rf:FindFirstChild("ClimbLadder", true)
+    if climb then
+        pcall(function() climb:FireServer() end)
+    end
+end
+
+local function acStripMethod(s)
+    s = tostring(s or "")
+    if s:find("Abysall", 1, true) then return "Abysall Hub" end
+    if s:find("Sky Hub", 1, true) then return "Sky Hub" end
+    if s:find("Ms Paint", 1, true) then return "Ms Paint 2" end
+    return s
+end
+
+local function acEnableLadderESP()
+    pcall(function()
+        if Obsidian.Toggles and Obsidian.Toggles.LadderESPToggle then
+            Obsidian.Toggles.LadderESPToggle:SetValue(true)
+        end
+    end)
+end
+
+local function acSetSpeedFlyMax(speedMax, flyMax)
+    pcall(function()
+        if Obsidian.Options and Obsidian.Options.SpeedBypassSlider and Obsidian.Options.SpeedBypassSlider.SetMax then
+            Obsidian.Options.SpeedBypassSlider:SetMax(speedMax)
+        end
+    end)
+    pcall(function()
+        if Obsidian.Options and Obsidian.Options.FlySpeedSlider and Obsidian.Options.FlySpeedSlider.SetMax then
+            Obsidian.Options.FlySpeedSlider:SetMax(flyMax)
+        end
+    end)
+end
+
+local function acDisableBypass()
+    acDisconnectAll()
+    local method = acStripMethod(methodSelected)
+    if method == "Abysall Hub" then
+        Globals.AnticheatDisabled = false
+        acResetClimbRemote()
+    elseif method == "Sky Hub" then
+        acSetSpeedFlyMax(125, 80)
+    elseif method == "Ms Paint 2" then
+        acSetSpeedFlyMax(125, 80)
+        local char = LocalPlayer.Character
+        if char then
+            pcall(function() char:SetAttribute("SpeedBoostBehind", nil) end)
+        end
+    end
+end
+
+local function acEnableAbysall()
+    if not acIsMines() then
+        acNotifyFail("Could not disable anticheat. Make sure you are in Mines and near a ladder.")
+        return false
+    end
+    acDisconnectAll()
+    Globals.AnticheatDisabled = true
+    acEnableLadderESP()
+
+    local char = LocalPlayer.Character
+    if char then
+        anticheatConnections.climbing = char:GetAttributeChangedSignal("Climbing"):Connect(function()
+            if not Globals.AnticheatDisabled then return end
+            if char:GetAttribute("Climbing") == true then
+                task.delay(0.25, function()
+                    if Globals.AnticheatDisabled and char and char.Parent then
+                        pcall(function() char:SetAttribute("Climbing", false) end)
+                    end
+                end)
+            end
+        end)
+    end
+
+    anticheatConnections.charAdded = LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(0.5)
+        if not Globals.AnticheatDisabled then return end
+        if anticheatConnections.climbing then
+            pcall(function() anticheatConnections.climbing:Disconnect() end)
+        end
+        anticheatConnections.climbing = c:GetAttributeChangedSignal("Climbing"):Connect(function()
+            if not Globals.AnticheatDisabled then return end
+            if c:GetAttribute("Climbing") == true then
+                task.delay(0.25, function()
+                    if Globals.AnticheatDisabled and c and c.Parent then
+                        pcall(function() c:SetAttribute("Climbing", false) end)
+                    end
+                end)
+            end
+        end)
+    end)
+
+    local rf = acGetRemotes()
+    local cutscene = rf:FindFirstChild("Cutscene") or rf:FindFirstChild("PlayCutscene") or rf:FindFirstChild("Cutscene", true)
+    if cutscene and cutscene:IsA("RemoteEvent") then
+        anticheatConnections.cutscene = cutscene.OnClientEvent:Connect(function(...)
+            local args = {...}
+            local name = tostring(args[1] or args[2] or "")
+            if name:find("SewerSeek", 1, true) then return end
+            if Globals.AnticheatDisabled then
+                Globals.AnticheatDisabled = false
+                acDisconnectAll()
+                acNotifyFail("Anticheat re-enabled (Cutscene).")
+            end
+        end)
+    end
+
+    local useEnemy = rf:FindFirstChild("UseEnemyModule") or rf:FindFirstChild("UseEnemyModule", true)
+    if useEnemy and useEnemy:IsA("RemoteEvent") then
+        anticheatConnections.enemy = useEnemy.OnClientEvent:Connect(function(moduleName, ...)
+            local n = tostring(moduleName or "")
+            if n == "Void" or n == "Glitch" then
+                if Globals.AnticheatDisabled then
+                    Globals.AnticheatDisabled = false
+                    acDisconnectAll()
+                    acNotifyFail("Anticheat re-enabled (Void/Glitch).")
+                end
+            end
+        end)
+    end
+
+    local LogService = game:GetService("LogService")
+    anticheatConnections.log = LogService.MessageOut:Connect(function(msg)
+        if type(msg) == "string" and msg:lower():find("client teleporting", 1, true) then
+            if Globals.AnticheatDisabled then
+                Globals.AnticheatDisabled = false
+                acDisconnectAll()
+                acNotifyFail("Anticheat re-enabled (Halt teleport).")
+            end
+        end
+    end)
+
+    acNotifySuccess("Abysall Hub")
+    return true
+end
+
+local function acEnableSky()
+    acDisconnectAll()
+    acSetSpeedFlyMax(75, 75)
+    acNotifySuccess("Sky Hub")
+    return true
+end
+
+local function acEnableMsPaint()
+    if not acIsMines() then
+        acNotifyFail("Could not disable anticheat. Make sure you are in Mines and near a ladder.")
+        return false
+    end
+    acDisconnectAll()
+    acSetSpeedFlyMax(45, 75)
+
+    local function bindChar(char)
+        if not char then return end
+        anticheatConnections.msClimb = char:GetAttributeChangedSignal("Climbing"):Connect(function()
+            if char:GetAttribute("Climbing") == true then
+                task.delay(1, function()
+                    if char and char.Parent then
+                        pcall(function() char:SetAttribute("Climbing", false) end)
+                    end
+                end)
+            end
+        end)
+        anticheatConnections.fastLadder = RunService.Heartbeat:Connect(function()
+            if char:GetAttribute("Climbing") == true then
+                pcall(function() char:SetAttribute("SpeedBoostBehind", 50) end)
+            end
+        end)
+    end
+
+    if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
+    anticheatConnections.msChar = LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(0.5)
+        if anticheatConnections.msClimb then pcall(function() anticheatConnections.msClimb:Disconnect() end) end
+        if anticheatConnections.fastLadder then pcall(function() anticheatConnections.fastLadder:Disconnect() end) end
+        bindChar(c)
+    end)
+
+    acNotifySuccess("Ms Paint 2")
+    return true
+end
+
+local function acEnableByMethod()
+    local method = acStripMethod(methodSelected)
+    if method == "Abysall Hub" then
+        return acEnableAbysall()
+    elseif method == "Sky Hub" then
+        return acEnableSky()
+    elseif method == "Ms Paint 2" then
+        return acEnableMsPaint()
+    end
+    return false
+end
+
+local setBypass = Tabs.Settings:AddLeftGroupbox("Anti-Cheat Bypass", "gamepad-2")
+
+local methodDropdown = setBypass:AddDropdown("AnticheatMethodDropdown", {
+    Text = "Bypass Method",
+    Values = {
+        "<font color='#FF3232'>Abysall Hub (Best)</font>",
+        "Sky Hub",
+        "Ms Paint 2",
+    },
+    Default = "<font color='#FF3232'>Abysall Hub (Best)</font>",
+    Multi = false,
+})
+
+methodDropdown:OnChanged(function(v)
+    local newMethod = acStripMethod(v)
+    local wasOn = false
+    pcall(function()
+        if Obsidian.Toggles and Obsidian.Toggles.AnticheatBypassToggle then
+            wasOn = Obsidian.Toggles.AnticheatBypassToggle.Value == true
+        end
+    end)
+    acDisableBypass()
+    methodSelected = newMethod
+    playNotifySound()
+    pcall(function()
+        Obsidian:Notify({
+            Title = "Method Changed",
+            Description = "Switched to " .. newMethod,
+            Time = 3,
+        })
+    end)
+    if wasOn then
+        acEnableByMethod()
+    end
+end)
+
+local bypassToggle = setBypass:AddToggle("AnticheatBypassToggle", {
+    Text = "Enable Anticheat Bypass",
+    Default = false,
+    Tooltip = "Bypass anticheat thang trèo (Climbing) có thể ở floor Mines.",
+})
+
+bypassToggle:OnChanged(function(v)
+    if v then
+        local ok = acEnableByMethod()
+        if not ok then
+            pcall(function()
+                if bypassToggle.SetValue then bypassToggle:SetValue(false) end
+            end)
+        end
+    else
+        acDisableBypass()
+    end
+end)
+
+setBypass:AddSlider("AC_MaxSlopeAngle", {
+    Text = "MaxSlopeAngle (Ms Paint)",
+    Default = 89,
+    Min = 0,
+    Max = 90,
+    Rounding = 0,
+    Compact = true,
+    Tooltip = "Chi ap dung khi method Ms Paint 2",
+}):OnChanged(function(v)
+    if acStripMethod(methodSelected) \~= "Ms Paint 2" then return end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function() hum.MaxSlopeAngle = v end)
+    end
+end)
+-- ========== End Anti-Cheat Bypass ==========
 
 Obsidian:OnUnload(function()
     pcall(function()
