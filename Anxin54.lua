@@ -629,8 +629,8 @@ pcall(function()
         return
     end
 
-    src = src:gsub("\\\~=", "\~=")
-    src = src:gsub("\\\~", "\~")
+    src = string.gsub(src, "\\\~=", "\~=")
+    src = string.gsub(src, "\\\~", "\~")
 
     local fn, err = loadstring(src)
     if not fn then
@@ -954,12 +954,64 @@ end
 local PS = {
     on = false,
     c1Origin = nil,
+    hipOrigin = nil,
     conn = nil,
     lastCrouch = 0,
     ui = nil,
     label = nil,
     stroke = nil,
 }
+
+local function psIsLegacyFloor()
+    local gd = ReplicatedStorage:FindFirstChild("GameData")
+    local f = gd and gd:FindFirstChild("Floor")
+    local name = f and tostring(f.Value) or ""
+    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
+        or ReplicatedStorage:FindFirstChild("EntityInfo")
+        or ReplicatedStorage:FindFirstChild("Bricks")
+    if name == "Hotel" and rf and rf.Name == "Bricks" then
+        name = "OldHotel"
+    end
+    return name == "OldHotel" or name == "Fools"
+end
+
+local function psIsMinecart()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    for _, n in ipairs({"Minecart", "MineCart", "Cart"}) do
+        if char:FindFirstChild(n) then return true end
+    end
+    if char:GetAttribute("InMinecart") or char:GetAttribute("Minecart") then
+        return true
+    end
+    return false
+end
+
+local function psGetCrouch()
+    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
+        or ReplicatedStorage:FindFirstChild("EntityInfo")
+        or ReplicatedStorage:FindFirstChild("Bricks")
+        or ReplicatedStorage
+    return rf:FindFirstChild("Crouch") or rf:FindFirstChild("Crouch", true)
+end
+
+local function psEnsureCollisionClone(char)
+    if not char then return end
+    local collision = char:FindFirstChild("Collision")
+    if not collision or not collision:IsA("BasePart") then return end
+    local clone = char:FindFirstChild("CollisionClone")
+    if clone then return clone end
+    clone = collision:Clone()
+    clone.Name = "CollisionClone"
+    clone.Massless = true
+    clone.CanCollide = false
+    clone.CanTouch = false
+    clone.CanQuery = false
+    local cc = clone:FindFirstChild("CollisionCrouch")
+    if cc then cc:Destroy() end
+    clone.Parent = char
+    return clone
+end
 
 local function psNotify(on)
     pcall(function()
@@ -974,7 +1026,7 @@ local function psNotify(on)
         pcall(function()
             Obsidian:Notify({
                 Title = "Position Spoof",
-                Description = "<font color='#FF3232'>Position Spoof chi an toan khi dung im hoac di chuyen, Nhay hay di cau thang se dan toi cai chet</font>",
+                Description = "<font color='#FF3232'>Chi an toan khi dung im / di chuyen. Nhay / cau thang de chet</font>",
                 Time = 2.2,
             })
         end)
@@ -1019,125 +1071,180 @@ local function psCreateUI()
     PS.ui, PS.label, PS.stroke = gui, label, stroke
 end
 
-local function psGetCrouch()
-    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
-        or ReplicatedStorage:FindFirstChild("EntityInfo")
-        or ReplicatedStorage:FindFirstChild("Bricks")
-        or ReplicatedStorage
-    return rf:FindFirstChild("Crouch") or rf:FindFirstChild("Crouch", true)
-end
+local function psDisable()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local cr = psGetCrouch()
 
-local function psMainLoop()
+    PS.on = false
     if PS.conn then PS.conn:Disconnect() PS.conn = nil end
-    PS.conn = RunService.Heartbeat:Connect(function()
-        if not PS.on then return end
-        local char = LocalPlayer.Character
-        if not char then return end
 
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
+    if hrp then
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, 2.346, 0)
+        hrp.CanCollide = true
+    end
+    if hum then
+        hum.HipHeight = PS.hipOrigin or 2.396
+    end
 
+    if char then
+        local rp = hrp and (hrp.Position + Vector3.new(0, 0.18, 0))
+        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+            local p = char:FindFirstChild(n)
+            if p and p:IsA("BasePart") and rp then
+                p.Position = rp
+            end
+        end
         local lt = char:FindFirstChild("LowerTorso")
         local root = lt and lt:FindFirstChild("Root")
-        local Collision = char:FindFirstChild("Collision")
-        local CollisionPart = char:FindFirstChild("CollisionPart")
-        local CollisionClone = char:FindFirstChild("CollisionClone") or char:FindFirstChild("CollisionPartClone")
-
-        hum.HipHeight = 0.05
-
         if root and PS.c1Origin then
-            root.C1 = PS.c1Origin * CFrame.new(0, -2.346, 0)
+            root.C1 = PS.c1Origin
         end
+    end
 
-        local spoofY = 2.328
-        if Collision then
-            Collision.Position = hrp.Position + Vector3.new(0, spoofY, 0)
-            Collision.CanCollide = false
-        end
-        if CollisionPart then
-            CollisionPart.Position = hrp.Position + Vector3.new(0, spoofY, 0)
-        end
-        if CollisionClone and CollisionClone:IsA("BasePart") then
-            if Collision then
-                pcall(function() CollisionClone.CollisionGroup = Collision.CollisionGroup end)
-            end
-            CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
-            local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
-            if ccc then ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0) end
-        end
-
-        local now = tick()
-        if now - (PS.lastCrouch or 0) > 0.12 then
-            PS.lastCrouch = now
-            local cr = psGetCrouch()
-            if cr then pcall(function() cr:FireServer(true, true) end) end
-        end
-
-        if PS.label then
-            PS.label.Text = string.format("HRP.Y: %.2f", -2.346)
-            if PS.stroke then PS.stroke.Color = Color3.fromRGB(50, 255, 100) end
-        end
-    end)
+    if cr then pcall(function() cr:FireServer(false, true) end) end
+    PS.c1Origin = nil
+    PS.hipOrigin = nil
+    psDestroyUI()
 end
 
-local function togglePositionSpoof(Value)
+local function psStep()
+    if not PS.on then return end
+    if psIsLegacyFloor() or psIsMinecart() then
+        psDisable()
+        return
+    end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    local lt = char:FindFirstChild("LowerTorso")
+    local root = lt and lt:FindFirstChild("Root")
+    local Collision = char:FindFirstChild("Collision")
+    local CollisionCrouch = Collision and Collision:FindFirstChild("CollisionCrouch")
+    local CollisionPart = char:FindFirstChild("CollisionPart")
+    local CollisionClone = char:FindFirstChild("CollisionClone") or psEnsureCollisionClone(char)
+
+    hrp.CanCollide = false
+    hum.HipHeight = 0.05
+
+    if root and PS.c1Origin then
+        root.C1 = PS.c1Origin * CFrame.new(0, -2.346, 0)
+    end
+
+    if Collision and Collision:IsA("BasePart") then
+        Collision.Position = hrp.Position + Vector3.new(0, 2.328, 0)
+        Collision.CanCollide = false
+    end
+
+    if CollisionCrouch and CollisionCrouch:IsA("BasePart") then
+        CollisionCrouch.Position = hrp.Position + Vector3.new(0, 1.328, 0)
+        CollisionCrouch.CanCollide = false
+    end
+
+    if CollisionPart and CollisionPart \~= Collision and CollisionPart:IsA("BasePart") then
+        CollisionPart.Position = hrp.Position + Vector3.new(0, 2.328, 0)
+        CollisionPart.CanCollide = false
+    end
+
+    if CollisionClone and CollisionClone:IsA("BasePart") then
+        CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
+        CollisionClone.CanCollide = false
+        if Collision then
+            pcall(function() CollisionClone.CollisionGroup = Collision.CollisionGroup end)
+        end
+        local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
+        if ccc and ccc:IsA("BasePart") then
+            ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
+            ccc.CanCollide = false
+            if CollisionCrouch then
+                pcall(function() ccc.CollisionGroup = CollisionCrouch.CollisionGroup end)
+            end
+        end
+    end
+
+    local now = tick()
+    if now - (PS.lastCrouch or 0) > 0.1 then
+        PS.lastCrouch = now
+        local cr = psGetCrouch()
+        if cr then pcall(function() cr:FireServer(true, true) end) end
+    end
+
+    if PS.label then
+        PS.label.Text = string.format("HRP.Y: %.2f", -2.346)
+        if PS.stroke then PS.stroke.Color = Color3.fromRGB(50, 255, 100) end
+    end
+end
+
+local function psEnable()
+    if PS.on then return end
+    if psIsLegacyFloor() or psIsMinecart() then
+        pcall(function()
+            Obsidian:Notify({
+                Title = "Position Spoof",
+                Description = "<font color='#FF3232'>Khong hoat dong OldHotel / Fools / Minecart</font>",
+                Time = 2,
+            })
+        end)
+        return
+    end
+
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not char or not hrp or not hum then return end
 
+    local lt = char:FindFirstChild("LowerTorso")
+    local root = lt and lt:FindFirstChild("Root")
+    if root and root:IsA("Motor6D") then
+        PS.c1Origin = root.C1
+    end
+    PS.hipOrigin = hum.HipHeight
+
+    psEnsureCollisionClone(char)
+
+    hrp.CFrame = hrp.CFrame * CFrame.new(0, -2.346, 0)
+    hrp.CanCollide = false
+    hum.HipHeight = 0.05
+
     local cr = psGetCrouch()
+    if cr then pcall(function() cr:FireServer(true, true) end) end
 
+    PS.on = true
+    psCreateUI()
+    if PS.conn then PS.conn:Disconnect() end
+    PS.conn = RunService.Heartbeat:Connect(psStep)
+    psNotify(true)
+end
+
+local function togglePositionSpoof(Value)
     if Value then
-        if PS.on then return end
-        PS.on = true
-
-        local lt = char:FindFirstChild("LowerTorso")
-        local root = lt and lt:FindFirstChild("Root")
-        if root and root:IsA("Motor6D") and not PS.c1Origin then
-            PS.c1Origin = root.C1
-        end
-
-        hrp.CFrame = hrp.CFrame * CFrame.new(0, -2.346, 0)
-        hum.HipHeight = 0.05
-        if cr then pcall(function() cr:FireServer(true, true) end) end
-
-        psCreateUI()
-        psMainLoop()
-        psNotify(true)
+        psEnable()
     else
-        if not PS.on then return end
-        PS.on = false
-        if PS.conn then PS.conn:Disconnect() PS.conn = nil end
-
-        hrp.CFrame = hrp.CFrame * CFrame.new(0, 2.346, 0)
-        hum.HipHeight = 2.396
-
-        local rp = hrp.Position + Vector3.new(0, 0.18, 0)
-        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
-            local p = char:FindFirstChild(n)
-            if p and p:IsA("BasePart") then p.Position = rp end
-        end
-
-        local lt = char:FindFirstChild("LowerTorso")
-        local root = lt and lt:FindFirstChild("Root")
-        if root and PS.c1Origin then root.C1 = PS.c1Origin end
-
-        if cr then pcall(function() cr:FireServer(false, true) end) end
-        psDestroyUI()
+        psDisable()
     end
 end
 
-LocalPlayer.CharacterAdded:Connect(function()
-    PS.c1Origin = nil
-    if PS.on then
-        task.delay(1, function()
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.delay(0.8, function()
+        PS.c1Origin = nil
+        PS.hipOrigin = nil
+        pcall(function() psEnsureCollisionClone(char) end)
+        if PS.on then
             PS.on = false
             togglePositionSpoof(true)
-        end)
-    end
+        end
+    end)
 end)
+
+if LocalPlayer.Character then
+    pcall(function() psEnsureCollisionClone(LocalPlayer.Character) end)
+    end
 
 local axialActive = false
 local axialSpeed = 4
