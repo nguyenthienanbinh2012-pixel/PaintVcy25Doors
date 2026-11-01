@@ -441,10 +441,6 @@ local jumpPowerOn = false
 local infJumpOn = false
 local infJumpConn = nil
 
-
-local jumpPowerOn = false
-local jumpPowerVal = 50
-
 IndexLeft:AddToggle("JumpPowerToggle", {
     Text = "JumpPower",
     Default = false,
