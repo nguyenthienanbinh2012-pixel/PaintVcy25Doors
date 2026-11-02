@@ -2506,12 +2506,13 @@ local function handleInfiniteItemPrompt(prompt, player)
         and parent.Name == "SkullLock"
 
     local isChestBox = prompt.Name == "ActivateEventPrompt"
-        and parent.Name == "ChestBoxLocked"
-        and parent:GetAttribute("Locked") == true
+        and (parent.Name == "ChestBoxLocked" or parent:GetAttribute("Locked") == true)
 
     local isRoomsDoorLock = parent.Name == "RoomsDoor_Entrance" and prompt.Enabled
 
-    if not (isDoorLock or isSkeletonDoor or isChestBox or isRoomsDoorLock) then
+    local isVine = parent.Name == "CuttableVines" or parent.Name == "Chest_Vine" or parent.Name == "Cellar"
+
+    if not (isDoorLock or isSkeletonDoor or isChestBox or isRoomsDoorLock or isVine) then
         return
     end
 
@@ -2524,78 +2525,57 @@ local function handleInfiniteItemPrompt(prompt, player)
     local itemName = tool.Name
     local toolId = tool:GetAttribute("ID") or tool:GetAttribute("Tool_ID")
     local dropRemote = getDropRemote()
-
-task.spawn(function()
-    if isChestBox then task.wait(0.15) end
-
     local drops = Workspace:FindFirstChild("Drops")
-    local conn
-    local finished = false
 
-    local function finish()
-        if finished then return end
-        finished = true
-        if conn then
-            pcall(function() conn:Disconnect() end)
-            conn = nil
-        end
-        task.wait(0.2)
-        infItemDebounce[prompt] = nil
-    end
+    task.spawn(function()
+        if isChestBox then task.wait(0.15) end
 
-    if drops then
-        conn = drops.ChildAdded:Connect(function(newDrop)
+        local conn
+        local finished = false
+        local function finish()
             if finished then return end
-            if newDrop.Name ~= itemName then return end
-            if toolId ~= nil then
-                local id = newDrop:GetAttribute("ID") or newDrop:GetAttribute("Tool_ID")
-                if id ~= nil and id ~= toolId then return end
-            end
-
-            local mp = newDrop:FindFirstChild("ModulePrompt")
-                or newDrop:FindFirstChildWhichIsA("ProximityPrompt", true)
-
-            if mp and fireproximityprompt then
-                pcall(function() fireproximityprompt(mp) end)
-            end
-            if fireproximityprompt then
-                pcall(function() fireproximityprompt(prompt) end)
-            end
-            finish()
-        end)
-    end
-
-    if dropRemote then
-        pcall(function() dropRemote:FireServer(tool) end)
-    end
-
-    task.delay(2, function()
-        if not finished then
-            if fireproximityprompt then
-                pcall(function() fireproximityprompt(prompt) end)
-            end
-            finish()
+            finished = true
+            if conn then pcall(function() conn:Disconnect() end) conn = nil end
+            task.delay(0.25, function()
+                infItemDebounce[prompt] = nil
+            end)
         end
+
+        if drops then
+            conn = drops.ChildAdded:Connect(function(newDrop)
+                if finished then return end
+                if newDrop.Name ~= itemName then return end
+                if toolId ~= nil then
+                    local id = newDrop:GetAttribute("ID") or newDrop:GetAttribute("Tool_ID")
+                    if id ~= nil and id ~= toolId then return end
+                end
+                local mp = newDrop:FindFirstChild("ModulePrompt")
+                    or newDrop:FindFirstChildWhichIsA("ProximityPrompt", true)
+                task.wait(0.05)
+                if mp and fireproximityprompt then
+                    pcall(function() fireproximityprompt(mp) end)
+                end
+                if fireproximityprompt then
+                    pcall(function() fireproximityprompt(prompt) end)
+                end
+                finish()
+            end)
+        end
+
+        if dropRemote then
+            pcall(function() dropRemote:FireServer(tool) end)
+        end
+
+        task.delay(2, function()
+            if not finished then
+                if fireproximityprompt then
+                    pcall(function() fireproximityprompt(prompt) end)
+                end
+                finish()
+            end
+        end)
     end)
-end)
-
-end
-
-infItemGroup:AddToggle("InfiniteItemToggle", {
-    Text = "<font color='#FF3232'>Infinite Item</font>",
-    Default = false,
-}):OnChanged(function(v)
-    infiniteItemOn = v
-    if infItemPromptConn then
-        pcall(function() infItemPromptConn:Disconnect() end)
-        infItemPromptConn = nil
     end
-    if v then
-        infItemPromptConn = ProximityPromptService.PromptTriggered:Connect(handleInfiniteItemPrompt)
-    else
-        infItemDebounce = {}
-    end
-end)
 
 local InfCrucifixTable = {
     RushMoving = 90,
@@ -2615,7 +2595,7 @@ local infCrucifixConn = nil
 infItemGroup:AddToggle("InfCrucifixToggle", {
     Text = "<font color='#FF3232'>Infinite Crucifix</font>",
     Default = false,
-    Tooltip = "Thanh gia vo han. FPS cao + khong vat can moi on dinh",
+    Tooltip = "Thanh gia vo han. Chỉ khi Ping/FPS ổn định mới hoạt động và chỉ áp dụng lên  Rush,Ambush, GlitchAmbush,Rnush==",
 }):OnChanged(function(v)
     if infCrucifixConn then
         pcall(function() infCrucifixConn:Disconnect() end)
@@ -2633,6 +2613,8 @@ infItemGroup:AddToggle("InfCrucifixToggle", {
         if not tool or not hrp then return end
 
         local origin = hrp.Position
+        local drops = Workspace:FindFirstChild("Drops")
+
         for _, entity in ipairs(Workspace:GetChildren()) do
             local maxRange = InfCrucifixTable[entity.Name]
             if maxRange and entity.PrimaryPart then
@@ -2643,17 +2625,28 @@ infItemGroup:AddToggle("InfCrucifixToggle", {
                     local hit = Workspace:Raycast(origin, target - origin, InfParams)
                     if not hit then
                         local dropRemote = getDropRemote()
-                        if dropRemote then
-                            infCrucifixRunning = true
-                            task.spawn(function()
-                                pcall(function() dropRemote:FireServer(tool) end)
-                                local startTime = tick()
-                                repeat
-                                    task.wait(0.01)
-                                until char:FindFirstChild("Crucifix") or (tick() - startTime) > 1.2
-                                infCrucifixRunning = false
-                            end)
-                        end
+                        if not dropRemote then break end
+                        infCrucifixRunning = true
+                        task.spawn(function()
+                            local conn
+                            if drops then
+                                conn = drops.ChildAdded:Connect(function(newDrop)
+                                    if newDrop.Name ~= "Crucifix" then return end
+                                    local mp = newDrop:FindFirstChild("ModulePrompt")
+                                        or newDrop:FindFirstChildWhichIsA("ProximityPrompt", true)
+                                    if mp and fireproximityprompt then
+                                        pcall(function() fireproximityprompt(mp) end)
+                                    end
+                                    if conn then conn:Disconnect() end
+                                end)
+                            end
+                            pcall(function() dropRemote:FireServer(tool) end)
+                            local t0 = tick()
+                            repeat task.wait(0.05)
+                            until char:FindFirstChild("Crucifix") or (tick() - t0) > 1.5
+                            if conn then pcall(function() conn:Disconnect() end) end
+                            infCrucifixRunning = false
+                        end)
                         break
                     end
                 end
