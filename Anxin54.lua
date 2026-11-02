@@ -955,16 +955,29 @@ local function psEnsureCollisionClone(char)
     if not char then return nil end
     local collision = char:FindFirstChild("Collision")
     if not collision or not collision:IsA("BasePart") then return nil end
+
     local clone = char:FindFirstChild("CollisionClone")
-    if clone then return clone end
-    clone = collision:Clone()
-    clone.Name = "CollisionClone"
-    clone.Massless = true
-    clone.CanCollide = true
-    clone.CanTouch = false
-    clone.CanQuery = false
-    clone.Parent = char
+    if not clone then
+        clone = collision:Clone()
+        clone.Name = "CollisionClone"
+        clone.Massless = true
+        clone.Parent = char
+    end
+
+    local colPart = char:FindFirstChild("CollisionPart") or collision
+    local partClone = char:FindFirstChild("CollisionPartClone")
+    if not partClone and colPart then
+        partClone = colPart:Clone()
+        partClone.Name = "CollisionPartClone"
+        partClone.CanCollide = false
+        partClone.Massless = true
+        local pc = partClone:FindFirstChild("CollisionCrouch")
+        if pc then pc:Destroy() end
+        partClone.Parent = char
+    end
+
     return clone
+    end
 end
 
 local function psNotify(on)
@@ -1101,6 +1114,19 @@ local function psStep()
             end
         end
     end
+    local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
+        if ccc and ccc:IsA("BasePart") then
+            ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
+            ccc.CanCollide = true
+            if CollisionCrouch then
+                pcall(function()
+                    ccc.CollisionGroup = CollisionCrouch.CollisionGroup
+                end)
+            end
+        else
+            -- MẤT CollisionCrouch = mất hitbox → bật collide clone đứng
+            CollisionClone.CanCollide = true
+    end
 
     local now = tick()
     if now - (PS.lastCrouch or 0) >= 0.1 then
@@ -1150,7 +1176,7 @@ local function psEnable()
 
     PS.on = true
     if PS.conn then PS.conn:Disconnect() end
-    PS.conn = RunService.Heartbeat:Connect(psStep)
+    PS.conn = RunService.RenderStepped:Connect(psStep)
     psNotify(true)
 end
 
@@ -1180,6 +1206,15 @@ if LocalPlayer.Character then
     pcall(function()
         psEnsureCollisionClone(LocalPlayer.Character)
     end)
+    pcall(function()
+        char:SetAttribute("Crouching", true)
+    end)
+
+    local partClone = char:FindFirstChild("CollisionPartClone")
+    if partClone and partClone:IsA("BasePart") then
+        partClone.Position = hrp.Position + Vector3.new(0, 2.328, 0)
+        partClone.CanCollide = false
+    end
     end
 
 local axialActive = false
