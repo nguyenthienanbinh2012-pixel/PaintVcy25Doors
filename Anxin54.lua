@@ -2586,10 +2586,8 @@ Workspace.DescendantAdded:Connect(function(d)
     end
 end)
 
--- ===== Abysall InfiniteItemsHandler =====
--- LUON lang nghe FakePrompt (ke ca khi infinite TAT) de van Fire RealPrompt
 local function handleInfiniteItemPrompt(Object, player)
-    if player \~= nil and player \~= LocalPlayer then return end
+    if player ~= nil and player ~= LocalPlayer then return end
     if not Object or not Object:GetAttribute("FakePrompt") then return end
 
     local char = LocalPlayer.Character
@@ -2598,7 +2596,6 @@ local function handleInfiniteItemPrompt(Object, player)
     local Prompt = Object
     local IsLockPromptFlag = isLockPrompt(Object)
 
-    -- Abysall: check tool dung loai khoa
     if Prompt.Parent then
         local pn = Prompt.Parent.Name
         if (pn == "CuttableVines" or pn == "Chest_Vine" or pn == "Cellar")
@@ -2618,9 +2615,9 @@ local function handleInfiniteItemPrompt(Object, player)
         end
         if hasItem(char, "Shears", true)
             and IsLockPromptFlag
-            and pn \~= "CuttableVines"
-            and pn \~= "Chest_Vine"
-            and pn \~= "Cellar"
+            and pn ~= "CuttableVines"
+            and pn ~= "Chest_Vine"
+            and pn ~= "Cellar"
         then
             return
         end
@@ -2632,7 +2629,6 @@ local function handleInfiniteItemPrompt(Object, player)
     local Drops = Workspace:FindFirstChild("Drops")
     local dropRemote = getDropRemote()
 
-    -- Abysall: InfiniteItemsList.Value[ToolData]  (ToolData = ten hien thi)
     if AnyTool
         and ToolData
         and infiniteItemOn
@@ -2653,11 +2649,10 @@ local function handleInfiniteItemPrompt(Object, player)
     end
 end
 
--- Bat handler NGAY (Abysall: Connections.InfiniteItemsHandler luon co)
 infItemPromptConn = ProximityPromptService.PromptTriggered:Connect(handleInfiniteItemPrompt)
 
 infItemGroup:AddDropdown("InfiniteItemSelect", {
-    Text = "Chon item (ten hien thi)",
+    Text = "Chon item ",
     Values = { "Lockpicks", "Skeleton Key", "Shears", "Multitool", "Crucifix" },
     Multi = true,
     Default = { "Lockpicks" },
@@ -2808,35 +2803,6 @@ reachToggle:OnChanged(function(v)
         pcall(function() ReachSlider:SetValue(DEFAULT_REACH_MULTI) end)
         return
     end
-    task.spawn(function()
-        local lastTP = 0
-        while reachToggle.Value do
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if char and hum and hum.Health > 0 and hrp then
-                local cur = tonumber(LocalPlayer:GetAttribute("CurrentRoom"))
-                local rooms = Workspace:FindFirstChild("CurrentRooms")
-                local roomObj = rooms and cur and rooms:FindFirstChild(tostring(cur))
-                if roomObj and roomObj:FindFirstChild("Door") then
-                    local door = roomObj.Door
-                    local doorPart = door:FindFirstChild("Door") or door:FindFirstChildWhichIsA("BasePart")
-                    if doorPart and (hrp.Position - doorPart.Position).Magnitude <= (reachState.reachMultiplier * 12) then
-                        if not checkDoorOpen(door) and not checkDoorLocked(door) and (tick() - lastTP > 0.4) then
-                            lastTP = tick()
-                            pcall(function()
-                                if door:FindFirstChild("ClientOpen") then door.ClientOpen:FireServer() end
-                                local prompt = door:FindFirstChildWhichIsA("ProximityPrompt", true)
-                                if prompt and fireproximityprompt then fireproximityprompt(prompt) end
-                            end)
-                        end
-                    end
-                end
-            end
-            task.wait(0.2)
-        end
-    end)
-end)
 
 local skipProximityActive = false
 local skipProximityConn = nil
@@ -2871,148 +2837,6 @@ skipProximityToggle:OnChanged(function(Value)
         end
     end
 end)
-
-local autoTpActive = false
-local autoTpConn = nil
-local lastTpAttempt = 0
-local function getGroundYFromPos(pos)
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {LocalPlayer.Character}
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local hit = Workspace:Raycast(pos + Vector3.new(0, 6, 0), Vector3.new(0, -30, 0), params)
-    return hit and hit.Position.Y + 0.15 or pos.Y
-end
-local function playAlertSound()
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://3318713980"
-        s.Volume = 10
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        task.delay(4, function() if s then s:Destroy() end end)
-    end)
-end
-local function findDoorOpenRemote()
-    local candidates = {"DoorOpen","Door_Open","OpenDoor","NextRoom","RoomChange","Crouch"}
-    for _,n in ipairs(candidates) do
-        local r = ReplicatedStorage:FindFirstChild(n,true)
-        if r and r:IsA("RemoteEvent") then return r end
-    end
-    return nil
-end
-    
-local function doTeleportToNextDoor()
-    if not menuUnlocked then return false end
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return false end
-
-    local rooms = Workspace:FindFirstChild("CurrentRooms")
-    if not rooms then return false end
-
-    local myRoom = tonumber(LocalPlayer:GetAttribute("CurrentRoom")) or 0
-    local targetRoom = myRoom + 1
-
-    local roomInst = nil
-    for _ = 1, 12 do
-        roomInst = rooms:FindFirstChild(tostring(targetRoom))
-            or rooms:FindFirstChild(tostring(targetRoom) .. "_")
-            or rooms:FindFirstChild(string.format("%03d", targetRoom))
-        if roomInst then break end
-        task.wait(0.1)
-    end
-    if not roomInst then return false end
-
-    local door, doorPart = nil, nil
-    for _ = 1, 12 do
-        door = roomInst:FindFirstChild("Door", true)
-        if door then
-            if door:GetAttribute("Locked") == true then return false end
-            doorPart = door:IsA("BasePart") and door
-                or door.PrimaryPart
-                or door:FindFirstChild("Door")
-                or door:FindFirstChildWhichIsA("BasePart", true)
-            if doorPart then break end
-        end
-        task.wait(0.1)
-    end
-    if not door or not doorPart then return false end
-
-    local look = doorPart.CFrame.LookVector
-    local standPos = doorPart.Position - look * 3.5
-    standPos = Vector3.new(standPos.X, doorPart.Position.Y + 1.5, standPos.Z)
-    local targetCf = CFrame.new(standPos, doorPart.Position)
-
-    local offsets = {}
-    for _, p in ipairs(char:GetDescendants()) do
-        if p:IsA("BasePart") then
-            offsets[p] = hrp.CFrame:ToObjectSpace(p.CFrame)
-        end
-    end
-
-    hum.PlatformStand = true
-    hrp.AssemblyLinearVelocity = Vector3.zero
-    hrp.AssemblyAngularVelocity = Vector3.zero
-
-    hrp.CFrame = targetCf
-    for p, off in pairs(offsets) do
-        if p and p.Parent and p ~= hrp then
-            pcall(function() p.CFrame = targetCf:ToWorldSpace(off) end)
-        end
-    end
-
-    pcall(function()
-        local co = door:FindFirstChild("ClientOpen")
-        if co then co:FireServer() end
-    end)
-    pcall(function()
-        local prompt = door:FindFirstChildWhichIsA("ProximityPrompt", true)
-        if prompt and fireproximityprompt then fireproximityprompt(prompt) end
-    end)
-    local cr = getCrouchRemote()
-    local dr = findDoorOpenRemote()
-    if cr then pcall(function() cr:FireServer(true, true) end) end
-    if dr then pcall(function() dr:FireServer() end) end
-
-    task.delay(0.12, function()
-        if hum and hum.Parent then hum.PlatformStand = false end
-    end)
-    return true
-            end
-
--- Nút Teleport (NGOAI function)
-if MiscRight then
-MiscRight:AddButton("<font color='#FF3232'>Teleport to next door</font>", function()
-        local ok = doTeleportToNextDoor()
-        pcall(function()
-            Obsidian:Notify({
-                Title = "TP tới cửa tiếp theo",
-                Description = ok and "Đang Teleport",
-                Time = 2,
-            })
-        end)
-    end)
-    local autoTpToggle = MiscRight:AddToggle("<font color='#FF3232'>Auto Teleport</font>", {Text="Auto Teleport",Default=false})
-    autoTpToggle:OnChanged(function(v)
-        autoTpActive = v
-        if v then
-            if autoTpConn then task.cancel(autoTpConn) end
-            autoTpConn = task.spawn(function()
-                while autoTpActive do
-                    lastTpAttempt = tick()
-                    pcall(doTeleportToNextDoor)
-                    task.wait(0.18)
-                end
-            end)
-        else
-            if autoTpConn then task.cancel(autoTpConn); autoTpConn=nil end
-        end
-    end)
-else
-    print("[LỖI] MiscRight chưa tồn tại! Dán SAU local MiscRight = ... và sau skipProximityToggle!")
-end
 end)()
 
 ;(function()    
