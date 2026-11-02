@@ -2432,39 +2432,235 @@ end)
 
 ;(function()
 local infItemGroup = Tabs.Misc:AddLeftGroupbox("Infinite Item", "package")
-infItemGroup:AddLabel("<font color='#FF3232'>Vo han item (Drop + nhat lai) — chi item vut duoc</font>", true)
+infItemGroup:AddLabel("<font color='#FF3232'>Vo han item — Abysall FakePrompt (Drop + nhat + mo khoa)</font>", true)
 
 local infiniteItemOn = false
+-- Abysall Options.InfiniteItemsList dung TEN HIEN THI (ItemNames value)
 local infiniteItemSelected = {
-    ["Lockpick"] = true,
-    ["Crucifix"] = true,
-    ["SkeletonKey"] = true,
+    ["Lockpicks"] = true,
     ["Shears"] = true,
+    ["Skeleton Key"] = true,
 }
 local infItemPromptConn = nil
-local infItemDebounce = {}
 
-local function toolMatches(tool)
-    if not tool then return false end
-    local n = tostring(tool.Name)
-    if infiniteItemSelected[n] then return true end
-    for sel in pairs(infiniteItemSelected) do
-        local s = tostring(sel)
-        if n == s or n:lower():find(s:lower(), 1, true) then
-            return true
-        end
-        if s:lower() == "skeletonkey" and n:lower():find("skeleton", 1, true) then
-            return true
-        end
+local FakePrompts = {}
+local PromptContainer = Instance.new("Folder")
+PromptContainer.Name = "PromptContainer"
+pcall(function()
+    PromptContainer.Parent = game:GetService("CoreGui")
+end)
+
+-- tool.Name -> ten hien thi (Abysall ItemNames rut gon cho item vut duoc)
+local ItemNames = {
+    ["Lockpick"] = "Lockpicks",
+    ["Shears"] = "Shears",
+    ["SkeletonKey"] = "Skeleton Key",
+    ["Multitool"] = "Multitool",
+    ["Crucifix"] = "Crucifix",
+    ["Key"] = "Key",
+    ["KeyElectrical"] = "Key",
+    ["KeyBackdoor"] = "Key",
+    ["KeyIron"] = "Iron Key",
+    ["GeneratorFuse"] = "Fuse",
+}
+
+local function getDropRemote()
+    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder")
+        or ReplicatedStorage:FindFirstChild("EntityInfo")
+        or ReplicatedStorage:FindFirstChild("Bricks")
+        or ReplicatedStorage
+    return rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
+end
+
+local function firePrompt(prompt)
+    if not prompt then return end
+    if fireproximityprompt then
+        pcall(function()
+            fireproximityprompt(prompt)
+        end)
+    end
+end
+
+local function hasItem(char, name, onlyCharacter)
+    if not char then return false end
+    if char:FindFirstChild(name) then return true end
+    if onlyCharacter then return false end
+    local bp = LocalPlayer:FindFirstChild("Backpack")
+    return bp and bp:FindFirstChild(name) \~= nil
+end
+
+local LockPromptNames = {
+    UnlockPrompt = true,
+    SkullPrompt = true,
+    LockPrompt = true,
+    ThingToEnable = true,
+    FusesPrompt = true,
+}
+
+local function isLockPrompt(object)
+    if not object or not object.Parent then return false end
+    if LockPromptNames[object.Name] then return true end
+    if object.Parent:GetAttribute("Locked") == true then return true end
+    if object.Parent.Parent
+        and object.Parent.Parent.Name == "Locker_Small_Locked"
+        and object.Name == "ActivateEventPrompt"
+    then
+        return true
     end
     return false
 end
 
+-- ===== Abysall: tao FakePrompt (HandleObject ProximityPrompt) =====
+local function setupFakePrompt(Object)
+    if not Object or not Object:IsA("ProximityPrompt") then return end
+    if Object:GetAttribute("FakePrompt") then return end
+    if not isLockPrompt(Object) then return end
+
+    for fake, real in pairs(FakePrompts) do
+        if real == Object then return end
+    end
+
+    if not Object:GetAttribute("HoldDuration_Old") then
+        Object:SetAttribute("HoldDuration_Old", Object.HoldDuration)
+        Object:SetAttribute("RequiresLineOfSight_Old", Object.RequiresLineOfSight)
+        Object:SetAttribute("MaxActivationDistance_Old", Object.MaxActivationDistance)
+    end
+
+    local FakePrompt = Object:Clone()
+    FakePrompt:SetAttribute("FakePrompt", true)
+    task.wait()
+    FakePrompt.Parent = Object.Parent
+
+    FakePrompt:SetAttribute("HoldDuration_Old", Object:GetAttribute("HoldDuration_Old"))
+    FakePrompt:SetAttribute("RequiresLineOfSight_Old", Object:GetAttribute("RequiresLineOfSight_Old"))
+    FakePrompt:SetAttribute("MaxActivationDistance_Old", Object:GetAttribute("MaxActivationDistance_Old"))
+
+    FakePrompt.HoldDuration = Object.HoldDuration
+    FakePrompt.RequiresLineOfSight = Object.RequiresLineOfSight
+    FakePrompt.MaxActivationDistance = Object.MaxActivationDistance
+
+    FakePrompts[FakePrompt] = Object
+    pcall(function()
+        Object.Parent = PromptContainer
+    end)
+
+    local FPEnabledConn = Object:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if FakePrompt and FakePrompt.Parent then
+            FakePrompt.Enabled = Object.Enabled
+        end
+    end)
+
+    Object:GetPropertyChangedSignal("ActionText"):Once(function()
+        pcall(function()
+            Object.Parent = FakePrompt.Parent
+        end)
+        if FakePrompt then FakePrompt:Destroy() end
+        if FPEnabledConn then FPEnabledConn:Disconnect() end
+        FakePrompts[FakePrompt] = nil
+    end)
+
+    Object.Destroying:Once(function()
+        if FakePrompt then pcall(function() FakePrompt:Destroy() end) end
+        if FPEnabledConn then FPEnabledConn:Disconnect() end
+        FakePrompts[FakePrompt] = nil
+    end)
+
+    FakePrompt.Enabled = false
+    task.wait()
+    FakePrompt.Enabled = Object.Enabled
+end
+
+task.spawn(function()
+    for _, d in ipairs(Workspace:GetDescendants()) do
+        if d:IsA("ProximityPrompt") then
+            pcall(setupFakePrompt, d)
+        end
+    end
+end)
+
+Workspace.DescendantAdded:Connect(function(d)
+    if d:IsA("ProximityPrompt") then
+        task.defer(function()
+            pcall(setupFakePrompt, d)
+        end)
+    end
+end)
+
+-- ===== Abysall InfiniteItemsHandler =====
+-- LUON lang nghe FakePrompt (ke ca khi infinite TAT) de van Fire RealPrompt
+local function handleInfiniteItemPrompt(Object, player)
+    if player \~= nil and player \~= LocalPlayer then return end
+    if not Object or not Object:GetAttribute("FakePrompt") then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local Prompt = Object
+    local IsLockPromptFlag = isLockPrompt(Object)
+
+    -- Abysall: check tool dung loai khoa
+    if Prompt.Parent then
+        local pn = Prompt.Parent.Name
+        if (pn == "CuttableVines" or pn == "Chest_Vine" or pn == "Cellar")
+            and not hasItem(char, "Shears", true)
+            and not hasItem(char, "Multitool", true)
+        then
+            return
+        end
+        if pn == "SkullLock" and not hasItem(char, "SkeletonKey", true) then
+            return
+        end
+        if (pn == "Lock1" or pn == "Lock2")
+            and not hasItem(char, "Lockpick", true)
+            and not hasItem(char, "Multitool", true)
+        then
+            return
+        end
+        if hasItem(char, "Shears", true)
+            and IsLockPromptFlag
+            and pn \~= "CuttableVines"
+            and pn \~= "Chest_Vine"
+            and pn \~= "Cellar"
+        then
+            return
+        end
+    end
+
+    local AnyTool = char:FindFirstChildOfClass("Tool")
+    local ToolData = AnyTool and ItemNames[AnyTool.Name]
+    local RealPrompt = FakePrompts[Object]
+    local Drops = Workspace:FindFirstChild("Drops")
+    local dropRemote = getDropRemote()
+
+    -- Abysall: InfiniteItemsList.Value[ToolData]  (ToolData = ten hien thi)
+    if AnyTool
+        and ToolData
+        and infiniteItemOn
+        and infiniteItemSelected[ToolData]
+        and Drops
+        and dropRemote
+    then
+        Drops.ChildAdded:Once(function(NewTool)
+            local dropModulePrompt = NewTool:FindFirstChild("ModulePrompt")
+            firePrompt(dropModulePrompt)
+            firePrompt(RealPrompt)
+        end)
+        pcall(function()
+            dropRemote:FireServer(AnyTool)
+        end)
+    else
+        firePrompt(RealPrompt)
+    end
+end
+
+-- Bat handler NGAY (Abysall: Connections.InfiniteItemsHandler luon co)
+infItemPromptConn = ProximityPromptService.PromptTriggered:Connect(handleInfiniteItemPrompt)
+
 infItemGroup:AddDropdown("InfiniteItemSelect", {
-    Text = "Chon item",
-    Values = { "Lockpick", "SkeletonKey", "Shears", "Crucifix" },
+    Text = "Chon item (ten hien thi)",
+    Values = { "Lockpicks", "Skeleton Key", "Shears", "Multitool", "Crucifix" },
     Multi = true,
-    Default = { "Lockpick", "Crucifix" },
+    Default = { "Lockpicks" },
 }):OnChanged(function(v)
     infiniteItemSelected = {}
     if type(v) == "table" then
@@ -2478,139 +2674,13 @@ infItemGroup:AddDropdown("InfiniteItemSelect", {
     end
 end)
 
-local function getDropRemote()
-    local rf = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage
-    return rf:FindFirstChild("DropItem") or rf:FindFirstChild("DropItem", true)
-end
-
-local function getNearestDropPrompt(itemName, toolId, maxDist)
-    maxDist = maxDist or 25
-    local drops = Workspace:FindFirstChild("Drops")
-    if not drops then return nil end
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    local best, bestDist = nil, maxDist
-    for _, d in ipairs(drops:GetChildren()) do
-        if d.Name == itemName then
-            if toolId == nil or d:GetAttribute("Tool_ID") == toolId or d:GetAttribute("ID") == toolId then
-                local part = d:IsA("BasePart") and d or d:FindFirstChildWhichIsA("BasePart", true)
-                local prompt = d:FindFirstChildWhichIsA("ProximityPrompt", true)
-                if part and prompt then
-                    local dist = (hrp.Position - part.Position).Magnitude
-                    if dist < bestDist then
-                        bestDist = dist
-                        best = prompt
-                    end
-                end
-            end
-        end
-    end
-    return best
-end
-
-local function pickupItemAsync(itemName, toolId, timeout)
-    timeout = timeout or 3
-    local t0 = tick()
-    while tick() - t0 < timeout do
-        local prompt = getNearestDropPrompt(itemName, toolId, 30)
-        if prompt and fireproximityprompt then
-            pcall(function() fireproximityprompt(prompt) end)
-        end
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(itemName) then
-            return true
-        end
-        task.wait(0.05)
-    end
-    return false
-end
-
-local function handleInfiniteItemPrompt(prompt, player)
-    if player ~= LocalPlayer then return end
-    if not infiniteItemOn then return end
-    if not prompt or infItemDebounce[prompt] then return end
-
-    local parent = prompt.Parent
-    if not parent then return end
-
-    local isDoorLock = prompt.Name == "UnlockPrompt"
-        and parent.Name == "Lock"
-        and parent.Parent
-        and parent.Parent:GetAttribute("Opened") ~= true
-
-    local isSkeletonDoor = prompt.Name == "SkullPrompt"
-        and parent.Name == "SkullLock"
-
-    local isChestBox = prompt.Name == "ActivateEventPrompt"
-        and (parent.Name == "ChestBoxLocked" or parent:GetAttribute("Locked") == true)
-
-    local isRoomsDoorLock = parent.Name == "RoomsDoor_Entrance" and prompt.Enabled
-
-    local isVine = parent.Name == "CuttableVines" or parent.Name == "Chest_Vine" or parent.Name == "Cellar"
-
-    if not (isDoorLock or isSkeletonDoor or isChestBox or isRoomsDoorLock or isVine) then
-        return
-    end
-
-    local char = LocalPlayer.Character
-    if not char then return end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool or not toolMatches(tool) then return end
-
-    infItemDebounce[prompt] = true
-    local itemName = tool.Name
-    local toolId = tool:GetAttribute("ID") or tool:GetAttribute("Tool_ID")
-    local dropRemote = getDropRemote()
-    local drops = Workspace:FindFirstChild("Drops")
-
-    task.spawn(function()
-        if isChestBox then task.wait(0.15) end
-
-        local conn
-        local finished = false
-        local function finish()
-            if finished then return end
-            finished = true
-            if conn then pcall(function() conn:Disconnect() end) conn = nil end
-            task.delay(0.25, function()
-                infItemDebounce[prompt] = nil
-            end)
-        end
-
-        if drops then
-            conn = drops.ChildAdded:Connect(function(newDrop)
-                if finished then return end
-                if newDrop.Name ~= itemName then return end
-                if toolId ~= nil then
-                    local id = newDrop:GetAttribute("ID") or newDrop:GetAttribute("Tool_ID")
-                    if id ~= nil and id ~= toolId then return end
-                end
-                local mp = newDrop:FindFirstChild("ModulePrompt")
-                    or newDrop:FindFirstChildWhichIsA("ProximityPrompt", true)
-                task.wait(0.05)
-                if mp and fireproximityprompt then
-                    pcall(function() fireproximityprompt(mp) end)
-                end
-                if fireproximityprompt then
-                    pcall(function() fireproximityprompt(prompt) end)
-                end
-                finish()
-            end)
-        end
-
-        if dropRemote then
-            pcall(function() dropRemote:FireServer(tool) end)
-        end
-
-        task.delay(2, function()
-            if not finished then
-                if fireproximityprompt then
-                    pcall(function() fireproximityprompt(prompt) end)
-                end
-                finish()
-            end
-        end)
-    end)
-    end
+infItemGroup:AddToggle("InfiniteItemToggle", {
+    Text = "<font color='#FF3232'>Infinite Item</font>",
+    Default = false,
+    Tooltip = "Lừa Sever Tránh để Item bị tiêu Hao/100% không mất khi Ping ổn định/FPS ổn định.",
+}):OnChanged(function(v)
+    infiniteItemOn = v
+end)
 
 local InfCrucifixTable = {
     RushMoving = 90,
