@@ -2486,7 +2486,7 @@ local function hasItem(char, name, onlyCharacter)
     if char:FindFirstChild(name) then return true end
     if onlyCharacter then return false end
     local bp = LocalPlayer:FindFirstChild("Backpack")
-    return bp and bp:FindFirstChild(name) \~= nil
+    return bp and bp:FindFirstChild(name) ~= nil
 end
 
 local LockPromptNames = {
