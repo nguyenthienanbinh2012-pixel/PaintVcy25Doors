@@ -918,10 +918,6 @@ local PS = {
     hipOrigin = nil,
     conn = nil,
     lastCrouch = 0,
-    savedCollision = nil,
-    savedCollisionPart = nil,
-    savedHrpCanCollide = nil,
-    savedCollisionClone = false,
 }
 
 local function psIsLegacyFloor()
@@ -940,13 +936,11 @@ end
 local function psIsMinecart()
     local char = LocalPlayer.Character
     if not char then return false end
+    if Camera and Camera:FindFirstChild("MinecartRig") then return true end
     for _, n in ipairs({"Minecart", "MineCart", "Cart"}) do
         if char:FindFirstChild(n) then return true end
     end
-    if char:GetAttribute("InMinecart") or char:GetAttribute("Minecart") then
-        return true
-    end
-    return false
+    return char:GetAttribute("InMinecart") == true or char:GetAttribute("Minecart") == true
 end
 
 local function psGetCrouch()
@@ -958,9 +952,9 @@ local function psGetCrouch()
 end
 
 local function psEnsureCollisionClone(char)
-    if not char then return end
+    if not char then return nil end
     local collision = char:FindFirstChild("Collision")
-    if not collision or not collision:IsA("BasePart") then return end
+    if not collision or not collision:IsA("BasePart") then return nil end
     local clone = char:FindFirstChild("CollisionClone")
     if clone then return clone end
     clone = collision:Clone()
@@ -986,7 +980,7 @@ local function psNotify(on)
         pcall(function()
             Obsidian:Notify({
                 Title = "Position Spoof",
-                Description = "<font color='#FF3232'>Chỉ An toàn khi đứng im hoặc di chuyển Khi Nhảy,Leo cầu thang Sẽ dẫn đến cái chết</font>",
+                Description = "<font color='#FF3232'>Chi an toan khi dung im / di chuyen. Nhay / cau thang de chet</font>",
                 Time = 2.2,
             })
         end)
@@ -1007,76 +1001,38 @@ local function psDisable()
 
     if hrp then
         hrp.CFrame = hrp.CFrame * CFrame.new(0, 2.346, 0)
-        if PS.savedHrpCanCollide ~= nil then
-            hrp.CanCollide = PS.savedHrpCanCollide
-        else
-            hrp.CanCollide = true
-        end
+        hrp.CanCollide = true
     end
     if hum then
-        hum.HipHeight = PS.hipOrigin or 2.396
+        hum.HipHeight = PS.hipOrigin or 2.367
     end
 
-    if char then
-        local rp = hrp and (hrp.Position + Vector3.new(0, 0.18, 0))
-
+    if char and hrp then
+        local baseY = 0.18
+        local rp = hrp.Position + Vector3.new(0, baseY, 0)
+        for _, n in ipairs({"Collision", "CollisionPart", "CollisionClone", "CollisionPartClone"}) do
+            local p = char:FindFirstChild(n)
+            if p and p:IsA("BasePart") then
+                p.Position = rp
+            end
+        end
         local col = char:FindFirstChild("Collision")
-        if col and col:IsA("BasePart") and rp then
-            col.Position = rp
-            if PS.savedCollision then
-                col.CanCollide = PS.savedCollision.CanCollide
-                col.CanTouch = PS.savedCollision.CanTouch
-                col.CanQuery = PS.savedCollision.CanQuery
-            else
-                col.CanCollide = true
-            end
+        local cc = col and col:FindFirstChild("CollisionCrouch")
+        if cc and cc:IsA("BasePart") then
+            cc.Position = hrp.Position + Vector3.new(0, -0.982, 0)
         end
-
-        local colP = char:FindFirstChild("CollisionPart")
-        if colP and colP:IsA("BasePart") and colP ~= col and rp then
-            colP.Position = rp
-            if PS.savedCollisionPart then
-                colP.CanCollide = PS.savedCollisionPart.CanCollide
-                colP.CanTouch = PS.savedCollisionPart.CanTouch
-                colP.CanQuery = PS.savedCollisionPart.CanQuery
-            else
-                colP.CanCollide = true
-            end
-        end
-
-        local clone = char:FindFirstChild("CollisionClone")
-        if clone then
-            if not PS.savedCollisionClone then
-                clone:Destroy()
-            else
-                if rp then clone.Position = rp end
-                clone.CanCollide = false
-            end
-        end
-
         local lt = char:FindFirstChild("LowerTorso")
         local root = lt and lt:FindFirstChild("Root")
         if root and PS.c1Origin then
             root.C1 = PS.c1Origin
-        end
-
-        local cc = col and col:FindFirstChild("CollisionCrouch")
-        if cc and cc:IsA("BasePart") and hrp then
-            cc.Position = hrp.Position + Vector3.new(0, -0.982, 0)
-            cc.CanCollide = false
         end
     end
 
     if cr then
         pcall(function() cr:FireServer(false, true) end)
     end
-
     PS.c1Origin = nil
     PS.hipOrigin = nil
-    PS.savedCollision = nil
-    PS.savedCollisionPart = nil
-    PS.savedHrpCanCollide = nil
-    PS.savedCollisionClone = false
 end
 
 local function psStep()
@@ -1088,7 +1044,6 @@ local function psStep()
 
     local char = LocalPlayer.Character
     if not char then return end
-
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum then return end
@@ -1100,6 +1055,11 @@ local function psStep()
     local CollisionPart = char:FindFirstChild("CollisionPart")
     local CollisionClone = char:FindFirstChild("CollisionClone") or psEnsureCollisionClone(char)
 
+    for _, p in ipairs(char:GetChildren()) do
+        if p:IsA("BasePart") then
+            p.CanCollide = false
+        end
+    end
     hrp.CanCollide = false
     hum.HipHeight = 0.05
 
@@ -1107,28 +1067,29 @@ local function psStep()
         root.C1 = PS.c1Origin * CFrame.new(0, -2.346, 0)
     end
 
+    local SpoofY = 2.328
     if Collision and Collision:IsA("BasePart") then
-        Collision.Position = hrp.Position + Vector3.new(0, 2.328, 0)
+        Collision.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
         Collision.CanCollide = false
     end
-
+    if CollisionPart and CollisionPart:IsA("BasePart") then
+        CollisionPart.Position = hrp.Position + Vector3.new(0, SpoofY, 0)
+        CollisionPart.CanCollide = false
+    end
     if CollisionCrouch and CollisionCrouch:IsA("BasePart") then
         CollisionCrouch.Position = hrp.Position + Vector3.new(0, 1.328, 0)
         CollisionCrouch.CanCollide = false
     end
 
-    if CollisionPart and CollisionPart ~= Collision and CollisionPart:IsA("BasePart") then
-        CollisionPart.Position = hrp.Position + Vector3.new(0, 2.328, 0)
-        CollisionPart.CanCollide = false
-    end
-if CollisionClone and CollisionClone:IsA("BasePart") then
-        CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
-        CollisionClone.CanCollide = false
+    if CollisionClone and CollisionClone:IsA("BasePart") then
         if Collision then
             pcall(function()
                 CollisionClone.CollisionGroup = Collision.CollisionGroup
             end)
         end
+        CollisionClone.Position = hrp.Position + Vector3.new(0, 1.75, 0)
+        local isCrouch = true
+        CollisionClone.CanCollide = not isCrouch
         local ccc = CollisionClone:FindFirstChild("CollisionCrouch")
         if ccc and ccc:IsA("BasePart") then
             ccc.Position = hrp.Position + Vector3.new(0, 0.75, 0)
@@ -1141,20 +1102,8 @@ if CollisionClone and CollisionClone:IsA("BasePart") then
         end
     end
 
-    for _, p in ipairs(char:GetChildren()) do
-        if p:IsA("BasePart") then
-            p.CanCollide = false
-        end
-    end
-    hrp.CanCollide = false
-
-    local cr = psGetCrouch()
-    if cr then
-        pcall(function() cr:FireServer(true, true) end)
-    end
-
     local now = tick()
-    if now - (PS.lastCrouch or 0) > 0.1 then
+    if now - (PS.lastCrouch or 0) >= 0.1 then
         PS.lastCrouch = now
         local cr = psGetCrouch()
         if cr then
@@ -1187,26 +1136,6 @@ local function psEnable()
         PS.c1Origin = root.C1
     end
     PS.hipOrigin = hum.HipHeight
-    PS.savedHrpCanCollide = hrp.CanCollide
-
-    local col = char:FindFirstChild("Collision")
-    if col and col:IsA("BasePart") then
-        PS.savedCollision = {
-            CanCollide = col.CanCollide,
-            CanTouch = col.CanTouch,
-            CanQuery = col.CanQuery,
-        }
-    end
-    local colP = char:FindFirstChild("CollisionPart")
-    if colP and colP:IsA("BasePart") and colP ~= col then
-        PS.savedCollisionPart = {
-            CanCollide = colP.CanCollide,
-            CanTouch = colP.CanTouch,
-            CanQuery = colP.CanQuery,
-        }
-    end
-
-    PS.savedCollisionClone = char:FindFirstChild("CollisionClone") ~= nil
 
     psEnsureCollisionClone(char)
 
@@ -1237,10 +1166,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     task.delay(0.8, function()
         PS.c1Origin = nil
         PS.hipOrigin = nil
-        PS.savedCollision = nil
-        PS.savedCollisionPart = nil
-        PS.savedHrpCanCollide = nil
-        PS.savedCollisionClone = false
         pcall(function()
             psEnsureCollisionClone(char)
         end)
