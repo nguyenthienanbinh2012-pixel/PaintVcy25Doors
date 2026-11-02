@@ -2591,6 +2591,25 @@ InfParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local infCrucifixRunning = false
 local infCrucifixConn = nil
+infItemGroup:AddToggle("InfiniteItemToggle", {
+    Text = "<font color='#FF3232'>Infinite Item</font>",
+    Default = false,
+    Tooltip = "Lừa Sever Tránh Item bị Tiêu Hao!",
+}):OnChanged(function(v)
+    infiniteItemOn = v
+    if infItemPromptConn then
+        pcall(function() infItemPromptConn:Disconnect() end)
+        infItemPromptConn = nil
+    end
+    if v then
+        if not ProximityPromptService then
+            ProximityPromptService = game:GetService("ProximityPromptService")
+        end
+        infItemPromptConn = ProximityPromptService.PromptTriggered:Connect(handleInfiniteItemPrompt)
+    else
+        infItemDebounce = {}
+    end
+end)
 
 infItemGroup:AddToggle("InfCrucifixToggle", {
     Text = "<font color='#FF3232'>Infinite Crucifix</font>",
