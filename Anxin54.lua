@@ -977,7 +977,6 @@ local function psEnsureCollisionClone(char)
     end
 
     return clone
-    end
 end
 
 local function psNotify(on)
